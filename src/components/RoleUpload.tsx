@@ -178,14 +178,15 @@ export const RoleUpload = () => {
                   // Check if any title column exists and has a value
                   const hasValidTitle = titleColumns.some(col => role[col] && String(role[col]).trim().length > 0);
                   
-                  // Debug first few roles
-                  if (index < 3) {
-                    console.log(`Role ${index + 1}:`, {
-                      RoleTitle: role.RoleTitle,
-                      hasValidTitle,
-                      allKeys: Object.keys(role)
-                    });
-                  }
+                  // Debug ALL roles to see what's happening
+                  console.log(`Role ${index + 1}:`, {
+                    RoleTitle: `"${role.RoleTitle}"`,
+                    RoleTitleType: typeof role.RoleTitle,
+                    RoleTitleLength: role.RoleTitle ? String(role.RoleTitle).length : 0,
+                    RoleTitleTrimmed: role.RoleTitle ? String(role.RoleTitle).trim() : '',
+                    hasValidTitle,
+                    allValues: Object.entries(role).slice(0, 5) // Show first 5 key-value pairs
+                  });
                   
                   return hasValidTitle;
                 });
