@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.development-pathways]
 verify_jwt = false
+
+[functions.dynamic-role-upload]
+verify_jwt = false
+
+[functions.flexible-role-upload]
+verify_jwt = false

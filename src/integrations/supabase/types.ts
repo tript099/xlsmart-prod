@@ -1636,6 +1636,48 @@ export type Database = {
         }
         Relationships: []
       }
+      xlsmart_upload_sessions: {
+        Row: {
+          ai_analysis: Json | null
+          created_at: string | null
+          created_by: string
+          error_message: string | null
+          file_names: string[]
+          id: string
+          session_name: string
+          status: string | null
+          temp_table_names: string[]
+          total_rows: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          created_at?: string | null
+          created_by: string
+          error_message?: string | null
+          file_names: string[]
+          id?: string
+          session_name: string
+          status?: string | null
+          temp_table_names: string[]
+          total_rows?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          ai_analysis?: Json | null
+          created_at?: string | null
+          created_by?: string
+          error_message?: string | null
+          file_names?: string[]
+          id?: string
+          session_name?: string
+          status?: string | null
+          temp_table_names?: string[]
+          total_rows?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1644,6 +1686,10 @@ export type Database = {
       advance_offer_workflow_step: {
         Args: { workflow_id: string; step_data?: Json }
         Returns: Json
+      }
+      drop_temp_tables: {
+        Args: { table_names: string[] }
+        Returns: undefined
       }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
