@@ -246,7 +246,31 @@ const Index = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, index) => (
-              <Card key={index} className="xlsmart-card text-center hover:scale-105">
+              <Card 
+                key={index} 
+                className="xlsmart-card text-center hover:scale-105 cursor-pointer transition-all duration-300"
+                onClick={() => {
+                  if (index === 0) {
+                    // Employees stat
+                    toast({
+                      title: "Employee Statistics",
+                      description: `Current total: ${stat.value} employees in the system`,
+                    });
+                  } else if (index === 1) {
+                    // Roles stat - open role upload dialog
+                    setActiveDialog('upload');
+                  } else if (index === 2) {
+                    // Accuracy stat
+                    toast({
+                      title: "Mapping Accuracy",
+                      description: `Current AI role mapping accuracy: ${stat.value}`,
+                    });
+                  } else if (index === 3) {
+                    // Skills stat - open skills assessment
+                    setActiveDialog('assessment');
+                  }
+                }}
+              >
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center space-y-3">
                     <div className={`p-4 rounded-2xl bg-gradient-to-br ${
