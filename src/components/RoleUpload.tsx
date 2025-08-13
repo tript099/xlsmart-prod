@@ -130,11 +130,12 @@ export const RoleUpload = () => {
                 console.log('CSV headers found:', headers);
                 console.log('Sample role data:', roles.slice(0, 2));
                 
-                // More flexible column name matching for CSV
+                // More flexible column name matching for CSV - including camelCase versions
                 const titleColumns = ['title', 'name', 'role title', 'position', 'job title', 'role name', 
                                     'current position', 'role', 'designation', 'job role', 'function',
                                     'Title', 'Name', 'Role Title', 'Position', 'Job Title', 'Role Name',
-                                    'Current Position', 'Role', 'Designation', 'Job Role', 'Function'];
+                                    'Current Position', 'Role', 'Designation', 'Job Role', 'Function',
+                                    'RoleTitle', 'JobTitle', 'RoleName', 'CurrentPosition'];  // Added camelCase versions
                 
                 const filteredRoles = roles.filter(role => {
                   return titleColumns.some(col => role[col] && String(role[col]).trim().length > 0);
@@ -166,15 +167,27 @@ export const RoleUpload = () => {
                 console.log('Excel headers found:', headers);
                 console.log('Sample role data:', roles.slice(0, 2));
                 
-                // More flexible column name matching
+                // More flexible column name matching - including camelCase versions
                 const titleColumns = ['title', 'name', 'role title', 'position', 'job title', 'role name', 
                                     'current position', 'role', 'designation', 'job role', 'function',
                                     'Title', 'Name', 'Role Title', 'Position', 'Job Title', 'Role Name',
-                                    'Current Position', 'Role', 'Designation', 'Job Role', 'Function'];
+                                    'Current Position', 'Role', 'Designation', 'Job Role', 'Function',
+                                    'RoleTitle', 'JobTitle', 'RoleName', 'CurrentPosition'];  // Added camelCase versions
                 
-                const filteredRoles = roles.filter(role => {
+                const filteredRoles = roles.filter((role, index) => {
                   // Check if any title column exists and has a value
-                  return titleColumns.some(col => role[col] && String(role[col]).trim().length > 0);
+                  const hasValidTitle = titleColumns.some(col => role[col] && String(role[col]).trim().length > 0);
+                  
+                  // Debug first few roles
+                  if (index < 3) {
+                    console.log(`Role ${index + 1}:`, {
+                      RoleTitle: role.RoleTitle,
+                      hasValidTitle,
+                      allKeys: Object.keys(role)
+                    });
+                  }
+                  
+                  return hasValidTitle;
                 });
                 
                 console.log(`Found ${filteredRoles.length} valid roles out of ${roles.length} total rows`);
