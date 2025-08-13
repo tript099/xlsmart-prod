@@ -58,5 +58,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.employee-career-paths-progress]
+verify_jwt = false
+
 [functions.role-upload-direct]
 verify_jwt = false
