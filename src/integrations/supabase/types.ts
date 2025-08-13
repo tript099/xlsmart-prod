@@ -1113,6 +1113,447 @@ export type Database = {
           },
         ]
       }
+      xlsmart_development_plans: {
+        Row: {
+          assigned_to: string
+          created_at: string
+          created_by: string
+          current_skill_level: number | null
+          development_areas: Json | null
+          employee_id: string
+          id: string
+          last_review_date: string | null
+          next_review_date: string | null
+          plan_status: string
+          progress_percentage: number | null
+          recommended_certifications: Json | null
+          recommended_courses: Json | null
+          recommended_projects: Json | null
+          reviewed_by: string | null
+          skill_assessment_id: string | null
+          target_role: string | null
+          target_skill_level: number | null
+          timeline_months: number | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          created_at?: string
+          created_by: string
+          current_skill_level?: number | null
+          development_areas?: Json | null
+          employee_id: string
+          id?: string
+          last_review_date?: string | null
+          next_review_date?: string | null
+          plan_status?: string
+          progress_percentage?: number | null
+          recommended_certifications?: Json | null
+          recommended_courses?: Json | null
+          recommended_projects?: Json | null
+          reviewed_by?: string | null
+          skill_assessment_id?: string | null
+          target_role?: string | null
+          target_skill_level?: number | null
+          timeline_months?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          created_at?: string
+          created_by?: string
+          current_skill_level?: number | null
+          development_areas?: Json | null
+          employee_id?: string
+          id?: string
+          last_review_date?: string | null
+          next_review_date?: string | null
+          plan_status?: string
+          progress_percentage?: number | null
+          recommended_certifications?: Json | null
+          recommended_courses?: Json | null
+          recommended_projects?: Json | null
+          reviewed_by?: string | null
+          skill_assessment_id?: string | null
+          target_role?: string | null
+          target_skill_level?: number | null
+          timeline_months?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xlsmart_development_plans_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xlsmart_development_plans_skill_assessment_id_fkey"
+            columns: ["skill_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_skill_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xlsmart_employees: {
+        Row: {
+          certifications: Json | null
+          created_at: string
+          currency: string | null
+          current_department: string | null
+          current_level: string | null
+          current_position: string
+          email: string
+          employee_number: string
+          first_name: string
+          hire_date: string | null
+          id: string
+          is_active: boolean | null
+          last_name: string
+          manager_id: string | null
+          performance_rating: number | null
+          phone: string | null
+          salary: number | null
+          skills: Json | null
+          source_company: string
+          updated_at: string
+          uploaded_by: string
+          years_of_experience: number | null
+        }
+        Insert: {
+          certifications?: Json | null
+          created_at?: string
+          currency?: string | null
+          current_department?: string | null
+          current_level?: string | null
+          current_position: string
+          email: string
+          employee_number: string
+          first_name: string
+          hire_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_name: string
+          manager_id?: string | null
+          performance_rating?: number | null
+          phone?: string | null
+          salary?: number | null
+          skills?: Json | null
+          source_company: string
+          updated_at?: string
+          uploaded_by: string
+          years_of_experience?: number | null
+        }
+        Update: {
+          certifications?: Json | null
+          created_at?: string
+          currency?: string | null
+          current_department?: string | null
+          current_level?: string | null
+          current_position?: string
+          email?: string
+          employee_number?: string
+          first_name?: string
+          hire_date?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_name?: string
+          manager_id?: string | null
+          performance_rating?: number | null
+          phone?: string | null
+          salary?: number | null
+          skills?: Json | null
+          source_company?: string
+          updated_at?: string
+          uploaded_by?: string
+          years_of_experience?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xlsmart_employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xlsmart_job_descriptions: {
+        Row: {
+          ai_generated: boolean | null
+          ai_prompt_used: string | null
+          approved_by: string | null
+          created_at: string
+          currency: string | null
+          education_level: string | null
+          employment_type: string | null
+          experience_level: string | null
+          generated_by: string
+          id: string
+          language: string | null
+          location_type: string | null
+          preferred_qualifications: Json | null
+          preferred_skills: Json | null
+          required_qualifications: Json | null
+          required_skills: Json | null
+          responsibilities: Json | null
+          reviewed_by: string | null
+          role_mapping_id: string
+          salary_range_max: number | null
+          salary_range_min: number | null
+          status: string
+          summary: string | null
+          title: string
+          tone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_generated?: boolean | null
+          ai_prompt_used?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string | null
+          education_level?: string | null
+          employment_type?: string | null
+          experience_level?: string | null
+          generated_by: string
+          id?: string
+          language?: string | null
+          location_type?: string | null
+          preferred_qualifications?: Json | null
+          preferred_skills?: Json | null
+          required_qualifications?: Json | null
+          required_skills?: Json | null
+          responsibilities?: Json | null
+          reviewed_by?: string | null
+          role_mapping_id: string
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          status?: string
+          summary?: string | null
+          title: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_generated?: boolean | null
+          ai_prompt_used?: string | null
+          approved_by?: string | null
+          created_at?: string
+          currency?: string | null
+          education_level?: string | null
+          employment_type?: string | null
+          experience_level?: string | null
+          generated_by?: string
+          id?: string
+          language?: string | null
+          location_type?: string | null
+          preferred_qualifications?: Json | null
+          preferred_skills?: Json | null
+          required_qualifications?: Json | null
+          required_skills?: Json | null
+          responsibilities?: Json | null
+          reviewed_by?: string | null
+          role_mapping_id?: string
+          salary_range_max?: number | null
+          salary_range_min?: number | null
+          status?: string
+          summary?: string | null
+          title?: string
+          tone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xlsmart_job_descriptions_role_mapping_id_fkey"
+            columns: ["role_mapping_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_role_mappings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xlsmart_role_catalogs: {
+        Row: {
+          created_at: string
+          file_format: string
+          file_name: string
+          file_size: number | null
+          id: string
+          mapping_accuracy: number | null
+          processed_roles: number | null
+          source_company: string
+          total_roles: number | null
+          updated_at: string
+          upload_status: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_format: string
+          file_name: string
+          file_size?: number | null
+          id?: string
+          mapping_accuracy?: number | null
+          processed_roles?: number | null
+          source_company: string
+          total_roles?: number | null
+          updated_at?: string
+          upload_status?: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_format?: string
+          file_name?: string
+          file_size?: number | null
+          id?: string
+          mapping_accuracy?: number | null
+          processed_roles?: number | null
+          source_company?: string
+          total_roles?: number | null
+          updated_at?: string
+          upload_status?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
+      xlsmart_role_mappings: {
+        Row: {
+          catalog_id: string
+          created_at: string
+          id: string
+          job_family: string | null
+          mapping_confidence: number | null
+          mapping_status: string
+          original_department: string | null
+          original_level: string | null
+          original_role_title: string
+          requires_manual_review: boolean | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          standardized_department: string | null
+          standardized_level: string | null
+          standardized_role_title: string
+          updated_at: string
+        }
+        Insert: {
+          catalog_id: string
+          created_at?: string
+          id?: string
+          job_family?: string | null
+          mapping_confidence?: number | null
+          mapping_status?: string
+          original_department?: string | null
+          original_level?: string | null
+          original_role_title: string
+          requires_manual_review?: boolean | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          standardized_department?: string | null
+          standardized_level?: string | null
+          standardized_role_title: string
+          updated_at?: string
+        }
+        Update: {
+          catalog_id?: string
+          created_at?: string
+          id?: string
+          job_family?: string | null
+          mapping_confidence?: number | null
+          mapping_status?: string
+          original_department?: string | null
+          original_level?: string | null
+          original_role_title?: string
+          requires_manual_review?: boolean | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          standardized_department?: string | null
+          standardized_level?: string | null
+          standardized_role_title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xlsmart_role_mappings_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_role_catalogs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xlsmart_skill_assessments: {
+        Row: {
+          ai_analysis: string | null
+          assessed_by: string
+          assessment_date: string
+          churn_risk_score: number | null
+          created_at: string
+          employee_id: string
+          id: string
+          job_description_id: string
+          level_fit_score: number | null
+          next_role_recommendations: Json | null
+          overall_match_percentage: number | null
+          recommendations: string | null
+          rotation_risk_score: number | null
+          skill_gaps: Json | null
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: string | null
+          assessed_by: string
+          assessment_date?: string
+          churn_risk_score?: number | null
+          created_at?: string
+          employee_id: string
+          id?: string
+          job_description_id: string
+          level_fit_score?: number | null
+          next_role_recommendations?: Json | null
+          overall_match_percentage?: number | null
+          recommendations?: string | null
+          rotation_risk_score?: number | null
+          skill_gaps?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: string | null
+          assessed_by?: string
+          assessment_date?: string
+          churn_risk_score?: number | null
+          created_at?: string
+          employee_id?: string
+          id?: string
+          job_description_id?: string
+          level_fit_score?: number | null
+          next_role_recommendations?: Json | null
+          overall_match_percentage?: number | null
+          recommendations?: string | null
+          rotation_risk_score?: number | null
+          skill_gaps?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xlsmart_skill_assessments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xlsmart_skill_assessments_job_description_id_fkey"
+            columns: ["job_description_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_job_descriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
