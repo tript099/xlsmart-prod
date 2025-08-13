@@ -56,25 +56,7 @@ serve(async (req) => {
       console.log('📤 Starting upload action');
       console.log('📊 Excel data received:', excelData?.length, 'files');
 
-      // Get current user ID from authorization header  
-      const authHeader = req.headers.get('authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('Authorization header missing or invalid');
-      }
-      
-      const token = authHeader.replace('Bearer ', '');
-      console.log('🔑 Authenticating user...');
-      
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-      
-      if (userError || !user) {
-        console.error('❌ Auth error:', userError);
-        throw new Error(`Authentication failed: ${userError?.message || 'User not found'}`);
-      }
-
-      console.log('✅ User authenticated:', user.id);
-
-      // Create upload session with JSON storage
+      // Create upload session without user authentication since JWT is disabled
       console.log('💾 Creating upload session...');
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
@@ -84,7 +66,6 @@ serve(async (req) => {
           temp_table_names: [], // Not using actual tables
           total_rows: excelData.reduce((sum: number, file: any) => sum + file.rows.length, 0),
           status: 'analyzing',
-          created_by: user.id,
           ai_analysis: {
             raw_data: excelData // Store all Excel data as JSON
           }
@@ -113,27 +94,12 @@ serve(async (req) => {
       console.log('🧠 Starting AI standardization action');
       console.log('📋 Session ID:', sessionId);
 
-      // Authenticate user
-      const authHeader = req.headers.get('authorization');
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        throw new Error('Authorization header missing or invalid');
-      }
-      
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-      
-      if (userError || !user) {
-        console.error('❌ Auth error:', userError);
-        throw new Error(`Authentication failed: ${userError?.message || 'User not found'}`);
-      }
-
-      // Get upload session data
+      // Get upload session data without authentication
       console.log('📤 Fetching upload session data...');
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
         .select('*')
         .eq('id', sessionId)
-        .eq('created_by', user.id)
         .single();
 
       if (sessionError || !session) {
@@ -227,12 +193,12 @@ OUTPUT FORMAT (JSON only):
         .from('xlsmart_standard_roles')
         .insert(
           parsedResult.standardRoles.map((role: any) => ({
-            title: role.title,
+            role_title: role.title,
             department: role.department,
-            role_family: role.roleFamily,
-            seniority_band: role.seniorityBand,
-            description: role.description,
-            created_by: user.id
+            job_family: role.roleFamily,
+            role_level: role.seniorityBand,
+            role_category: role.department,
+            standard_description: role.description
           }))
         )
         .select();
@@ -248,10 +214,9 @@ OUTPUT FORMAT (JSON only):
         .insert(
           parsedResult.mappings.map((mapping: any) => ({
             original_role_title: mapping.originalRole,
-            standard_role_title: mapping.standardRole,
-            confidence_score: mapping.confidence,
-            mapping_reasoning: mapping.reasoning,
-            created_by: user.id
+            standardized_role_title: mapping.standardRole,
+            mapping_confidence: mapping.confidence,
+            catalog_id: session.id
           }))
         )
         .select();
