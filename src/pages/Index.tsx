@@ -14,7 +14,8 @@ import {
   Zap,
   BarChart3,
   Target,
-  Smartphone
+  Smartphone,
+  User
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
 import { RoleUpload } from "@/components/RoleUpload";
@@ -22,12 +23,15 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { AuthDialog } from "@/components/AuthDialog";
 
 const Index = () => {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const { t } = useLanguage();
   const aiStats = useAIStats();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const features = [
     {
@@ -106,6 +110,21 @@ const Index = () => {
               
               <div className="flex items-center gap-4">
                 <LanguageToggle />
+                <Dialog open={activeDialog === 'auth'} onOpenChange={(open) => setActiveDialog(open ? 'auth' : null)}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
+                      <User className="mr-2 h-4 w-4" />
+                      {user ? 'Account' : 'Sign In'}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <div className="sr-only">
+                      <h2>Authentication</h2>
+                      <p>Sign in or create an account</p>
+                    </div>
+                    <AuthDialog />
+                  </DialogContent>
+                </Dialog>
                 <Badge variant="secondary" className="bg-white/15 text-white border-white/20 backdrop-blur-sm">
                   SimplifyAI Platform
                 </Badge>
