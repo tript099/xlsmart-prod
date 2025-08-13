@@ -47,3 +47,12 @@ verify_jwt = false
 
 [functions.development-pathways-progress]
 verify_jwt = false
+
+[functions.employee-career-paths]
+verify_jwt = false
+
+[functions.employee-career-paths-bulk]
+verify_jwt = false
+
+[functions.employee-career-paths-progress]
+verify_jwt = false

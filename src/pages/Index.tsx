@@ -28,6 +28,7 @@ import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails"
 import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
 import { SkillsListDetails } from "@/components/SkillsListDetails";
 import { EmployeeUpload } from "@/components/EmployeeUpload";
+import { EmployeeCareerPaths } from "@/components/EmployeeCareerPaths";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
@@ -96,6 +97,14 @@ const Index = () => {
       icon: MessageCircle,
       badge: t('feature.chat.badge'),
       dialogContent: 'chat'
+    },
+    {
+      id: 'career-paths',
+      title: 'Employee Career Paths',
+      description: 'AI-powered career path planning and progression mapping',
+      icon: TrendingUp,
+      badge: 'AI',
+      dialogContent: null
     },
     {
       id: 'mobility',
@@ -239,6 +248,7 @@ const Index = () => {
                         {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
                         {feature.id === 'employee-upload' && <EmployeeUpload />}
                         {feature.id === 'assessment' && <AISkillsAssessmentEnhanced />}
+                        {feature.id === 'career-paths' && <EmployeeCareerPaths />}
                         {feature.id === 'mobility' && <EmployeeMobilityPlanningEnhanced />}
                         {feature.id === 'development' && <DevelopmentPathwaysEnhanced />}
                       </DialogContent>
