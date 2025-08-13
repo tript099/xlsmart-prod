@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, FileText, CheckCircle, Eye, ThumbsUp, ThumbsDown, Zap } from "lucide-react";
+import { Upload, FileText, CheckCircle, Eye, ThumbsUp, ThumbsDown, Zap, MousePointer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { AlertCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { RoleMappingDetails } from "@/components/RoleMappingDetails";
+import { RoleMappingPagination } from "@/components/RoleMappingPagination";
 import * as XLSX from 'xlsx';
 
 interface RoleMappingResult {
@@ -25,10 +27,15 @@ interface RoleMappingResult {
   confidence: number;
   requiresReview: boolean;
   status: 'auto_mapped' | 'manual_review' | 'approved' | 'rejected';
+  roleLevel?: string;
+  aiReasoning?: string;
+  createdAt?: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
 }
 
 const LARGE_DATASET_THRESHOLD = 500; // Threshold for large dataset handling
-const MAX_DISPLAY_RESULTS = 100; // Maximum results to display at once
+const DEFAULT_PAGE_SIZE = 10; // Default items per page
 
 export const RoleUpload = () => {
   const { t } = useLanguage();
@@ -42,8 +49,13 @@ export const RoleUpload = () => {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
   const [catalogId, setCatalogId] = useState<string | null>(null);
   const [mappingResults, setMappingResults] = useState<RoleMappingResult[]>([]);
+  const [allMappingResults, setAllMappingResults] = useState<RoleMappingResult[]>([]);
   const [showMappingReview, setShowMappingReview] = useState(false);
+  const [selectedMapping, setSelectedMapping] = useState<RoleMappingResult | null>(null);
+  const [showMappingDetails, setShowMappingDetails] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [totalMappings, setTotalMappings] = useState(0);
   const [isLargeDataset, setIsLargeDataset] = useState(false);
   const [processingBatch, setProcessingBatch] = useState<{ current: number; total: number } | null>(null);
 
@@ -202,8 +214,10 @@ export const RoleUpload = () => {
       setUploadProgress(70);
 
       // Step 4: Fetch the created mappings with pagination for large datasets
-      const fetchMappings = async () => {
-        const limit = isLargeDataset ? MAX_DISPLAY_RESULTS : 1000;
+      const fetchMappings = async (page: number = 1, limit: number = pageSize) => {
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+        
         return await supabase
           .from('xlsmart_role_mappings')
           .select(`
@@ -215,13 +229,15 @@ export const RoleUpload = () => {
             job_family,
             mapping_confidence,
             requires_manual_review,
-            mapping_status
-          `)
+            mapping_status,
+            created_at
+          `, { count: 'exact' })
           .eq('catalog_id', catalogData.id)
-          .limit(limit);
+          .range(from, to)
+          .order('created_at', { ascending: false });
       };
 
-      const { data: mappingsData, error: mappingsError } = await fetchMappings();
+      const { data: mappingsData, error: mappingsError, count } = await fetchMappings(1, pageSize);
 
       if (mappingsError) {
         console.error('Mappings fetch error:', mappingsError);
@@ -240,10 +256,13 @@ export const RoleUpload = () => {
         jobFamily: mapping.job_family || '',
         confidence: mapping.mapping_confidence || 0,
         requiresReview: mapping.requires_manual_review || false,
-        status: mapping.mapping_status as any
+        status: mapping.mapping_status as any,
+        createdAt: mapping.created_at
       }));
 
       setMappingResults(displayMappings);
+      setAllMappingResults(displayMappings);
+      setTotalMappings(count || displayMappings.length);
       console.log('Setting mapping results:', displayMappings);
       setUploadProgress(100);
       setIsUploading(false);
@@ -251,7 +270,7 @@ export const RoleUpload = () => {
 
       toast({
         title: "Role Standardization Complete!",
-        description: `Successfully processed ${standardizationResult.totalRoles} roles using AI. ${standardizationResult.autoMappedCount} auto-mapped, ${standardizationResult.manualReviewCount} need review. ${isLargeDataset ? `Showing first ${mappingsData.length} results.` : ''}`
+        description: `Successfully processed ${standardizationResult.totalRoles} roles using AI. ${standardizationResult.autoMappedCount} auto-mapped, ${standardizationResult.manualReviewCount} need review.`
       });
 
     } catch (error) {
@@ -264,6 +283,68 @@ export const RoleUpload = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const fetchMappingsForPage = async (page: number) => {
+    if (!catalogId) return;
+    
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
+    const { data: mappingsData, error: mappingsError, count } = await supabase
+      .from('xlsmart_role_mappings')
+      .select(`
+        id,
+        original_role_title,
+        original_department,
+        standardized_role_title,
+        standardized_department,
+        job_family,
+        mapping_confidence,
+        requires_manual_review,
+        mapping_status,
+        created_at
+      `, { count: 'exact' })
+      .eq('catalog_id', catalogId)
+      .range(from, to)
+      .order('created_at', { ascending: false });
+
+    if (mappingsError) {
+      console.error('Error fetching mappings:', mappingsError);
+      return;
+    }
+
+    const displayMappings: RoleMappingResult[] = mappingsData.map(mapping => ({
+      id: mapping.id,
+      originalTitle: mapping.original_role_title,
+      originalDepartment: mapping.original_department || '',
+      standardizedTitle: mapping.standardized_role_title,
+      standardizedDepartment: mapping.standardized_department || '',
+      jobFamily: mapping.job_family || '',
+      confidence: mapping.mapping_confidence || 0,
+      requiresReview: mapping.requires_manual_review || false,
+      status: mapping.mapping_status as any,
+      createdAt: mapping.created_at
+    }));
+
+    setMappingResults(displayMappings);
+    setTotalMappings(count || 0);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    fetchMappingsForPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+    fetchMappingsForPage(1);
+  };
+
+  const handleMappingClick = (mapping: RoleMappingResult) => {
+    setSelectedMapping(mapping);
+    setShowMappingDetails(true);
   };
 
   const handleMappingReview = async (mappingId: string, approved: boolean) => {
@@ -290,6 +371,9 @@ export const RoleUpload = () => {
         title: approved ? "Mapping Approved" : "Mapping Rejected",
         description: `Role mapping has been ${approved ? 'approved' : 'rejected'} successfully.`
       });
+      
+      // Refresh current page data
+      fetchMappingsForPage(currentPage);
     } catch (error) {
       console.error('Error updating mapping:', error);
       toast({
@@ -298,6 +382,17 @@ export const RoleUpload = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleMappingEdit = (mappingId: string, updates: any) => {
+    setMappingResults(prev => prev.map(mapping => 
+      mapping.id === mappingId 
+        ? { ...mapping, ...updates }
+        : mapping
+    ));
+    
+    // Refresh current page data
+    fetchMappingsForPage(currentPage);
   };
 
   const resetUpload = () => {
@@ -309,13 +404,20 @@ export const RoleUpload = () => {
     setIsUploading(false);
     setCatalogId(null);
     setMappingResults([]);
+    setAllMappingResults([]);
+    setSelectedMapping(null);
     setShowMappingReview(false);
+    setShowMappingDetails(false);
+    setCurrentPage(1);
+    setTotalMappings(0);
     setFileFormat('');
   };
 
-  const autoMappedCount = mappingResults.filter(m => m.status === 'auto_mapped').length;
-  const reviewRequiredCount = mappingResults.filter(m => m.requiresReview && m.status === 'manual_review').length;
-  const overallAccuracy = mappingResults.length > 0 
+  const totalPages = Math.ceil(totalMappings / pageSize);
+
+  const autoMappedCount = totalMappings > 0 ? mappingResults.filter(m => m.status === 'auto_mapped').length : 0;
+  const reviewRequiredCount = totalMappings > 0 ? mappingResults.filter(m => m.requiresReview && m.status === 'manual_review').length : 0;
+  const overallAccuracy = totalMappings > 0 
     ? (mappingResults.reduce((acc, m) => acc + m.confidence, 0) / mappingResults.length).toFixed(1)
     : '0';
 
@@ -550,7 +652,14 @@ export const RoleUpload = () => {
                 </ul>
               </div>
               
-              <Button className="w-full xl-button-primary" onClick={() => setShowMappingReview(true)}>
+                    <Button 
+                      onClick={() => {
+                        setCurrentPage(1);
+                        fetchMappingsForPage(1);
+                        setShowMappingReview(true);
+                      }} 
+                      className="xl-button-primary"
+                    >
                 <Eye className="mr-2 h-4 w-4" />
                 Review All AI Mappings
               </Button>
@@ -566,11 +675,34 @@ export const RoleUpload = () => {
             <div className="text-center">
               <h2 className="text-2xl font-bold text-card-foreground">AI Role Mapping Review</h2>
               <p className="text-muted-foreground">Review and approve AI-generated role standardizations</p>
+              <div className="mt-2 text-sm text-muted-foreground">
+                Showing {mappingResults.length} of {totalMappings} total mappings
+              </div>
             </div>
             
-            <div className="space-y-4">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
+              <div className="text-center">
+                <div className="text-lg font-semibold text-green-600">{autoMappedCount}</div>
+                <div className="text-xs text-muted-foreground">Auto Mapped</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-yellow-600">{reviewRequiredCount}</div>
+                <div className="text-xs text-muted-foreground">Need Review</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-blue-600">{overallAccuracy}%</div>
+                <div className="text-xs text-muted-foreground">Avg Confidence</div>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
               {mappingResults.map((mapping) => (
-                <Card key={mapping.id} className="border-border bg-card">
+                <Card 
+                  key={mapping.id} 
+                  className="border-border bg-card hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleMappingClick(mapping)}
+                >
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <div>
@@ -602,10 +734,12 @@ export const RoleUpload = () => {
                         {mapping.status === 'rejected' && (
                           <Badge variant="destructive">Rejected</Badge>
                         )}
+                        <MousePointer className="h-4 w-4 text-muted-foreground ml-2" />
+                        <span className="text-xs text-muted-foreground">Click for details</span>
                       </div>
                       
                       {mapping.requiresReview && mapping.status === 'manual_review' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button 
                             size="sm" 
                             variant="outline"
@@ -630,6 +764,16 @@ export const RoleUpload = () => {
               ))}
             </div>
             
+            {/* Pagination */}
+            <RoleMappingPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={totalMappings}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+            
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={() => setShowMappingReview(false)}>
                 Close Review
@@ -639,6 +783,26 @@ export const RoleUpload = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Mapping Details Dialog */}
+      <Dialog open={showMappingDetails} onOpenChange={setShowMappingDetails}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          {selectedMapping && (
+            <RoleMappingDetails
+              mapping={selectedMapping}
+              onApprove={(mappingId) => {
+                handleMappingReview(mappingId, true);
+                setShowMappingDetails(false);
+              }}
+              onReject={(mappingId) => {
+                handleMappingReview(mappingId, false);
+                setShowMappingDetails(false);
+              }}
+              onEdit={handleMappingEdit}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>
