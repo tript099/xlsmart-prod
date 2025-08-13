@@ -109,6 +109,182 @@ serve(async (req) => {
       });
     }
 
+    if (action === 'standardize') {
+      console.log('🧠 Starting AI standardization action');
+      console.log('📋 Session ID:', sessionId);
+
+      // Authenticate user
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new Error('Authorization header missing or invalid');
+      }
+      
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      
+      if (userError || !user) {
+        console.error('❌ Auth error:', userError);
+        throw new Error(`Authentication failed: ${userError?.message || 'User not found'}`);
+      }
+
+      // Get upload session data
+      console.log('📤 Fetching upload session data...');
+      const { data: session, error: sessionError } = await supabase
+        .from('xlsmart_upload_sessions')
+        .select('*')
+        .eq('id', sessionId)
+        .eq('created_by', user.id)
+        .single();
+
+      if (sessionError || !session) {
+        console.error('❌ Session fetch error:', sessionError);
+        throw new Error('Upload session not found or access denied');
+      }
+
+      const rawData = session.ai_analysis?.raw_data;
+      if (!rawData || !Array.isArray(rawData)) {
+        throw new Error('No valid raw data found in upload session');
+      }
+
+      console.log('🤖 Calling LiteLLM for AI standardization...');
+      
+      // Create AI prompt for role standardization
+      const prompt = `You are an AI expert in telecommunications role standardization. 
+
+TASK: Analyze these two role catalogs and create standardized telecommunications roles with accurate mappings.
+
+INPUT DATA:
+${JSON.stringify(rawData, null, 2)}
+
+INSTRUCTIONS:
+1. Analyze the role structures and identify common patterns
+2. Create 10-15 standardized telecommunications roles that cover the key functions
+3. Map each original role to the most appropriate standardized role
+4. Provide confidence scores (0-100) for each mapping
+5. Focus on telecommunications industry standards
+
+OUTPUT FORMAT (JSON only):
+{
+  "standardRoles": [
+    {
+      "title": "Network Operations Engineer",
+      "department": "Network Operations", 
+      "roleFamily": "Network Engineering",
+      "seniorityBand": "IC3-IC5",
+      "description": "Manages network infrastructure and ensures optimal performance"
+    }
+  ],
+  "mappings": [
+    {
+      "originalRole": "RAN Performance Engineer",
+      "standardRole": "Network Operations Engineer", 
+      "confidence": 85,
+      "reasoning": "Direct mapping for network performance optimization"
+    }
+  ]
+}`;
+
+      // Call LiteLLM
+      const litellmResponse = await fetch('https://proxyllm.ximplify.id/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are an expert in telecommunications role standardization. Return only valid JSON.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.1,
+          max_tokens: 4000
+        }),
+      });
+
+      if (!litellmResponse.ok) {
+        const errorText = await litellmResponse.text();
+        console.error('❌ LiteLLM API error:', errorText);
+        throw new Error(`LiteLLM API failed: ${litellmResponse.status} - ${errorText}`);
+      }
+
+      const aiResult = await litellmResponse.json();
+      console.log('✅ LiteLLM response received');
+      
+      let parsedResult;
+      try {
+        parsedResult = JSON.parse(aiResult.choices[0].message.content);
+      } catch (parseError) {
+        console.error('❌ Failed to parse AI response:', parseError);
+        throw new Error('Invalid JSON response from AI');
+      }
+
+      // Create standard roles and mappings in database
+      console.log('💾 Saving standardized roles to database...');
+      
+      // Insert standard roles
+      const { data: standardRoles, error: rolesError } = await supabase
+        .from('xlsmart_standard_roles')
+        .insert(
+          parsedResult.standardRoles.map((role: any) => ({
+            title: role.title,
+            department: role.department,
+            role_family: role.roleFamily,
+            seniority_band: role.seniorityBand,
+            description: role.description,
+            created_by: user.id
+          }))
+        )
+        .select();
+
+      if (rolesError) {
+        console.error('❌ Error creating standard roles:', rolesError);
+        throw new Error(`Failed to create standard roles: ${rolesError.message}`);
+      }
+
+      // Insert role mappings
+      const { data: mappings, error: mappingsError } = await supabase
+        .from('xlsmart_role_mappings')
+        .insert(
+          parsedResult.mappings.map((mapping: any) => ({
+            original_role_title: mapping.originalRole,
+            standard_role_title: mapping.standardRole,
+            confidence_score: mapping.confidence,
+            mapping_reasoning: mapping.reasoning,
+            created_by: user.id
+          }))
+        )
+        .select();
+
+      if (mappingsError) {
+        console.error('❌ Error creating role mappings:', mappingsError);
+        throw new Error(`Failed to create role mappings: ${mappingsError.message}`);
+      }
+
+      // Update session status
+      await supabase
+        .from('xlsmart_upload_sessions')
+        .update({ 
+          status: 'completed',
+          ai_analysis: {
+            ...session.ai_analysis,
+            standardization_result: parsedResult
+          }
+        })
+        .eq('id', sessionId);
+
+      console.log('✅ AI standardization completed successfully');
+
+      return new Response(JSON.stringify({
+        success: true,
+        standardRolesCreated: standardRoles?.length || 0,
+        mappingsCreated: mappings?.length || 0,
+        message: 'AI role standardization completed successfully'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ 
       success: false,
       error: 'Invalid action specified' 
