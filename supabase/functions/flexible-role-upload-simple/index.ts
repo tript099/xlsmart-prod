@@ -1,4 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
@@ -7,83 +6,56 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-console.log('🚀 Function loaded successfully');
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-console.log('📋 Environment check:', {
-  hasUrl: !!supabaseUrl,
-  hasServiceKey: !!supabaseServiceKey,
-  hasApiKey: !!Deno.env.get('OPENAI_API_KEY')
-});
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
 serve(async (req) => {
-  console.log('🚀 Request received:', req.method, new Date().toISOString());
-  
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('✅ CORS preflight handled');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('📥 Parsing request body...');
     const requestBody = await req.json();
-    console.log('📋 Request details:', {
-      action: requestBody.action,
-      hasData: !!requestBody.excelData || !!requestBody.sessionId
-    });
-    
     const { action, sessionName, excelData, sessionId } = requestBody;
+    
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Test endpoint
     if (action === 'test') {
-      console.log('🧪 Test endpoint called');
       return new Response(JSON.stringify({
         success: true,
-        message: 'Edge function is working with LiteLLM',
-        timestamp: new Date().toISOString(),
-        liteLLMEndpoint: 'https://proxyllm.ximplify.id',
-        hasLiteLLMKey: !!Deno.env.get('OPENAI_API_KEY')
+        message: 'Edge function is working',
+        timestamp: new Date().toISOString()
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
     
     if (action === 'upload') {
-      console.log('📤 Starting upload action');
-      console.log('📊 Excel data received:', excelData?.length, 'files');
-
-      // Since JWT verification is disabled, we'll use a placeholder user ID
-      // In production, you'd want to enable JWT verification for proper user tracking
-      const placeholderUserId = '00000000-0000-0000-0000-000000000000'; // Use a default UUID
-
-      // Create upload session with placeholder user ID
-      console.log('💾 Creating upload session...');
+      // Use a system user ID for uploads since JWT is disabled
+      const systemUserId = 'd77125e3-bb96-442c-a2d1-80f15baf497d'; // The user from the auth token
+      
+      // Create upload session
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
         .insert({
           session_name: sessionName,
           file_names: excelData.map((file: any) => file.fileName),
-          temp_table_names: [], // Not using actual tables
+          temp_table_names: [],
           total_rows: excelData.reduce((sum: number, file: any) => sum + file.rows.length, 0),
-          status: 'analyzing',
-          created_by: placeholderUserId,
+          status: 'uploaded',
+          created_by: systemUserId,
           ai_analysis: {
-            raw_data: excelData // Store all Excel data as JSON
+            raw_data: excelData
           }
         })
         .select()
         .single();
 
       if (sessionError) {
-        console.error('❌ Session creation error:', sessionError);
         throw new Error(`Failed to create upload session: ${sessionError.message}`);
       }
-
-      console.log('✅ Upload session created with ID:', session.id);
 
       return new Response(JSON.stringify({
         success: true,
@@ -96,11 +68,7 @@ serve(async (req) => {
     }
 
     if (action === 'standardize') {
-      console.log('🧠 Starting AI standardization action');
-      console.log('📋 Session ID:', sessionId);
-
-      // Get upload session data without authentication
-      console.log('📤 Fetching upload session data...');
+      // Get upload session data
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
         .select('*')
@@ -108,8 +76,7 @@ serve(async (req) => {
         .single();
 
       if (sessionError || !session) {
-        console.error('❌ Session fetch error:', sessionError);
-        throw new Error('Upload session not found or access denied');
+        throw new Error('Upload session not found');
       }
 
       const rawData = session.ai_analysis?.raw_data;
@@ -117,16 +84,11 @@ serve(async (req) => {
         throw new Error('No valid raw data found in upload session');
       }
 
-      console.log('🤖 Calling LiteLLM for AI standardization...');
-      
-      // Check if API key exists
+      // Get OpenAI API key
       const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
       if (!openaiApiKey) {
-        console.error('❌ OPENAI_API_KEY not found in environment');
-        throw new Error('OpenAI API key not configured. Please set up the OPENAI_API_KEY secret in Supabase.');
+        throw new Error('OpenAI API key not configured');
       }
-      
-      console.log('✅ API key found, proceeding with AI call...');
       
       // Create AI prompt for role standardization
       const prompt = `You are an AI expert in telecommunications role standardization. 
@@ -184,32 +146,16 @@ OUTPUT FORMAT (JSON only):
 
       if (!litellmResponse.ok) {
         const errorText = await litellmResponse.text();
-        console.error('❌ LiteLLM API error:', errorText);
         throw new Error(`LiteLLM API failed: ${litellmResponse.status} - ${errorText}`);
       }
 
       const aiResult = await litellmResponse.json();
-      console.log('✅ LiteLLM response received');
       
       let parsedResult;
       try {
         parsedResult = JSON.parse(aiResult.choices[0].message.content);
       } catch (parseError) {
-        console.error('❌ Failed to parse AI response:', parseError);
         throw new Error('Invalid JSON response from AI');
-      }
-
-      // Create standard roles and mappings in database
-      console.log('💾 Saving standardized roles to database...');
-      
-      // Get user ID for creating standard roles
-      const authHeader = req.headers.get('authorization');
-      let userId = null;
-      
-      if (authHeader) {
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user } } = await supabase.auth.getUser(token);
-        userId = user?.id;
       }
 
       // Insert standard roles
@@ -223,13 +169,12 @@ OUTPUT FORMAT (JSON only):
             role_level: role.seniorityBand,
             role_category: role.department,
             standard_description: role.description,
-            created_by: userId || session.created_by
+            created_by: session.created_by
           }))
         )
         .select();
 
       if (rolesError) {
-        console.error('❌ Error creating standard roles:', rolesError);
         throw new Error(`Failed to create standard roles: ${rolesError.message}`);
       }
 
@@ -247,7 +192,6 @@ OUTPUT FORMAT (JSON only):
         .select();
 
       if (mappingsError) {
-        console.error('❌ Error creating role mappings:', mappingsError);
         throw new Error(`Failed to create role mappings: ${mappingsError.message}`);
       }
 
@@ -262,8 +206,6 @@ OUTPUT FORMAT (JSON only):
           }
         })
         .eq('id', sessionId);
-
-      console.log('✅ AI standardization completed successfully');
 
       return new Response(JSON.stringify({
         success: true,
@@ -284,12 +226,10 @@ OUTPUT FORMAT (JSON only):
     });
 
   } catch (error) {
-    console.error('❌ Function error:', error);
-    console.error('📍 Error stack:', error.stack);
+    console.error('Function error:', error);
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: error.message
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
