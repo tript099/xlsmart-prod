@@ -18,7 +18,7 @@ import {
   User
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
-import { RoleUploadFlexible } from "@/components/RoleUploadFlexible";
+import { RoleUploadFlexible } from "@/components/RoleUploadFlexible"; // Fixed component import
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
 import { EmployeeMobilityPlanningEnhanced } from "@/components/EmployeeMobilityPlanningEnhanced";
