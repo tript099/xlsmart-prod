@@ -63,7 +63,7 @@ export const RoleUpload = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select source company" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50" sideOffset={5} alignOffset={0}>
                   <SelectItem value="xl">XL Axiata</SelectItem>
                   <SelectItem value="smart">SMART Telecom</SelectItem>
                   <SelectItem value="both">Both Companies</SelectItem>
@@ -77,7 +77,7 @@ export const RoleUpload = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select file format" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50" sideOffset={5} alignOffset={0}>
                   <SelectItem value="excel">Excel (.xlsx)</SelectItem>
                   <SelectItem value="csv">CSV (.csv)</SelectItem>
                   <SelectItem value="json">JSON (.json)</SelectItem>
