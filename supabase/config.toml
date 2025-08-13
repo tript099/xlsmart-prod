@@ -29,3 +29,9 @@ verify_jwt = false
 
 [functions.employee-upload-progress]
 verify_jwt = false
+
+[functions.ai-skills-assessment-bulk]
+verify_jwt = false
+
+[functions.ai-skills-assessment-progress]
+verify_jwt = false

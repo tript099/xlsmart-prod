@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { 
   Upload, 
@@ -20,7 +20,7 @@ import {
 import { AIChat } from "@/components/AIChat";
 import { RoleUpload } from "@/components/RoleUpload";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
-import { AISkillsAssessment } from "@/components/AISkillsAssessment";
+import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
 import { EmployeeMobilityPlanning } from "@/components/EmployeeMobilityPlanning";
 import { DevelopmentPathways } from "@/components/DevelopmentPathways";
 import { EmployeeListDetails } from "@/components/EmployeeListDetails";
@@ -235,9 +235,10 @@ const Index = () => {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
+                        <DialogTitle className="sr-only">Feature Dialog</DialogTitle>
                         {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
                         {feature.id === 'employee-upload' && <EmployeeUpload />}
-                        {feature.id === 'assessment' && <AISkillsAssessment />}
+                        {feature.id === 'assessment' && <AISkillsAssessmentEnhanced />}
                         {feature.id === 'mobility' && <EmployeeMobilityPlanning />}
                         {feature.id === 'development' && <DevelopmentPathways />}
                       </DialogContent>
