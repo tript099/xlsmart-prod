@@ -8,8 +8,14 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  console.log('=== ROLE STANDARDIZATION FUNCTION STARTED ===');
+  console.log('Request URL:', req.url);
+  console.log('Request method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -308,23 +314,34 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
     });
 
   } catch (error) {
-    console.error('Error in role-standardization function:', error);
+    console.error('=== CRITICAL ERROR IN ROLE STANDARDIZATION ===');
+    console.error('Error type:', typeof error);
+    console.error('Error constructor:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error object:', JSON.stringify(error, null, 2));
     
     // Try to update session status to failed if we have a sessionId
     try {
-      const { sessionId } = await req.json().catch(() => ({}));
-      if (sessionId) {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+      const body = await req.clone().json().catch(() => ({}));
+      if (body.sessionId) {
+        console.log('Attempting to update session status to failed...');
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
         
-        await supabase
-          .from('xlsmart_upload_sessions')
-          .update({ 
-            status: 'failed',
-            error_message: error.message 
-          })
-          .eq('id', sessionId);
+        if (supabaseUrl && supabaseServiceKey) {
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+          
+          await supabase
+            .from('xlsmart_upload_sessions')
+            .update({ 
+              status: 'failed',
+              error_message: error.message 
+            })
+            .eq('id', body.sessionId);
+          
+          console.log('Session status updated to failed');
+        }
       }
     } catch (updateError) {
       console.error('Failed to update session status:', updateError);
@@ -332,7 +349,8 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message
+      error: error.message || 'Unknown error occurred',
+      details: error.stack || 'No stack trace available'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

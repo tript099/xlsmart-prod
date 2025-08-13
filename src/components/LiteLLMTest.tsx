@@ -92,7 +92,7 @@ export const LiteLLMTest = () => {
           )}
         </Button>
 
-        {/* Test Role Standardization Function */}
+        {/* Debug Test Function */}
         <Button
           onClick={async () => {
             setIsLoading(true);
@@ -100,28 +100,32 @@ export const LiteLLMTest = () => {
             setResponse(null);
             
             try {
-              const { data, error } = await supabase.functions.invoke('role-standardization', {
+              console.log('Calling debug-test function...');
+              
+              const { data, error } = await supabase.functions.invoke('debug-test', {
                 body: { 
-                  sessionId: 'test-session-id',
-                  xlRoles: [{ role: 'Test XL Role', department: 'IT', _source: 'xl' }],
-                  smartRoles: [{ role: 'Test Smart Role', department: 'Engineering', _source: 'smart' }]
+                  test: 'debug message',
+                  timestamp: new Date().toISOString()
                 }
               });
               
-              console.log('Function test result:', { data, error });
+              console.log('Debug function result:', { data, error });
               
-              if (error) throw error;
+              if (error) {
+                console.error('Debug function error:', error);
+                throw error;
+              }
               
               setResponse({ 
-                message: 'Function test completed', 
+                message: 'Debug test completed', 
                 data: data,
-                model: 'role-standardization function',
+                model: 'debug-test function',
                 proxy: 'edge function'
               });
               
             } catch (err) {
-              console.error('Function test error:', err);
-              setError(err instanceof Error ? err.message : 'Function test failed');
+              console.error('Debug function test error:', err);
+              setError(err instanceof Error ? err.message : 'Debug test failed');
             } finally {
               setIsLoading(false);
             }
@@ -133,12 +137,12 @@ export const LiteLLMTest = () => {
           {isLoading ? (
             <>
               <MessageCircle className="mr-2 h-4 w-4 animate-spin" />
-              Testing Function...
+              Testing Debug Function...
             </>
           ) : (
             <>
               <MessageCircle className="mr-2 h-4 w-4" />
-              Test Role Standardization Function
+              Test Debug Function
             </>
           )}
         </Button>
