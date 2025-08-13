@@ -23,13 +23,21 @@ serve(async (req) => {
       console.log('Starting flexible role upload for session:', sessionName);
       console.log('Received', excelData.length, 'Excel files');
 
-      // Get current user ID from request headers
+      // Get current user ID from authorization header  
       const authHeader = req.headers.get('authorization');
-      const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader?.replace('Bearer ', '') || '');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new Error('Authorization header missing or invalid');
+      }
+      
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       
       if (userError || !user) {
-        throw new Error('Authentication required');
+        console.error('Auth error:', userError);
+        throw new Error(`Authentication failed: ${userError?.message || 'User not found'}`);
       }
+
+      console.log('Authenticated user:', user.id);
 
       // Create upload session with JSON storage
       const { data: session, error: sessionError } = await supabase
@@ -66,13 +74,21 @@ serve(async (req) => {
     } else if (action === 'standardize') {
       console.log('Starting AI standardization for session:', sessionId);
 
-      // Get current user ID from request headers
+      // Get current user ID from authorization header
       const authHeader = req.headers.get('authorization');
-      const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader?.replace('Bearer ', '') || '');
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        throw new Error('Authorization header missing or invalid');
+      }
+      
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
       
       if (userError || !user) {
-        throw new Error('Authentication required');
+        console.error('Auth error:', userError);
+        throw new Error(`Authentication failed: ${userError?.message || 'User not found'}`);
       }
+
+      console.log('Authenticated user for standardization:', user.id);
 
       // Get upload session
       const { data: session, error: sessionError } = await supabase
