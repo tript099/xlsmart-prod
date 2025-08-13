@@ -90,7 +90,7 @@ export const RoleUploadFlexible = () => {
 
       // Step 2: Upload to flexible storage
       console.log('📤 Uploading data to flexible storage...');
-      const { data: uploadResult, error: uploadError } = await supabase.functions.invoke('flexible-role-upload', {
+      const { data: uploadResult, error: uploadError } = await supabase.functions.invoke('flexible-role-upload-simple', {
         body: {
           action: 'upload',
           sessionName: `${xlData.fileName} + ${smartData.fileName}`,
@@ -106,7 +106,7 @@ export const RoleUploadFlexible = () => {
 
       // Step 3: AI Standardization
       console.log('🧠 Starting AI role standardization...');
-      const { data: standardizeResult, error: standardizeError } = await supabase.functions.invoke('flexible-role-upload', {
+      const { data: standardizeResult, error: standardizeError } = await supabase.functions.invoke('flexible-role-upload-simple', {
         body: {
           action: 'standardize',
           sessionId: uploadResult.sessionId
