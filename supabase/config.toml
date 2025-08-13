@@ -5,3 +5,15 @@ verify_jwt = false
 
 [functions.standardize-roles]
 verify_jwt = false
+
+[functions.ai-job-description-generator]
+verify_jwt = false
+
+[functions.ai-skills-assessment]
+verify_jwt = false
+
+[functions.employee-mobility-planning]
+verify_jwt = false
+
+[functions.development-pathways]
+verify_jwt = false

@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
 import { RoleUpload } from "@/components/RoleUpload";
+import { AIJobDescriptionGenerator } from "@/components/AIJobDescriptionGenerator";
+import { AISkillsAssessment } from "@/components/AISkillsAssessment";
+import { EmployeeMobilityPlanning } from "@/components/EmployeeMobilityPlanning";
+import { DevelopmentPathways } from "@/components/DevelopmentPathways";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
@@ -202,26 +206,28 @@ const Index = () => {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className={feature.id === 'upload' ? "max-w-4xl max-h-[80vh] overflow-y-auto" : "max-w-2xl"}>
+                      <DialogContent className={feature.id === 'upload' ? "max-w-4xl max-h-[80vh] overflow-y-auto" : "max-w-4xl max-h-[80vh] overflow-y-auto"}>
                         {feature.id === 'upload' ? <RoleUpload /> : <AIChat />}
                       </DialogContent>
                     </Dialog>
                    ) : (
-                    <Button 
-                      variant="outline" 
-                      className="w-full group-hover:xlsmart-primary-gradient group-hover:text-white group-hover:border-transparent transition-all duration-300 shadow-sm hover:shadow-md"
-                      onClick={() => {
-                        if (feature.id === 'jd-generator' || feature.id === 'assessment' || feature.id === 'mobility' || feature.id === 'development') {
-                          toast({
-                            title: "AI Feature",
-                            description: `${feature.title} will be powered by AI engine. Feature coming soon!`
-                          });
-                        }
-                      }}
-                    >
-                      {t('button.learn_more')}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    <Dialog open={activeDialog === feature.id} onOpenChange={(open) => setActiveDialog(open ? feature.id : null)}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline" 
+                          className="w-full group-hover:xlsmart-primary-gradient group-hover:text-white group-hover:border-transparent transition-all duration-300 shadow-sm hover:shadow-md"
+                        >
+                          {t('button.learn_more')}
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
+                        {feature.id === 'jd-generator' && <AIJobDescriptionGenerator />}
+                        {feature.id === 'assessment' && <AISkillsAssessment />}
+                        {feature.id === 'mobility' && <EmployeeMobilityPlanning />}
+                        {feature.id === 'development' && <DevelopmentPathways />}
+                      </DialogContent>
+                    </Dialog>
                    )}
                 </CardContent>
               </Card>
