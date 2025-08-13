@@ -59,14 +59,14 @@ serve(async (req) => {
       const industryPrompt = `Generate a comprehensive list of 25 telecommunications industry standard roles for large enterprises (10,000+ employees). Include roles across all departments and levels. Format as JSON array with objects containing: {title, department, level, description}. Focus on roles commonly found in large telecom companies.`;
       
       try {
-        const industryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        const industryResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${openAIApiKey}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'gpt-4o-mini',
+            model: 'azure/gpt-4.1',
             messages: [
               { role: 'system', content: 'You are an expert in telecommunications industry role standards for large enterprises. Always respond with valid JSON.' },
               { role: 'user', content: industryPrompt }
@@ -150,14 +150,14 @@ Respond with JSON only:
 
 Confidence >80 = auto-approve, <80 = manual review needed.`;
 
-            const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${openAIApiKey}`,
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'gpt-4o-mini',
+                model: 'azure/gpt-4.1',
                 messages: [
                   { role: 'system', content: 'You are an expert HR role standardization AI for large telecommunications enterprises. Always respond with valid JSON only.' },
                   { role: 'user', content: aiPrompt }
