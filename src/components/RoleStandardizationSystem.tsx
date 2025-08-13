@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Upload, FileSpreadsheet, Brain, CheckCircle, AlertCircle, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from 'xlsx';
 
@@ -21,6 +22,7 @@ interface ParsedFile {
 
 export const RoleStandardizationSystem = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [xlFiles, setXlFiles] = useState<File[]>([]);
   const [smartFiles, setSmartFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -76,6 +78,15 @@ export const RoleStandardizationSystem = () => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to use this feature",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
     setProgress(0);
     setResults(null);
@@ -102,8 +113,7 @@ export const RoleStandardizationSystem = () => {
       setCurrentStep("🔐 Creating upload session...");
       setProgress(20);
       
-      const { data: user } = await supabase.auth.getUser();
-      if (!user.user) throw new Error('Not authenticated');
+      console.log('User authenticated:', user.id);
 
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
@@ -113,7 +123,7 @@ export const RoleStandardizationSystem = () => {
           temp_table_names: [],
           total_rows: parsedFiles.reduce((sum, file) => sum + file.rows.length, 0),
           status: 'analyzing',
-          created_by: user.user.id,
+          created_by: user.id,
           ai_analysis: { 
             raw_data: parsedFiles.map(f => ({
               fileName: f.fileName,
@@ -246,18 +256,19 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader className="text-center">
-        <CardTitle className="flex items-center justify-center gap-3 text-2xl">
+    <div className="space-y-4">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold flex items-center justify-center gap-3">
           <Brain className="h-6 w-6 text-primary" />
           XL & Smart Role Standardization
-        </CardTitle>
-        <p className="text-muted-foreground">
+        </h2>
+        <p className="text-muted-foreground mt-2">
           Upload XL and Smart role catalogs for AI-powered standardization
         </p>
-      </CardHeader>
+      </div>
       
-      <CardContent className="space-y-6">
+    <Card className="w-full max-w-4xl mx-auto">
+      <CardContent className="space-y-6 pt-6">
         {/* File Upload Tabs */}
         <Tabs defaultValue="xl" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -366,7 +377,7 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
         {/* Action Button */}
         <Button
           onClick={processRoleStandardization}
-          disabled={(xlFiles.length === 0 && smartFiles.length === 0) || isProcessing}
+          disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
           className="w-full h-12 text-lg"
           size="lg"
         >
@@ -384,5 +395,6 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
         </Button>
       </CardContent>
     </Card>
+    </div>
   );
 };
