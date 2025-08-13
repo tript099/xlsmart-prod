@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from 'xlsx';
 
 interface RoleMappingResult {
   id: string;
@@ -86,12 +87,17 @@ export const RoleUpload = () => {
           const reader = new FileReader();
           reader.onload = (e) => {
             try {
-              const text = e.target?.result as string;
+              const data = e.target?.result;
+              
               if (fileFormat === 'json') {
-                resolve(JSON.parse(text));
+                resolve(JSON.parse(data as string));
               } else if (fileFormat === 'csv') {
-                // Basic CSV parsing - in production, use a proper CSV parser
-                const lines = text.split('\n');
+                const text = data as string;
+                const lines = text.split('\n').filter(line => line.trim());
+                if (lines.length === 0) {
+                  resolve([]);
+                  return;
+                }
                 const headers = lines[0].split(',');
                 const roles = lines.slice(1).map(line => {
                   const values = line.split(',');
@@ -100,16 +106,46 @@ export const RoleUpload = () => {
                     return obj;
                   }, {} as any);
                 });
-                resolve(roles.filter(role => role.title || role.name));
+                resolve(roles.filter(role => role.title || role.name || role['Role Title'] || role['Position']));
+              } else if (fileFormat === 'excel') {
+                // Parse Excel file
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (jsonData.length === 0) {
+                  resolve([]);
+                  return;
+                }
+                
+                const headers = jsonData[0] as string[];
+                const roles = (jsonData.slice(1) as any[][]).map(row => {
+                  return headers.reduce((obj, header, index) => {
+                    if (header) {
+                      obj[header] = row[index] || '';
+                    }
+                    return obj;
+                  }, {} as any);
+                });
+                resolve(roles.filter(role => 
+                  role.title || role.name || role['Role Title'] || role['Position'] || 
+                  role['Job Title'] || role['Role Name'] || role['Current Position']
+                ));
               } else {
-                reject(new Error('Excel parsing not implemented - please use JSON or CSV format'));
+                reject(new Error('Unsupported file format. Please use JSON, CSV, or Excel files.'));
               }
             } catch (error) {
               reject(error);
             }
           };
           reader.onerror = () => reject(new Error('File reading failed'));
-          reader.readAsText(file);
+          
+          if (fileFormat === 'excel') {
+            reader.readAsArrayBuffer(file);
+          } else {
+            reader.readAsText(file);
+          }
         });
       };
 
