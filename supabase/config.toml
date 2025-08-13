@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.flexible-role-upload]
 verify_jwt = false
+
+[functions.employee-upload-ai]
+verify_jwt = false
+
+[functions.employee-upload-progress]
+verify_jwt = false

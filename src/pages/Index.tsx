@@ -27,6 +27,7 @@ import { EmployeeListDetails } from "@/components/EmployeeListDetails";
 import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails";
 import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
 import { SkillsListDetails } from "@/components/SkillsListDetails";
+import { EmployeeUpload } from "@/components/EmployeeUpload";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
@@ -73,10 +74,18 @@ const Index = () => {
       dialogContent: null
     },
     {
+      id: 'employee-upload',
+      title: 'Employee Upload & AI Assignment',
+      description: 'Upload 10,000+ employees and automatically assign roles using AI',
+      icon: Users,
+      badge: 'AI',
+      dialogContent: null
+    },
+    {
       id: 'assessment',
       title: t('feature.assessment.title'),
       description: t('feature.assessment.description'),
-      icon: Users,
+      icon: Brain,
       badge: t('feature.assessment.badge'),
       dialogContent: null
     },
@@ -227,6 +236,7 @@ const Index = () => {
                       </DialogTrigger>
                       <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
                         {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
+                        {feature.id === 'employee-upload' && <EmployeeUpload />}
                         {feature.id === 'assessment' && <AISkillsAssessment />}
                         {feature.id === 'mobility' && <EmployeeMobilityPlanning />}
                         {feature.id === 'development' && <DevelopmentPathways />}
