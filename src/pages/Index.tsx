@@ -257,9 +257,13 @@ const Index = () => {
                     Upload Role Catalogs
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                  <RoleUpload />
-                </DialogContent>
+                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                        <div className="sr-only">
+                          <h2>Role Upload Dialog</h2>
+                          <p>Upload and standardize role catalogs using AI</p>
+                        </div>
+                        <RoleUpload />
+                      </DialogContent>
               </Dialog>
               
               <Dialog open={activeDialog === 'quick-chat'} onOpenChange={(open) => setActiveDialog(open ? 'quick-chat' : null)}>
@@ -270,6 +274,10 @@ const Index = () => {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
+                  <div className="sr-only">
+                    <h2>AI Chat Assistant</h2>
+                    <p>Chat with AI for HR assistance</p>
+                  </div>
                   <AIChat />
                 </DialogContent>
               </Dialog>

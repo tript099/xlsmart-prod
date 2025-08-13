@@ -70,7 +70,7 @@ export const RoleUpload = () => {
           file_format: fileFormat,
           file_size: xlFile.size + smartFile.size,
           upload_status: 'processing',
-          uploaded_by: '00000000-0000-0000-0000-000000000000' // Should be auth.uid()
+          uploaded_by: (await supabase.auth.getUser()).data.user?.id || null
         })
         .select()
         .single();
@@ -187,28 +187,38 @@ export const RoleUpload = () => {
     }
   };
 
-  const handleMappingReview = (mappingId: string, approved: boolean) => {
+  const handleMappingReview = async (mappingId: string, approved: boolean) => {
     setMappingResults(prev => prev.map(mapping => 
       mapping.id === mappingId 
         ? { ...mapping, status: approved ? 'approved' : 'rejected' }
         : mapping
     ));
 
-    // Update in database
-    supabase
-      .from('xlsmart_role_mappings')
-      .update({
-        mapping_status: approved ? 'approved' : 'rejected',
-        reviewed_by: '00000000-0000-0000-0000-000000000000', // Should be auth.uid()
-        reviewed_at: new Date().toISOString()
-      })
-      .eq('id', mappingId)
-      .then(() => {
-        toast({
-          title: approved ? "Mapping Approved" : "Mapping Rejected",
-          description: `Role mapping has been ${approved ? 'approved' : 'rejected'} successfully.`
-        });
+    try {
+      // Update in database
+      const { error } = await supabase
+        .from('xlsmart_role_mappings')
+        .update({
+          mapping_status: approved ? 'approved' : 'rejected',
+          reviewed_by: (await supabase.auth.getUser()).data.user?.id || null,
+          reviewed_at: new Date().toISOString()
+        })
+        .eq('id', mappingId);
+
+      if (error) throw error;
+
+      toast({
+        title: approved ? "Mapping Approved" : "Mapping Rejected",
+        description: `Role mapping has been ${approved ? 'approved' : 'rejected'} successfully.`
       });
+    } catch (error) {
+      console.error('Error updating mapping:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update mapping status. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   const resetUpload = () => {
