@@ -198,87 +198,37 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
       setProgress(60);
 
-      // Call LiteLLM proxy instead of OpenAI directly
-      const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer sk-BuORei3-MerRCuRgh4Eq1g`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'azure/gpt-4.1',
-          messages: [
-            { 
-              role: 'system', 
-              content: 'You are an expert HR analyst specializing in telecommunications. Create comprehensive standardized role definitions and accurate mappings. Respond only with valid JSON.' 
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 4000,
-        }),
+      // Call our edge function instead of direct API call
+      const { data: aiResult, error: aiError } = await supabase.functions.invoke('role-standardization', {
+        body: {
+          sessionId: session.id,
+          xlRoles,
+          smartRoles
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`LiteLLM API error: ${response.status} ${response.statusText}`);
+      if (aiError) {
+        throw new Error(`Standardization error: ${aiError.message}`);
       }
 
-      const aiData = await response.json();
-      const analysis = JSON.parse(aiData.choices[0].message.content);
-
-      setCurrentStep("💾 Saving standardized roles...");
-      setProgress(80);
-
-      // Insert standard roles
-      const { data: createdRoles, error: rolesError } = await supabase
-        .from('xlsmart_standard_roles')
-        .insert(
-          analysis.standardRoles.map((role: any) => ({
-            ...role,
-            created_by: user.user.id
-          }))
-        )
-        .select();
-
-      if (rolesError) throw rolesError;
-
-      // Insert mappings
-      const { data: createdMappings, error: mappingsError } = await supabase
-        .from('xlsmart_role_mappings')
-        .insert(analysis.mappings)
-        .select();
-
-      if (mappingsError) throw mappingsError;
-
-      // Update session
-      await supabase
-        .from('xlsmart_upload_sessions')
-        .update({ 
-          status: 'completed',
-          ai_analysis: {
-            ...(session.ai_analysis as Record<string, any> || {}),
-            standardRolesCreated: createdRoles?.length || 0,
-            mappingsCreated: createdMappings?.length || 0,
-            xlRolesProcessed: xlRoles.length,
-            smartRolesProcessed: smartRoles.length
-          }
-        })
-        .eq('id', session.id);
+      if (!aiResult.success) {
+        throw new Error(aiResult.error || 'Standardization failed');
+      }
 
       setProgress(100);
       setCurrentStep("✅ Standardization completed!");
 
       setResults({
-        standardRoles: createdRoles?.length || 0,
-        mappings: createdMappings?.length || 0,
-        xlRoles: xlRoles.length,
-        smartRoles: smartRoles.length,
-        totalProcessed: xlRoles.length + smartRoles.length
+        standardRoles: aiResult.standardRoles,
+        mappings: aiResult.mappings,
+        xlRoles: aiResult.xlRoles,
+        smartRoles: aiResult.smartRoles,
+        totalProcessed: aiResult.totalProcessed
       });
 
       toast({
         title: "🎉 Success!",
-        description: `Created ${createdRoles?.length || 0} standard roles with ${createdMappings?.length || 0} mappings`,
+        description: `Created ${aiResult.standardRoles} standard roles with ${aiResult.mappings} mappings`,
         duration: 5000
       });
 

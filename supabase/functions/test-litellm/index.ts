@@ -14,12 +14,18 @@ serve(async (req) => {
   try {
     console.log('Testing LiteLLM proxy connection...');
 
+    // Get the API key from Supabase secrets
+    const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
+    if (!litellmApiKey) {
+      throw new Error('LITELLM_API_KEY not found in environment variables');
+    }
+
     const { message = "Hello, how are you?" } = await req.json().catch(() => ({}));
 
     const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer sk-BuORei3-MerRCuRgh4Eq1g`,
+        'Authorization': `Bearer ${litellmApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
