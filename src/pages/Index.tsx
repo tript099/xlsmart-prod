@@ -137,9 +137,6 @@ const Index = () => {
                 >
                   Sign Out
                 </Button>
-                <Badge variant="secondary" className="bg-white/15 text-white border-white/20 backdrop-blur-sm">
-                  SimplifyAI Platform
-                </Badge>
               </div>
             </div>
             
