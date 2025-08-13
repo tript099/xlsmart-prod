@@ -65,7 +65,7 @@ export const RoleUpload = () => {
       const { data: catalogData, error: catalogError } = await supabase
         .from('xlsmart_role_catalogs')
         .insert({
-          source_company: includeIndustryStandards ? 'XLSMART+Industry' : 'XLSMART',
+          source_company: 'both',
           file_name: includeIndustryStandards ? `${xlFile.name}, ${smartFile.name}, AI Industry Standards` : `${xlFile.name}, ${smartFile.name}`,
           file_format: fileFormat,
           file_size: xlFile.size + smartFile.size,
