@@ -23,6 +23,10 @@ import { AIJobDescriptionGenerator } from "@/components/AIJobDescriptionGenerato
 import { AISkillsAssessment } from "@/components/AISkillsAssessment";
 import { EmployeeMobilityPlanning } from "@/components/EmployeeMobilityPlanning";
 import { DevelopmentPathways } from "@/components/DevelopmentPathways";
+import { EmployeeListDetails } from "@/components/EmployeeListDetails";
+import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails";
+import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
+import { SkillsListDetails } from "@/components/SkillsListDetails";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
@@ -251,23 +255,17 @@ const Index = () => {
                 className="xlsmart-card text-center hover:scale-105 cursor-pointer transition-all duration-300"
                 onClick={() => {
                   if (index === 0) {
-                    // Employees stat
-                    toast({
-                      title: "Employee Statistics",
-                      description: `Current total: ${stat.value} employees in the system`,
-                    });
+                    // Employees stat - show employee details
+                    setActiveDialog('employee-details');
                   } else if (index === 1) {
-                    // Roles stat - open role upload dialog
-                    setActiveDialog('upload');
+                    // Roles stat - show standardized roles details
+                    setActiveDialog('roles-details');
                   } else if (index === 2) {
-                    // Accuracy stat
-                    toast({
-                      title: "Mapping Accuracy",
-                      description: `Current AI role mapping accuracy: ${stat.value}`,
-                    });
+                    // Accuracy stat - show mapping accuracy details
+                    setActiveDialog('accuracy-details');
                   } else if (index === 3) {
-                    // Skills stat - open skills assessment
-                    setActiveDialog('assessment');
+                    // Skills stat - show skills details
+                    setActiveDialog('skills-details');
                   }
                 }}
               >
@@ -338,6 +336,31 @@ const Index = () => {
             </div>
           </div>
         </section>
+
+        {/* Detail Dialogs for Stats */}
+        <Dialog open={activeDialog === 'employee-details'} onOpenChange={(open) => setActiveDialog(open ? 'employee-details' : null)}>
+          <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <EmployeeListDetails />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={activeDialog === 'roles-details'} onOpenChange={(open) => setActiveDialog(open ? 'roles-details' : null)}>
+          <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <StandardizedRolesDetails />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={activeDialog === 'accuracy-details'} onOpenChange={(open) => setActiveDialog(open ? 'accuracy-details' : null)}>
+          <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <MappingAccuracyDetails />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={activeDialog === 'skills-details'} onOpenChange={(open) => setActiveDialog(open ? 'skills-details' : null)}>
+          <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <SkillsListDetails />
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

@@ -1,0 +1,304 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
+import { Zap, TrendingUp, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface RoleMapping {
+  id: string;
+  employee_name?: string;
+  original_role_title: string;
+  mapped_role?: string;
+  mapping_confidence: number;
+  mapping_status?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+interface AccuracyStats {
+  averageAccuracy: number;
+  totalMappings: number;
+  highConfidence: number;
+  mediumConfidence: number;
+  lowConfidence: number;
+  pendingReview: number;
+}
+
+export const MappingAccuracyDetails = () => {
+  const [mappings, setMappings] = useState<RoleMapping[]>([]);
+  const [stats, setStats] = useState<AccuracyStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    fetchMappingData();
+  }, []);
+
+  const fetchMappingData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('xlsmart_role_mappings')
+        .select('*')
+        .order('mapping_confidence', { ascending: false });
+
+      if (error) throw error;
+
+      const mappingData = data || [];
+      setMappings(mappingData);
+
+      // Calculate stats
+      const totalMappings = mappingData.length;
+      const averageAccuracy = totalMappings > 0 
+        ? Math.round(mappingData.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / totalMappings)
+        : 0;
+
+      const highConfidence = mappingData.filter(m => (m.mapping_confidence || 0) >= 80).length;
+      const mediumConfidence = mappingData.filter(m => (m.mapping_confidence || 0) >= 60 && (m.mapping_confidence || 0) < 80).length;
+      const lowConfidence = mappingData.filter(m => (m.mapping_confidence || 0) < 60).length;
+      const pendingReview = mappingData.filter(m => m.mapping_status === 'pending_review').length;
+
+      setStats({
+        averageAccuracy,
+        totalMappings,
+        highConfidence,
+        mediumConfidence,
+        lowConfidence,
+        pendingReview
+      });
+    } catch (error) {
+      console.error('Error fetching mapping data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getConfidenceBadge = (confidence: number) => {
+    if (confidence >= 80) {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">High ({confidence}%)</Badge>;
+    } else if (confidence >= 60) {
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Medium ({confidence}%)</Badge>;
+    } else {
+      return <Badge className="bg-red-100 text-red-800 border-red-200">Low ({confidence}%)</Badge>;
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'pending_review':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      case 'rejected':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const totalPages = Math.ceil(mappings.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedMappings = mappings.slice(startIndex, startIndex + pageSize);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4 mb-6">
+          <Zap className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold">Mapping Accuracy Analysis</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+        {[...Array(5)].map((_, i) => (
+          <Skeleton key={i} className="h-20 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-6">
+        <Zap className="h-6 w-6 text-primary" />
+        <h2 className="text-2xl font-bold">Mapping Accuracy Analysis</h2>
+        <Badge variant="secondary" className="ml-auto">
+          {stats?.averageAccuracy}% Average Accuracy
+        </Badge>
+      </div>
+
+      {/* Stats Overview */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <TrendingUp className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">{stats.averageAccuracy}%</div>
+                  <p className="text-sm text-muted-foreground">Overall Accuracy</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-green-600">{stats.highConfidence}</div>
+                  <p className="text-sm text-muted-foreground">High Confidence (≥80%)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-yellow-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-yellow-600">{stats.mediumConfidence}</div>
+                  <p className="text-sm text-muted-foreground">Medium Confidence (60-79%)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-red-600">{stats.lowConfidence}</div>
+                  <p className="text-sm text-muted-foreground">Low Confidence (&lt;60%)</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Accuracy Distribution */}
+      {stats && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Confidence Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">High Confidence (≥80%)</span>
+                <span className="text-sm text-muted-foreground">
+                  {stats.highConfidence} of {stats.totalMappings}
+                </span>
+              </div>
+              <Progress value={(stats.highConfidence / stats.totalMappings) * 100} className="h-2" />
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Medium Confidence (60-79%)</span>
+                <span className="text-sm text-muted-foreground">
+                  {stats.mediumConfidence} of {stats.totalMappings}
+                </span>
+              </div>
+              <Progress value={(stats.mediumConfidence / stats.totalMappings) * 100} className="h-2" />
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Low Confidence (&lt;60%)</span>
+                <span className="text-sm text-muted-foreground">
+                  {stats.lowConfidence} of {stats.totalMappings}
+                </span>
+              </div>
+              <Progress value={(stats.lowConfidence / stats.totalMappings) * 100} className="h-2" />
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Recent Mappings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Recent Role Mappings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {paginatedMappings.map((mapping) => (
+              <div key={mapping.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center gap-2">
+                    {mapping.employee_name && (
+                      <span className="font-medium">{mapping.employee_name}</span>
+                    )}
+                    {getStatusIcon(mapping.mapping_status || 'pending')}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <span className="font-medium">Original:</span> {mapping.original_role_title}
+                    {mapping.mapped_role && (
+                      <>
+                        <span className="mx-2">→</span>
+                        <span className="font-medium">Mapped:</span> {mapping.mapped_role}
+                      </>
+                    )}
+                  </div>
+                  {mapping.created_at && (
+                    <div className="text-xs text-muted-foreground">
+                      Created: {new Date(mapping.created_at).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  {getConfidenceBadge(mapping.mapping_confidence)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Showing {startIndex + 1} to {Math.min(startIndex + pageSize, mappings.length)} of {mappings.length} mappings
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};

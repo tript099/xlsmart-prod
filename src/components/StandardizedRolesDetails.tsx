@@ -1,0 +1,218 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Target, Search, Briefcase, Star, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface StandardizedRole {
+  id: string;
+  role_title: string;
+  role_level?: string;
+  department?: string;
+  required_skills?: any;
+  standard_description?: string;
+  created_at?: string;
+  employee_count?: number;
+}
+
+export const StandardizedRolesDetails = () => {
+  const [roles, setRoles] = useState<StandardizedRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
+
+  useEffect(() => {
+    fetchStandardizedRoles();
+  }, []);
+
+  const fetchStandardizedRoles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('xlsmart_standard_roles')
+        .select('*')
+        .order('role_title');
+
+      if (error) throw error;
+      
+      // Add employee count for each role
+      const rolesWithCount = await Promise.all(
+        (data || []).map(async (role) => {
+          const { count } = await supabase
+            .from('xlsmart_employees')
+            .select('*', { count: 'exact', head: true })
+            .eq('current_position', role.role_title);
+          
+          return {
+            ...role,
+            employee_count: count || 0
+          };
+        })
+      );
+
+      setRoles(rolesWithCount);
+    } catch (error) {
+      console.error('Error fetching standardized roles:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRoles = roles.filter(role =>
+    role.role_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    role.role_level?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredRoles.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedRoles = filteredRoles.slice(startIndex, startIndex + pageSize);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4 mb-6">
+          <Target className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold">Standardized Roles</h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-48 w-full" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-6">
+        <Target className="h-6 w-6 text-primary" />
+        <h2 className="text-2xl font-bold">Standardized Roles</h2>
+        <Badge variant="secondary" className="ml-auto">
+          {roles.length} Standard Roles
+        </Badge>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search roles by name, department, or level..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
+
+      {/* Roles Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {paginatedRoles.map((role) => (
+          <Card key={role.id} className="hover:shadow-lg transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Briefcase className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{role.role_title}</CardTitle>
+                    {role.role_level && (
+                      <Badge variant="outline" className="mt-1">
+                        {role.role_level}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    <span>{role.employee_count}</span>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {role.department && (
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Department:</span>
+                  <Badge variant="secondary" className="ml-2">
+                    {role.department}
+                  </Badge>
+                </div>
+              )}
+              
+              {role.standard_description && (
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Description:</span>
+                  <p className="text-sm mt-1 text-gray-700 line-clamp-2">
+                    {role.standard_description}
+                  </p>
+                </div>
+              )}
+              
+              {role.required_skills && Array.isArray(role.required_skills) && role.required_skills.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Required Skills:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {role.required_skills.slice(0, 4).map((skill: string, index: number) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {skill}
+                      </Badge>
+                    ))}
+                    {role.required_skills.length > 4 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{role.required_skills.length - 4} more
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {role.created_at && (
+                <div className="text-xs text-muted-foreground pt-2 border-t">
+                  Created: {new Date(role.created_at).toLocaleDateString()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredRoles.length)} of {filteredRoles.length} roles
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
