@@ -18,116 +18,120 @@ import {
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
 import { RoleUpload } from "@/components/RoleUpload";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const Index = () => {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
+  const { t } = useLanguage();
 
   const features = [
     {
       id: 'upload',
-      title: 'Bulk Role Upload & Standardization',
-      description: 'Upload XL dan SMART role catalogs dan auto-mapping ke XLSMART Standard Role dengan industry-aligned job families.',
+      title: t('feature.upload.title'),
+      description: t('feature.upload.description'),
       icon: Upload,
-      badge: 'Core',
+      badge: t('feature.upload.badge'),
       dialogContent: 'upload'
     },
     {
       id: 'jd-generator',
-      title: 'AI-Powered JD Generator',
-      description: 'Generate job descriptions untuk setiap standardized role dengan in-app chatbot untuk tweak tone dan requirements.',
+      title: t('feature.jd.title'),
+      description: t('feature.jd.description'),
       icon: FileText,
-      badge: 'AI',
+      badge: t('feature.jd.badge'),
       dialogContent: null
     },
     {
       id: 'assessment',
-      title: 'Employee Skill Assessment',
-      description: 'Upload XL dan SMART employees, match % vs target JD, skill gaps, next role recommendation.',
+      title: t('feature.assessment.title'),
+      description: t('feature.assessment.description'),
       icon: Users,
-      badge: 'Analytics',
+      badge: t('feature.assessment.badge'),
       dialogContent: null
     },
     {
       id: 'chat',
-      title: 'HR AI Assistant',
-      description: 'In-app chatbot untuk HR/editors tweak job descriptions dan mendapatkan personalized recommendations.',
+      title: t('feature.chat.title'),
+      description: t('feature.chat.description'),
       icon: MessageCircle,
-      badge: 'AI',
+      badge: t('feature.chat.badge'),
       dialogContent: 'chat'
     },
     {
       id: 'mobility',
-      title: 'Employee Mobility & Planning',
-      description: 'Level fit analysis, rotation/churn risk assessment, dan personalized development plans.',
+      title: t('feature.mobility.title'),
+      description: t('feature.mobility.description'),
       icon: Target,
-      badge: 'Planning',
+      badge: t('feature.mobility.badge'),
       dialogContent: null
     },
     {
       id: 'development',
-      title: 'Development Pathways',
-      description: 'Personalized development plan dengan courses, certifications, dan projects untuk career growth.',
+      title: t('feature.development.title'),
+      description: t('feature.development.description'),
       icon: Brain,
-      badge: 'Growth',
+      badge: t('feature.development.badge'),
       dialogContent: null
     }
   ];
 
   const stats = [
-    { value: "2,847", label: "Total Karyawan", icon: Users, color: "text-blue-600" },
-    { value: "156", label: "Standardized Roles", icon: Target, color: "text-cyan-600" },
-    { value: "89%", label: "Mapping Accuracy", icon: Zap, color: "text-blue-600" },
-    { value: "342", label: "Skills Teridentifikasi", icon: BarChart3, color: "text-cyan-600" }
+    { value: "2,847", label: t('stats.employees'), icon: Users, color: "text-blue-600" },
+    { value: "156", label: t('stats.roles'), icon: Target, color: "text-cyan-600" },
+    { value: "89%", label: t('stats.accuracy'), icon: Zap, color: "text-blue-600" },
+    { value: "342", label: t('stats.skills'), icon: BarChart3, color: "text-cyan-600" }
   ];
 
   return (
     <div className="min-h-screen bg-background">
       {/* XL-style Header with Gradient */}
       <header className="xl-gradient-bg text-white">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Smartphone className="h-8 w-8" />
-                <div>
-                  <h1 className="text-3xl font-bold">XLSMART</h1>
-                  <p className="text-blue-100 text-sm">HR Platform</p>
+          <div className="container mx-auto px-6 py-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <Smartphone className="h-8 w-8" />
+                  <div>
+                    <h1 className="text-3xl font-bold">{t('platform.title')}</h1>
+                    <p className="text-blue-100 text-sm">{t('platform.subtitle')}</p>
+                  </div>
                 </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <LanguageToggle />
+                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                  {t('header.badge')}
+                </Badge>
+                <Button className="xl-button-teal">
+                  {t('header.cta')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
-              <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                AI-Powered
-              </Badge>
-              <Button className="xl-button-teal">
-                Mulai Sekarang
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+            <div className="mt-8 space-y-2">
+              <h2 className="text-2xl font-light">
+                {t('platform.description')} <span className="font-semibold"></span>
+              </h2>
+              <p className="text-blue-100 text-lg max-w-2xl">
+                {t('platform.tagline')}
+              </p>
             </div>
           </div>
-          
-          <div className="mt-8 space-y-2">
-            <h2 className="text-2xl font-light">
-              Platform Manajemen Talenta <span className="font-semibold">Terdepan</span>
-            </h2>
-            <p className="text-blue-100 text-lg max-w-2xl">
-              Standardisasi role, generate JD dengan AI, dan employee assessment untuk transformasi digital HR XL & SMART
-            </p>
-          </div>
-        </div>
       </header>
 
       {/* Main Content */}
       <main className="container mx-auto px-6 py-12 space-y-12">
         {/* Features Grid */}
-        <section>
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Fitur Platform</h2>
-            <p className="text-gray-600 text-lg max-w-3xl mx-auto">
-              Solusi komprehensif untuk modernisasi operasi HR melalui teknologi AI dan analytics
-            </p>
-          </div>
+          <section>
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('features.title')}</h2>
+              <p className="text-gray-600 text-lg max-w-3xl mx-auto">
+                {t('features.subtitle')}
+              </p>
+            </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
@@ -165,7 +169,7 @@ const Index = () => {
                     <Dialog open={activeDialog === feature.id} onOpenChange={(open) => setActiveDialog(open ? feature.id : null)}>
                       <DialogTrigger asChild>
                         <Button variant="outline" className="w-full group-hover:xl-blue-gradient group-hover:text-white transition-all duration-200">
-                          {feature.id === 'upload' ? 'Upload Role Catalog' : 'Buka Assistant'}
+                          {feature.id === 'upload' ? t('feature.upload.button') : t('feature.chat.button')}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </DialogTrigger>
@@ -175,7 +179,7 @@ const Index = () => {
                     </Dialog>
                   ) : (
                     <Button variant="outline" className="w-full group-hover:xl-blue-gradient group-hover:text-white transition-all duration-200">
-                      Pelajari Lebih Lanjut
+                      {t('button.learn_more')}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   )}
@@ -188,9 +192,9 @@ const Index = () => {
         {/* Statistics Dashboard */}
         <section className="bg-gray-50 rounded-2xl p-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('stats.title')}</h2>
             <p className="text-gray-600">
-              Real-time insights transformasi HR XL & SMART
+              {t('stats.subtitle')}
             </p>
           </div>
           
@@ -223,9 +227,9 @@ const Index = () => {
         <section className="xl-gradient-bg rounded-2xl p-8 text-white text-center">
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-bold mb-4">Siap Transformasi HR Anda?</h2>
+              <h2 className="text-3xl font-bold mb-4">{t('cta.title')}</h2>
               <p className="text-blue-100 text-lg max-w-2xl mx-auto">
-                Mulai dengan upload role catalog XL dan SMART atau eksplorasi AI assistant untuk melihat bagaimana XLSMART dapat mengoptimalkan proses talent management Anda.
+                {t('cta.description')}
               </p>
             </div>
             
@@ -234,7 +238,7 @@ const Index = () => {
                 <DialogTrigger asChild>
                   <Button size="lg" className="xl-button-teal px-8">
                     <Upload className="mr-2 h-5 w-5" />
-                    Upload Role Catalog
+                    {t('cta.upload')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -246,7 +250,7 @@ const Index = () => {
                 <DialogTrigger asChild>
                   <Button size="lg" variant="outline" className="px-8 bg-white/10 border-white/30 text-white hover:bg-white/20">
                     <MessageCircle className="mr-2 h-5 w-5" />
-                    Coba AI Assistant
+                    {t('cta.chat')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
