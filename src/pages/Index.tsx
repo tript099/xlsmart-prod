@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
 import { RoleUpload } from "@/components/RoleUpload";
-import { AIJobDescriptionGenerator } from "@/components/AIJobDescriptionGenerator";
+import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AISkillsAssessment } from "@/components/AISkillsAssessment";
 import { EmployeeMobilityPlanning } from "@/components/EmployeeMobilityPlanning";
 import { DevelopmentPathways } from "@/components/DevelopmentPathways";
@@ -226,7 +226,7 @@ const Index = () => {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
-                        {feature.id === 'jd-generator' && <AIJobDescriptionGenerator />}
+                        {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
                         {feature.id === 'assessment' && <AISkillsAssessment />}
                         {feature.id === 'mobility' && <EmployeeMobilityPlanning />}
                         {feature.id === 'development' && <DevelopmentPathways />}
