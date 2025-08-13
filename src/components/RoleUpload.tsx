@@ -152,6 +152,13 @@ export const RoleUpload = () => {
       const xlRoles = await parseRoleFile(xlFile);
       const smartRoles = await parseRoleFile(smartFile);
 
+      console.log('Parsed XL roles:', xlRoles);
+      console.log('Parsed SMART roles:', smartRoles);
+
+      if (xlRoles.length === 0 && smartRoles.length === 0) {
+        throw new Error('No roles found in uploaded files. Please check the file format and content.');
+      }
+
       setUploadProgress(40);
 
       // Step 3: Call AI standardization service to create XLSMART roles
@@ -165,8 +172,11 @@ export const RoleUpload = () => {
       });
 
       if (standardizationError) {
+        console.error('Standardization error:', standardizationError);
         throw new Error(`Standardization failed: ${standardizationError.message}`);
       }
+
+      console.log('Standardization result:', standardizationResult);
 
       setUploadProgress(80);
 
@@ -186,7 +196,12 @@ export const RoleUpload = () => {
         `)
         .eq('catalog_id', catalogData.id);
 
-      if (mappingsError) throw mappingsError;
+      if (mappingsError) {
+        console.error('Mappings fetch error:', mappingsError);
+        throw mappingsError;
+      }
+
+      console.log('Fetched mappings:', mappingsData);
 
       // Convert to display format
       const displayMappings: RoleMappingResult[] = mappingsData.map(mapping => ({
@@ -202,6 +217,7 @@ export const RoleUpload = () => {
       }));
 
       setMappingResults(displayMappings);
+      console.log('Setting mapping results:', displayMappings);
       setUploadProgress(100);
       setIsUploading(false);
       setUploadStatus('completed');
