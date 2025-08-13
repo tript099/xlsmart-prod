@@ -197,12 +197,38 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
     try {
       aiData = await response.json();
       console.log('AI response received, parsing...');
-      analysis = JSON.parse(aiData.choices[0].message.content);
+      
+      const aiContent = aiData.choices[0].message.content;
+      console.log('Raw AI content:', aiContent);
+      
+      // Clean the response - sometimes AI adds markdown formatting
+      let cleanContent = aiContent.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      console.log('Cleaned AI content:', cleanContent);
+      analysis = JSON.parse(cleanContent);
+      
+      // Validate the response structure
+      if (!analysis.standardRoles || !Array.isArray(analysis.standardRoles)) {
+        throw new Error('Invalid AI response: missing standardRoles array');
+      }
+      if (!analysis.mappings || !Array.isArray(analysis.mappings)) {
+        throw new Error('Invalid AI response: missing mappings array');
+      }
+      
+      console.log(`Parsed successfully: ${analysis.standardRoles.length} roles, ${analysis.mappings.length} mappings`);
+      
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
+      console.error('Raw AI response:', aiData?.choices?.[0]?.message?.content);
       return new Response(JSON.stringify({ 
         success: false,
-        error: 'Failed to parse AI response' 
+        error: `Failed to parse AI response: ${parseError.message}`,
+        rawResponse: aiData?.choices?.[0]?.message?.content?.substring(0, 500)
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -240,15 +266,22 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
     console.log(`Creating ${analysis.standardRoles.length} standard roles...`);
 
+    // Get current timestamp for unique naming
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_');
+    
+    // Ensure unique role titles by appending session ID
+    const rolesWithUniqueNames = analysis.standardRoles.map((role: any, index: number) => ({
+      ...role,
+      role_title: `${role.role_title}_${sessionId.slice(-8)}_${index + 1}`,
+      created_by: session.created_by
+    }));
+
+    console.log('Roles with unique names:', rolesWithUniqueNames.map(r => r.role_title));
+
     // Insert standard roles
     const { data: createdRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
-      .insert(
-        analysis.standardRoles.map((role: any) => ({
-          ...role,
-          created_by: session.created_by
-        }))
-      )
+      .insert(rolesWithUniqueNames)
       .select();
 
     if (rolesError) {
@@ -264,10 +297,25 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
     console.log(`Creating ${analysis.mappings.length} role mappings...`);
 
+    // Update mappings to use the correct standardized role titles and IDs
+    const mappingsWithCorrectRoles = analysis.mappings.map((mapping: any) => {
+      const standardRole = createdRoles?.find(r => 
+        r.role_title.startsWith(mapping.standardized_role_title)
+      );
+      
+      return {
+        ...mapping,
+        standard_role_id: standardRole?.id || null,
+        standardized_role_title: standardRole?.role_title || mapping.standardized_role_title
+      };
+    });
+
+    console.log('Mappings with correct role IDs:', mappingsWithCorrectRoles.slice(0, 2));
+
     // Insert mappings
     const { data: createdMappings, error: mappingsError } = await supabase
       .from('xlsmart_role_mappings')
-      .insert(analysis.mappings)
+      .insert(mappingsWithCorrectRoles)
       .select();
 
     if (mappingsError) {
