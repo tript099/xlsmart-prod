@@ -87,25 +87,18 @@ export const RoleUploadNew = () => {
 
       if (sessionError) throw sessionError;
 
-      // Call AI standardization
+      // Call AI standardization using supabase.functions.invoke
       setProgress(70);
-      const response = await fetch('/functions/v1/role-standardize-simple', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify({
+      const { data: result, error: functionError } = await supabase.functions.invoke('role-standardize-simple', {
+        body: {
           sessionId: session.id,
           parsedData: parsedFiles
-        })
+        }
       });
 
-      if (!response.ok) {
-        throw new Error(`AI processing failed: ${response.statusText}`);
+      if (functionError) {
+        throw new Error(`AI processing failed: ${functionError.message}`);
       }
-
-      const result = await response.json();
       setProgress(100);
 
       toast({
