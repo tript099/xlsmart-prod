@@ -15,22 +15,69 @@ serve(async (req) => {
 
   try {
     console.log('Starting role standardization process...');
+    console.log('Request method:', req.method);
 
     // Get the API key from Supabase secrets
     const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
+    console.log('LiteLLM API key found:', !!litellmApiKey);
+    
     if (!litellmApiKey) {
-      throw new Error('LITELLM_API_KEY not found in environment variables');
+      console.error('LITELLM_API_KEY not found in environment variables');
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'LITELLM_API_KEY not configured' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    console.log('Supabase URL found:', !!supabaseUrl);
+    console.log('Supabase Service Key found:', !!supabaseServiceKey);
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error('Missing Supabase environment variables');
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Supabase configuration missing' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { sessionId, xlRoles, smartRoles } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Request body parsed successfully');
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Invalid JSON in request body' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { sessionId, xlRoles, smartRoles } = requestBody;
 
     if (!sessionId) {
-      throw new Error('Session ID is required');
+      console.error('Session ID is required but not provided');
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Session ID is required' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`Processing ${xlRoles?.length || 0} XL roles and ${smartRoles?.length || 0} Smart roles`);
@@ -83,7 +130,9 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
     console.log('Calling LiteLLM API...');
 
     // Call LiteLLM API
-    const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
+    let response;
+    try {
+      response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${litellmApiKey}`,
@@ -102,17 +151,46 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
         max_tokens: 4000,
       }),
     });
+    } catch (fetchError) {
+      console.error('Failed to call LiteLLM API:', fetchError);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: `LiteLLM API connection failed: ${fetchError.message}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('LiteLLM response status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('LiteLLM API Error:', errorText);
-      throw new Error(`LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: `LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const aiData = await response.json();
-    console.log('AI response received, parsing...');
-
-    const analysis = JSON.parse(aiData.choices[0].message.content);
+    let aiData, analysis;
+    try {
+      aiData = await response.json();
+      console.log('AI response received, parsing...');
+      analysis = JSON.parse(aiData.choices[0].message.content);
+    } catch (parseError) {
+      console.error('Failed to parse AI response:', parseError);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Failed to parse AI response' 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Get user from session
     const { data: session } = await supabase
