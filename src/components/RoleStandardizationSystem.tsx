@@ -214,12 +214,13 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
         smartRolesCount: smartRoles.length
       });
 
-      // Call our edge function instead of direct API call
-      const { data: aiResult, error: aiError } = await supabase.functions.invoke('role-standardization', {
+      // Call our debug function for now to test connection
+      const { data: aiResult, error: aiError } = await supabase.functions.invoke('debug-test', {
         body: {
           sessionId: session.id,
           xlRoles,
-          smartRoles
+          smartRoles,
+          type: 'role-standardization'
         }
       });
 
