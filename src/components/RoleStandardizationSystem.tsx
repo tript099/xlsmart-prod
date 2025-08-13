@@ -23,7 +23,6 @@ export const RoleStandardizationSystem = () => {
   const { toast } = useToast();
   const [xlFiles, setXlFiles] = useState<File[]>([]);
   const [smartFiles, setSmartFiles] = useState<File[]>([]);
-  const [apiKey, setApiKey] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("");
@@ -72,15 +71,6 @@ export const RoleStandardizationSystem = () => {
       toast({
         title: "No files selected",
         description: "Please select at least one Excel file",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!apiKey.trim()) {
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenAI API key",
         variant: "destructive"
       });
       return;
@@ -208,14 +198,15 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
       setProgress(60);
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Call LiteLLM proxy instead of OpenAI directly
+      const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer sk-BuORei3-MerRCuRgh4Eq1g`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'azure/gpt-4.1',
           messages: [
             { 
               role: 'system', 
@@ -229,7 +220,7 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+        throw new Error(`LiteLLM API error: ${response.status} ${response.statusText}`);
       }
 
       const aiData = await response.json();
@@ -317,22 +308,6 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* API Key Input */}
-        <div className="space-y-2">
-          <Label htmlFor="api-key">OpenAI API Key</Label>
-          <Input
-            id="api-key"
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-..."
-            disabled={isProcessing}
-          />
-          <p className="text-xs text-muted-foreground">
-            Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">OpenAI Dashboard</a>
-          </p>
-        </div>
-
         {/* File Upload Tabs */}
         <Tabs defaultValue="xl" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
@@ -441,7 +416,7 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
         {/* Action Button */}
         <Button
           onClick={processRoleStandardization}
-          disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !apiKey.trim() || isProcessing}
+          disabled={(xlFiles.length === 0 && smartFiles.length === 0) || isProcessing}
           className="w-full h-12 text-lg"
           size="lg"
         >

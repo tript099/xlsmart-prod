@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
 import { RoleStandardizationSystem } from "@/components/RoleStandardizationSystem";
+import { LiteLLMTest } from "@/components/LiteLLMTest";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
 import { EmployeeMobilityPlanningEnhanced } from "@/components/EmployeeMobilityPlanningEnhanced";
@@ -339,19 +340,19 @@ const Index = () => {
                       </DialogContent>
               </Dialog>
               
-              <Dialog open={activeDialog === 'quick-chat'} onOpenChange={(open) => setActiveDialog(open ? 'quick-chat' : null)}>
+              <Dialog open={activeDialog === 'litellm-test'} onOpenChange={(open) => setActiveDialog(open ? 'litellm-test' : null)}>
                 <DialogTrigger asChild>
                   <Button size="lg" variant="outline" className="px-12 py-4 text-lg bg-white/10 border-white/30 text-white hover:bg-white/20 hover:scale-105 transition-all shadow-xl backdrop-blur-sm">
                     <MessageCircle className="mr-3 h-6 w-6" />
-                    Try AI Assistant
+                    Test LiteLLM Connection
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <div className="sr-only">
-                    <h2>AI Chat Assistant</h2>
-                    <p>Chat with AI for HR assistance</p>
+                    <h2>LiteLLM Connection Test</h2>
+                    <p>Test the LiteLLM proxy connection</p>
                   </div>
-                  <AIChat />
+                  <LiteLLMTest />
                 </DialogContent>
               </Dialog>
             </div>
