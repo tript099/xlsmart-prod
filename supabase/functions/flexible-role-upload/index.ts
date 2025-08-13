@@ -23,9 +23,9 @@ serve(async (req) => {
     if (action === 'test') {
       return new Response(JSON.stringify({
         success: true,
-        message: 'Edge function is working',
+        message: 'Edge function is working with LiteLLM',
         timestamp: new Date().toISOString(),
-        hasOpenAI: !!Deno.env.get('OPENAI_API_KEY')
+        liteLLMEndpoint: 'https://proxyllm.ximplify.id'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -113,10 +113,8 @@ serve(async (req) => {
         throw new Error('Upload session not found');
       }
 
-      const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-      if (!openAIApiKey) {
-        throw new Error('OpenAI API key not configured');
-      }
+      // LiteLLM proxy is already configured - no API key needed
+      console.log('Using LiteLLM proxy for AI processing');
 
       // Update status
       await supabase
@@ -195,7 +193,6 @@ Focus on telecommunications-specific roles and create comprehensive standard rol
       const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -213,7 +210,7 @@ Focus on telecommunications-specific roles and create comprehensive standard rol
       });
 
       if (!aiResponse.ok) {
-        throw new Error(`OpenAI API error: ${aiResponse.statusText}`);
+        throw new Error(`LiteLLM API error: ${aiResponse.statusText}`);
       }
 
       const aiData = await aiResponse.json();
