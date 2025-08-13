@@ -95,12 +95,14 @@ const Index = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm">
-                    <Smartphone className="h-8 w-8 text-white" />
-                  </div>
+                  <img 
+                    src="/xlsmart-logo.svg" 
+                    alt="XLSMART Logo" 
+                    className="h-12 w-auto"
+                  />
                   <div>
                     <h1 className="text-4xl font-bold">XLSMART</h1>
-                    <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform</p>
+                    <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by SimplifyAI</p>
                   </div>
                 </div>
               </div>
@@ -108,7 +110,7 @@ const Index = () => {
               <div className="flex items-center gap-4">
                 <LanguageToggle />
                 <Badge variant="secondary" className="bg-white/15 text-white border-white/20 backdrop-blur-sm">
-                  AI Platform
+                  SimplifyAI Platform
                 </Badge>
                 <Button className="xlsmart-button-secondary shadow-xl">
                   Get Started
@@ -122,7 +124,7 @@ const Index = () => {
                 Revolutionizing HR with <span className="font-bold text-white">Artificial Intelligence</span>
               </h2>
               <p className="text-white/80 text-xl max-w-3xl leading-relaxed">
-                Streamline role standardization, skill assessment, and career development with our AI-powered platform built for the telecommunications industry.
+                Streamline role standardization, skill assessment, and career development with SimplifyAI's AI-powered platform built for the telecommunications industry.
               </p>
             </div>
           </div>
@@ -246,7 +248,7 @@ const Index = () => {
             <div>
               <h2 className="text-4xl font-bold mb-6">Ready to Transform Your HR?</h2>
               <p className="text-white/90 text-xl max-w-3xl mx-auto leading-relaxed">
-                Join the future of human resources with AI-powered role standardization, skills assessment, and career development planning.
+                Join the future of human resources with SimplifyAI's AI-powered role standardization, skills assessment, and career development planning.
               </p>
             </div>
             
