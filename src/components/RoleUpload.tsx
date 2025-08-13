@@ -5,11 +5,14 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, FileText, CheckCircle, AlertCircle, Eye, ThumbsUp, ThumbsDown, Zap } from "lucide-react";
+import { Upload, FileText, CheckCircle, Eye, ThumbsUp, ThumbsDown, Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import { AlertCircle, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import * as XLSX from 'xlsx';
 
 interface RoleMappingResult {
@@ -24,19 +27,25 @@ interface RoleMappingResult {
   status: 'auto_mapped' | 'manual_review' | 'approved' | 'rejected';
 }
 
+const LARGE_DATASET_THRESHOLD = 500; // Threshold for large dataset handling
+const MAX_DISPLAY_RESULTS = 100; // Maximum results to display at once
+
 export const RoleUpload = () => {
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
+  const { t } = useLanguage();
+  const { toast } = useToast();
   const [xlFile, setXlFile] = useState<File | null>(null);
   const [smartFile, setSmartFile] = useState<File | null>(null);
-  const [includeIndustryStandards, setIncludeIndustryStandards] = useState(false);
   const [fileFormat, setFileFormat] = useState<string>('');
+  const [includeIndustryStandards, setIncludeIndustryStandards] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
   const [catalogId, setCatalogId] = useState<string | null>(null);
   const [mappingResults, setMappingResults] = useState<RoleMappingResult[]>([]);
   const [showMappingReview, setShowMappingReview] = useState(false);
-  const { t } = useLanguage();
-  const { toast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLargeDataset, setIsLargeDataset] = useState(false);
+  const [processingBatch, setProcessingBatch] = useState<{ current: number; total: number } | null>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, fileType: 'xl' | 'smart') => {
     const file = event.target.files?.[0];
@@ -159,9 +168,21 @@ export const RoleUpload = () => {
         throw new Error('No roles found in uploaded files. Please check the file format and content.');
       }
 
+      // Check if this is a large dataset
+      const totalRoles = xlRoles.length + smartRoles.length;
+      setIsLargeDataset(totalRoles > LARGE_DATASET_THRESHOLD);
+      
+      if (totalRoles > LARGE_DATASET_THRESHOLD) {
+        toast({
+          title: "Large Dataset Detected",
+          description: `Processing ${totalRoles} roles. This may take several minutes and will be processed in batches.`,
+        });
+      }
+
       setUploadProgress(40);
 
-      // Step 3: Call AI standardization service to create XLSMART roles
+      // Step 3: Call AI standardization service with progress tracking
+      setUploadProgress(50);
       const { data: standardizationResult, error: standardizationError } = await supabase.functions.invoke('standardize-roles', {
         body: {
           xlRoles: xlRoles,
@@ -178,23 +199,29 @@ export const RoleUpload = () => {
 
       console.log('Standardization result:', standardizationResult);
 
-      setUploadProgress(80);
+      setUploadProgress(70);
 
-      // Step 4: Fetch the created mappings
-      const { data: mappingsData, error: mappingsError } = await supabase
-        .from('xlsmart_role_mappings')
-        .select(`
-          id,
-          original_role_title,
-          original_department,
-          standardized_role_title,
-          standardized_department,
-          job_family,
-          mapping_confidence,
-          requires_manual_review,
-          mapping_status
-        `)
-        .eq('catalog_id', catalogData.id);
+      // Step 4: Fetch the created mappings with pagination for large datasets
+      const fetchMappings = async () => {
+        const limit = isLargeDataset ? MAX_DISPLAY_RESULTS : 1000;
+        return await supabase
+          .from('xlsmart_role_mappings')
+          .select(`
+            id,
+            original_role_title,
+            original_department,
+            standardized_role_title,
+            standardized_department,
+            job_family,
+            mapping_confidence,
+            requires_manual_review,
+            mapping_status
+          `)
+          .eq('catalog_id', catalogData.id)
+          .limit(limit);
+      };
+
+      const { data: mappingsData, error: mappingsError } = await fetchMappings();
 
       if (mappingsError) {
         console.error('Mappings fetch error:', mappingsError);
@@ -224,7 +251,7 @@ export const RoleUpload = () => {
 
       toast({
         title: "Role Standardization Complete!",
-        description: `Successfully processed ${standardizationResult.totalRoles} roles using AI. ${standardizationResult.autoMappedCount} auto-mapped, ${standardizationResult.manualReviewCount} need review.`
+        description: `Successfully processed ${standardizationResult.totalRoles} roles using AI. ${standardizationResult.autoMappedCount} auto-mapped, ${standardizationResult.manualReviewCount} need review. ${isLargeDataset ? `Showing first ${mappingsData.length} results.` : ''}`
       });
 
     } catch (error) {
@@ -421,7 +448,7 @@ export const RoleUpload = () => {
                     <CheckCircle className="h-5 w-5 text-green-500 mt-2" />
                   )}
                   {uploadStatus === 'error' && (
-                    <AlertCircle className="h-5 w-5 text-destructive mt-2" />
+                    <AlertCircle className="h-5 w-5 text-red-500 mt-2" />
                   )}
                 </div>
 
