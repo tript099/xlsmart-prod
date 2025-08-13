@@ -114,6 +114,15 @@ serve(async (req) => {
 
       console.log('🤖 Calling LiteLLM for AI standardization...');
       
+      // Check if API key exists
+      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openaiApiKey) {
+        console.error('❌ OPENAI_API_KEY not found in environment');
+        throw new Error('OpenAI API key not configured. Please set up the OPENAI_API_KEY secret in Supabase.');
+      }
+      
+      console.log('✅ API key found, proceeding with AI call...');
+      
       // Create AI prompt for role standardization
       const prompt = `You are an AI expert in telecommunications role standardization. 
 
@@ -154,7 +163,7 @@ OUTPUT FORMAT (JSON only):
       const litellmResponse = await fetch('https://proxyllm.ximplify.id/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
+          'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
