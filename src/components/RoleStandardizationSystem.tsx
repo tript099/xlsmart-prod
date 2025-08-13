@@ -208,6 +208,12 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
       setProgress(60);
 
+      console.log('Calling edge function with:', {
+        sessionId: session.id,
+        xlRolesCount: xlRoles.length,
+        smartRolesCount: smartRoles.length
+      });
+
       // Call our edge function instead of direct API call
       const { data: aiResult, error: aiError } = await supabase.functions.invoke('role-standardization', {
         body: {
@@ -217,12 +223,16 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
         }
       });
 
+      console.log('Edge function response:', { aiResult, aiError });
+
       if (aiError) {
+        console.error('Edge function error:', aiError);
         throw new Error(`Standardization error: ${aiError.message}`);
       }
 
-      if (!aiResult.success) {
-        throw new Error(aiResult.error || 'Standardization failed');
+      if (!aiResult?.success) {
+        console.error('Edge function failed:', aiResult);
+        throw new Error(aiResult?.error || 'Standardization failed');
       }
 
       setProgress(100);
@@ -243,7 +253,10 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
       });
 
     } catch (error) {
-      console.error('Standardization error:', error);
+      console.error('Standardization error details:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error message:', error instanceof Error ? error.message : String(error));
+      
       toast({
         title: "❌ Standardization Failed",
         description: error instanceof Error ? error.message : 'Unknown error occurred',

@@ -92,6 +92,57 @@ export const LiteLLMTest = () => {
           )}
         </Button>
 
+        {/* Test Role Standardization Function */}
+        <Button
+          onClick={async () => {
+            setIsLoading(true);
+            setError(null);
+            setResponse(null);
+            
+            try {
+              const { data, error } = await supabase.functions.invoke('role-standardization', {
+                body: { 
+                  sessionId: 'test-session-id',
+                  xlRoles: [{ role: 'Test XL Role', department: 'IT', _source: 'xl' }],
+                  smartRoles: [{ role: 'Test Smart Role', department: 'Engineering', _source: 'smart' }]
+                }
+              });
+              
+              console.log('Function test result:', { data, error });
+              
+              if (error) throw error;
+              
+              setResponse({ 
+                message: 'Function test completed', 
+                data: data,
+                model: 'role-standardization function',
+                proxy: 'edge function'
+              });
+              
+            } catch (err) {
+              console.error('Function test error:', err);
+              setError(err instanceof Error ? err.message : 'Function test failed');
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+          variant="outline"
+          className="w-full"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <MessageCircle className="mr-2 h-4 w-4 animate-spin" />
+              Testing Function...
+            </>
+          ) : (
+            <>
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Test Role Standardization Function
+            </>
+          )}
+        </Button>
+
         {/* Success Response */}
         {response && (
           <Alert className="bg-green-50 border-green-200">
