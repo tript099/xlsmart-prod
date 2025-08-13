@@ -24,14 +24,28 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { AuthDialog } from "@/components/AuthDialog";
+import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 const Index = () => {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const { t } = useLanguage();
   const aiStats = useAIStats();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   const features = [
     {
@@ -110,28 +124,22 @@ const Index = () => {
               
               <div className="flex items-center gap-4">
                 <LanguageToggle />
-                <Dialog open={activeDialog === 'auth'} onOpenChange={(open) => setActiveDialog(open ? 'auth' : null)}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20">
-                      <User className="mr-2 h-4 w-4" />
-                      {user ? 'Account' : 'Sign In'}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <div className="sr-only">
-                      <h2>Authentication</h2>
-                      <p>Sign in or create an account</p>
-                    </div>
-                    <AuthDialog />
-                  </DialogContent>
-                </Dialog>
+                <div className="flex items-center space-x-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="text-white/90 text-sm">{user?.email}</span>
+                </div>
+                <Button 
+                  onClick={handleSignOut}
+                  variant="outline" 
+                  className="bg-white/10 border-white/30 text-white hover:bg-white/20"
+                >
+                  Sign Out
+                </Button>
                 <Badge variant="secondary" className="bg-white/15 text-white border-white/20 backdrop-blur-sm">
                   SimplifyAI Platform
                 </Badge>
-                <Button className="xlsmart-button-secondary shadow-xl">
-                  Get Started
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
               </div>
             </div>
             
