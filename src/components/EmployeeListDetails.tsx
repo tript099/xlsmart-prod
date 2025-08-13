@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Search, User, MapPin, Mail, Phone, Grid3X3, List } from "lucide-react";
+import { Users, Search, User, MapPin, Mail, Phone, Grid3X3, List, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { EditEmployeeDialog } from "@/components/EditEmployeeDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Employee {
   id: string;
@@ -27,6 +30,10 @@ export const EmployeeListDetails = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
+  const [deleteEmployee, setDeleteEmployee] = useState<Employee | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const { toast } = useToast();
   const pageSize = 10;
 
   useEffect(() => {
@@ -54,6 +61,36 @@ export const EmployeeListDetails = () => {
     emp.current_position?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.current_department?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async () => {
+    if (!deleteEmployee) return;
+
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase
+        .from('xlsmart_employees')
+        .delete()
+        .eq('id', deleteEmployee.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Employee deleted successfully",
+      });
+      
+      fetchEmployees();
+      setDeleteEmployee(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete employee",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const totalPages = Math.ceil(filteredEmployees.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -155,14 +192,30 @@ export const EmployeeListDetails = () => {
                       </div>
                     </div>
                   </div>
-                  {employee.hire_date && (
-                    <div className="text-right text-sm text-muted-foreground">
-                      <span>Hired</span>
-                      <div className="font-medium">
-                        {new Date(employee.hire_date).toLocaleDateString()}
+                  <div className="flex items-center gap-2">
+                    {employee.hire_date && (
+                      <div className="text-right text-sm text-muted-foreground mr-4">
+                        <span>Hired</span>
+                        <div className="font-medium">
+                          {new Date(employee.hire_date).toLocaleDateString()}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditEmployee(employee)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteEmployee(employee)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -177,6 +230,7 @@ export const EmployeeListDetails = () => {
               <TableHead>Department</TableHead>
               <TableHead>Contact</TableHead>
               <TableHead>Hire Date</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -226,11 +280,47 @@ export const EmployeeListDetails = () => {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditEmployee(employee)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteEmployee(employee)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
+
+      {/* Edit Dialog */}
+      <EditEmployeeDialog
+        open={!!editEmployee}
+        onOpenChange={(open) => !open && setEditEmployee(null)}
+        employee={editEmployee}
+        onSave={fetchEmployees}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDeleteDialog
+        open={!!deleteEmployee}
+        onOpenChange={(open) => !open && setDeleteEmployee(null)}
+        onConfirm={handleDelete}
+        title="Delete Employee"
+        description={`Are you sure you want to delete ${deleteEmployee?.first_name} ${deleteEmployee?.last_name}? This action cannot be undone.`}
+        loading={deleteLoading}
+      />
 
       {/* Pagination */}
       {totalPages > 1 && (

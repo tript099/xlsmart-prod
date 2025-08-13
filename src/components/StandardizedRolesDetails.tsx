@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Target, Search, Briefcase, Star, Users, Grid3X3, List } from "lucide-react";
+import { Target, Search, Briefcase, Star, Users, Grid3X3, List, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { EditRoleDialog } from "@/components/EditRoleDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface StandardizedRole {
   id: string;
@@ -25,6 +28,10 @@ export const StandardizedRolesDetails = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [editRole, setEditRole] = useState<StandardizedRole | null>(null);
+  const [deleteRole, setDeleteRole] = useState<StandardizedRole | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const { toast } = useToast();
   const pageSize = 8;
 
   useEffect(() => {
@@ -68,6 +75,36 @@ export const StandardizedRolesDetails = () => {
     role.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     role.role_level?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDelete = async () => {
+    if (!deleteRole) return;
+
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase
+        .from('xlsmart_standard_roles')
+        .delete()
+        .eq('id', deleteRole.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Role deleted successfully",
+      });
+      
+      fetchStandardizedRoles();
+      setDeleteRole(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete role",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const totalPages = Math.ceil(filteredRoles.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -200,11 +237,29 @@ export const StandardizedRolesDetails = () => {
                   </div>
                 )}
                 
-                {role.created_at && (
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Created: {new Date(role.created_at).toLocaleDateString()}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  {role.created_at && (
+                    <div className="text-xs text-muted-foreground">
+                      Created: {new Date(role.created_at).toLocaleDateString()}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditRole(role)}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteRole(role)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -218,6 +273,7 @@ export const StandardizedRolesDetails = () => {
               <TableHead>Department</TableHead>
               <TableHead>Employees</TableHead>
               <TableHead>Created</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -265,11 +321,47 @@ export const StandardizedRolesDetails = () => {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditRole(role)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteRole(role)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
+
+      {/* Edit Dialog */}
+      <EditRoleDialog
+        open={!!editRole}
+        onOpenChange={(open) => !open && setEditRole(null)}
+        role={editRole}
+        onSave={fetchStandardizedRoles}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDeleteDialog
+        open={!!deleteRole}
+        onOpenChange={(open) => !open && setDeleteRole(null)}
+        onConfirm={handleDelete}
+        title="Delete Role"
+        description={`Are you sure you want to delete the role "${deleteRole?.role_title}"? This action cannot be undone.`}
+        loading={deleteLoading}
+      />
 
       {/* Pagination */}
       {totalPages > 1 && (

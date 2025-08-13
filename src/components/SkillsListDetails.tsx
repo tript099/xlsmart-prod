@@ -5,8 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Search, Star, TrendingUp, Users, Grid3X3, List } from "lucide-react";
+import { BarChart3, Search, Star, TrendingUp, Users, Grid3X3, List, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { EditSkillDialog } from "@/components/EditSkillDialog";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 
 interface Skill {
   id: string;
@@ -25,6 +28,10 @@ export const SkillsListDetails = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [editSkill, setEditSkill] = useState<Skill | null>(null);
+  const [deleteSkill, setDeleteSkill] = useState<Skill | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const { toast } = useToast();
   const pageSize = 12;
 
   useEffect(() => {
@@ -58,6 +65,36 @@ export const SkillsListDetails = () => {
     
     return matchesSearch && matchesCategory;
   });
+
+  const handleDelete = async () => {
+    if (!deleteSkill) return;
+
+    setDeleteLoading(true);
+    try {
+      const { error } = await supabase
+        .from('skills_master')
+        .delete()
+        .eq('id', deleteSkill.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Skill deleted successfully",
+      });
+      
+      fetchSkills();
+      setDeleteSkill(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete skill",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const totalPages = Math.ceil(filteredSkills.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -195,11 +232,29 @@ export const SkillsListDetails = () => {
                   </p>
                 )}
                 
-                {skill.created_at && (
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Added: {new Date(skill.created_at).toLocaleDateString()}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  {skill.created_at && (
+                    <div className="text-xs text-muted-foreground">
+                      Added: {new Date(skill.created_at).toLocaleDateString()}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditSkill(skill)}
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteSkill(skill)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -213,6 +268,7 @@ export const SkillsListDetails = () => {
               <TableHead>Proficiency</TableHead>
               <TableHead>Usage</TableHead>
               <TableHead>Added</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -276,11 +332,47 @@ export const SkillsListDetails = () => {
                     <span className="text-muted-foreground">-</span>
                   )}
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditSkill(skill)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDeleteSkill(skill)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       )}
+
+      {/* Edit Dialog */}
+      <EditSkillDialog
+        open={!!editSkill}
+        onOpenChange={(open) => !open && setEditSkill(null)}
+        skill={editSkill}
+        onSave={fetchSkills}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDeleteDialog
+        open={!!deleteSkill}
+        onOpenChange={(open) => !open && setDeleteSkill(null)}
+        onConfirm={handleDelete}
+        title="Delete Skill"
+        description={`Are you sure you want to delete the skill "${deleteSkill?.name}"? This action cannot be undone.`}
+        loading={deleteLoading}
+      />
 
       {/* Empty State */}
       {filteredSkills.length === 0 && (
