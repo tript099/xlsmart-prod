@@ -127,7 +127,21 @@ export const RoleUpload = () => {
                     return obj;
                   }, {} as any);
                 });
-                resolve(roles.filter(role => role.title || role.name || role['Role Title'] || role['Position']));
+                console.log('CSV headers found:', headers);
+                console.log('Sample role data:', roles.slice(0, 2));
+                
+                // More flexible column name matching for CSV
+                const titleColumns = ['title', 'name', 'role title', 'position', 'job title', 'role name', 
+                                    'current position', 'role', 'designation', 'job role', 'function',
+                                    'Title', 'Name', 'Role Title', 'Position', 'Job Title', 'Role Name',
+                                    'Current Position', 'Role', 'Designation', 'Job Role', 'Function'];
+                
+                const filteredRoles = roles.filter(role => {
+                  return titleColumns.some(col => role[col] && String(role[col]).trim().length > 0);
+                });
+                
+                console.log(`Found ${filteredRoles.length} valid roles out of ${roles.length} total rows`);
+                resolve(filteredRoles);
               } else if (fileFormat === 'excel') {
                 // Parse Excel file
                 const workbook = XLSX.read(data, { type: 'array' });
@@ -149,10 +163,22 @@ export const RoleUpload = () => {
                     return obj;
                   }, {} as any);
                 });
-                resolve(roles.filter(role => 
-                  role.title || role.name || role['Role Title'] || role['Position'] || 
-                  role['Job Title'] || role['Role Name'] || role['Current Position']
-                ));
+                console.log('Excel headers found:', headers);
+                console.log('Sample role data:', roles.slice(0, 2));
+                
+                // More flexible column name matching
+                const titleColumns = ['title', 'name', 'role title', 'position', 'job title', 'role name', 
+                                    'current position', 'role', 'designation', 'job role', 'function',
+                                    'Title', 'Name', 'Role Title', 'Position', 'Job Title', 'Role Name',
+                                    'Current Position', 'Role', 'Designation', 'Job Role', 'Function'];
+                
+                const filteredRoles = roles.filter(role => {
+                  // Check if any title column exists and has a value
+                  return titleColumns.some(col => role[col] && String(role[col]).trim().length > 0);
+                });
+                
+                console.log(`Found ${filteredRoles.length} valid roles out of ${roles.length} total rows`);
+                resolve(filteredRoles);
               } else {
                 reject(new Error('Unsupported file format. Please use JSON, CSV, or Excel files.'));
               }
