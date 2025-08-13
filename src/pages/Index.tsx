@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Index = () => {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
@@ -335,7 +336,33 @@ const Index = () => {
                           <h2>Role Upload Dialog</h2>
                           <p>Upload and standardize role catalogs using AI</p>
                         </div>
-                         <RoleUploadFlexible />
+                         <div>
+                           <RoleUploadFlexible />
+                           <hr className="my-4" />
+                           <div style={{border: '1px solid #ccc', padding: '10px', margin: '10px 0'}}>
+                             <h4>Debug: Test Edge Function</h4>
+                             <button onClick={async () => {
+                               console.log('Testing function...');
+                               try {
+                                 const response = await fetch('https://nwohehoountzfudzygqg.supabase.co/functions/v1/flexible-role-upload', {
+                                   method: 'POST',
+                                   headers: {
+                                     'Content-Type': 'application/json',
+                                     'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+                                     'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im53b2hlaG9vdW50emZ1ZHp5Z3FnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5ODYwODgsImV4cCI6MjA2NzU2MjA4OH0.8MBoQn_Hs4uMf6ctCLcMr_vBqDAQ_YbglLYV9bet5pM'
+                                   },
+                                   body: JSON.stringify({ action: 'test' })
+                                 });
+                                 const result = await response.text();
+                                 console.log('Function test result:', result);
+                                 alert(`Function response: ${result}`);
+                               } catch (err) {
+                                 console.error('Function test error:', err);
+                                 alert(`Function error: ${err.message}`);
+                               }
+                             }}>Test Function</button>
+                           </div>
+                         </div>
                       </DialogContent>
               </Dialog>
               

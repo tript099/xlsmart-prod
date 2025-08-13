@@ -19,6 +19,18 @@ serve(async (req) => {
   try {
     const { action, sessionName, excelData, sessionId } = await req.json();
     
+    // Test endpoint
+    if (action === 'test') {
+      return new Response(JSON.stringify({
+        success: true,
+        message: 'Edge function is working',
+        timestamp: new Date().toISOString(),
+        hasOpenAI: !!Deno.env.get('OPENAI_API_KEY')
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
     if (action === 'upload') {
       console.log('Starting flexible role upload for session:', sessionName);
       console.log('Received', excelData.length, 'Excel files');
