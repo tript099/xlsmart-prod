@@ -23,6 +23,14 @@ serve(async (req) => {
       console.log('Starting flexible role upload for session:', sessionName);
       console.log('Received', excelData.length, 'Excel files');
 
+      // Get current user ID from request headers
+      const authHeader = req.headers.get('authorization');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader?.replace('Bearer ', '') || '');
+      
+      if (userError || !user) {
+        throw new Error('Authentication required');
+      }
+
       // Create upload session with JSON storage
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
@@ -32,6 +40,7 @@ serve(async (req) => {
           temp_table_names: [], // Not using actual tables
           total_rows: excelData.reduce((sum: number, file: any) => sum + file.rows.length, 0),
           status: 'analyzing',
+          created_by: user.id,
           ai_analysis: {
             raw_data: excelData // Store all Excel data as JSON
           }
@@ -56,6 +65,14 @@ serve(async (req) => {
 
     } else if (action === 'standardize') {
       console.log('Starting AI standardization for session:', sessionId);
+
+      // Get current user ID from request headers
+      const authHeader = req.headers.get('authorization');
+      const { data: { user }, error: userError } = await supabase.auth.getUser(authHeader?.replace('Bearer ', '') || '');
+      
+      if (userError || !user) {
+        throw new Error('Authentication required');
+      }
 
       // Get upload session
       const { data: session, error: sessionError } = await supabase
@@ -197,7 +214,8 @@ Focus on telecommunications-specific roles and create comprehensive standard rol
             core_responsibilities: standardRole.core_responsibilities || [],
             required_skills: standardRole.required_skills || [],
             keywords: standardRole.keywords || [],
-            industry_alignment: 'Telecommunications'
+            industry_alignment: 'Telecommunications',
+            created_by: user.id
           })
           .select()
           .single();
@@ -269,6 +287,7 @@ Focus on telecommunications-specific roles and create comprehensive standard rol
           file_name: session.file_names.join(', '),
           file_format: 'excel',
           upload_status: 'completed',
+          uploaded_by: user.id,
           total_roles: mappings.length,
           processed_roles: mappings.length,
           mapping_accuracy: mappings.length > 0 ? 
