@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileText, CheckCircle, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const RoleUpload = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { t } = useLanguage();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,10 +49,15 @@ export const RoleUpload = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="space-y-6 p-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-card-foreground mb-2">{t('feature.upload.title')}</h2>
+        <p className="text-muted-foreground">{t('feature.upload.description')}</p>
+      </div>
+
+      <Card className="border-border bg-card">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-card-foreground">
             <Upload className="h-5 w-5 text-primary" />
             Bulk Role Upload & Standardization
           </CardTitle>
@@ -58,29 +66,29 @@ export const RoleUpload = () => {
           {/* Source Selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="source">Source Company</Label>
+              <Label htmlFor="source" className="text-card-foreground">Source Company</Label>
               <Select>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue placeholder="Select source company" />
                 </SelectTrigger>
-                <SelectContent className="z-50" sideOffset={5} alignOffset={0}>
-                  <SelectItem value="xl">XL Axiata</SelectItem>
-                  <SelectItem value="smart">SMART Telecom</SelectItem>
-                  <SelectItem value="both">Both Companies</SelectItem>
+                <SelectContent className="z-50 bg-popover border-border" sideOffset={5} alignOffset={0}>
+                  <SelectItem value="xl" className="text-popover-foreground hover:bg-accent">XL Axiata</SelectItem>
+                  <SelectItem value="smart" className="text-popover-foreground hover:bg-accent">SMART Telecom</SelectItem>
+                  <SelectItem value="both" className="text-popover-foreground hover:bg-accent">Both Companies</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="format">File Format</Label>
+              <Label htmlFor="format" className="text-card-foreground">File Format</Label>
               <Select>
-                <SelectTrigger>
+                <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue placeholder="Select file format" />
                 </SelectTrigger>
-                <SelectContent className="z-50" sideOffset={5} alignOffset={0}>
-                  <SelectItem value="excel">Excel (.xlsx)</SelectItem>
-                  <SelectItem value="csv">CSV (.csv)</SelectItem>
-                  <SelectItem value="json">JSON (.json)</SelectItem>
+                <SelectContent className="z-50 bg-popover border-border" sideOffset={5} alignOffset={0}>
+                  <SelectItem value="excel" className="text-popover-foreground hover:bg-accent">Excel (.xlsx)</SelectItem>
+                  <SelectItem value="csv" className="text-popover-foreground hover:bg-accent">CSV (.csv)</SelectItem>
+                  <SelectItem value="json" className="text-popover-foreground hover:bg-accent">JSON (.json)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -88,7 +96,7 @@ export const RoleUpload = () => {
 
           {/* File Upload */}
           <div className="space-y-4">
-            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+            <div className="border-2 border-dashed border-border rounded-lg p-6 text-center bg-background">
               <input
                 type="file"
                 id="file-upload"
@@ -101,7 +109,7 @@ export const RoleUpload = () => {
                 className="cursor-pointer flex flex-col items-center space-y-2"
               >
                 <FileText className="h-12 w-12 text-muted-foreground" />
-                <div className="text-lg font-medium">
+                <div className="text-lg font-medium text-foreground">
                   {selectedFile ? selectedFile.name : "Choose file to upload"}
                 </div>
                 <div className="text-sm text-muted-foreground">
@@ -112,10 +120,10 @@ export const RoleUpload = () => {
 
             {selectedFile && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg border border-border">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    <span className="text-sm font-medium">{selectedFile.name}</span>
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-card-foreground">{selectedFile.name}</span>
                     <span className="text-xs text-muted-foreground">
                       ({(selectedFile.size / 1024).toFixed(1)} KB)
                     </span>
@@ -131,11 +139,11 @@ export const RoleUpload = () => {
 
                 {uploadStatus === 'processing' && (
                   <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm text-card-foreground">
                       <span>Processing roles...</span>
                       <span>{uploadProgress}%</span>
                     </div>
-                    <Progress value={uploadProgress} />
+                    <Progress value={uploadProgress} className="bg-muted" />
                   </div>
                 )}
 
@@ -153,14 +161,14 @@ export const RoleUpload = () => {
 
                 <div className="flex gap-2">
                   {uploadStatus === 'idle' && (
-                    <Button onClick={simulateUpload} disabled={isUploading}>
+                    <Button onClick={simulateUpload} disabled={isUploading} className="xl-button-primary">
                       Start Processing
                     </Button>
                   )}
                   
                   {uploadStatus === 'completed' && (
                     <>
-                      <Button>Review Mappings</Button>
+                      <Button className="xl-button-primary">Review Mappings</Button>
                       <Button variant="outline" onClick={resetUpload}>
                         Upload Another File
                       </Button>
@@ -181,9 +189,9 @@ export const RoleUpload = () => {
 
       {/* Mapping Results Preview */}
       {uploadStatus === 'completed' && (
-        <Card>
+        <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle>Role Mapping Results</CardTitle>
+            <CardTitle className="text-card-foreground">Role Mapping Results</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -202,7 +210,7 @@ export const RoleUpload = () => {
                 </div>
               </div>
               
-              <Button className="w-full">
+              <Button className="w-full xl-button-primary">
                 Proceed to Job Description Generation
               </Button>
             </div>
