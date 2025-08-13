@@ -83,10 +83,21 @@ serve(async (req) => {
     console.log(`Processing ${xlRoles?.length || 0} XL roles and ${smartRoles?.length || 0} Smart roles`);
 
     // Update session status
-    await supabase
+    const { error: updateError } = await supabase
       .from('xlsmart_upload_sessions')
       .update({ status: 'standardizing' })
       .eq('id', sessionId);
+
+    if (updateError) {
+      console.error('Error updating session status:', updateError);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: `Failed to update session: ${updateError.message}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Create AI prompt
     const prompt = `Analyze these role data from XL and Smart sources and create standardized telecommunications roles:
@@ -193,14 +204,32 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
     }
 
     // Get user from session
-    const { data: session } = await supabase
+    const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .select('created_by')
       .eq('id', sessionId)
-      .single();
+      .maybeSingle();
+
+    if (sessionError) {
+      console.error('Error fetching session:', sessionError);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: `Failed to fetch session: ${sessionError.message}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     if (!session) {
-      throw new Error('Session not found');
+      console.error('Session not found:', sessionId);
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: 'Session not found' 
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`Creating ${analysis.standardRoles.length} standard roles...`);
@@ -218,7 +247,13 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
     if (rolesError) {
       console.error('Error creating standard roles:', rolesError);
-      throw rolesError;
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: `Failed to create standard roles: ${rolesError.message}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`Creating ${analysis.mappings.length} role mappings...`);
@@ -231,11 +266,17 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
 
     if (mappingsError) {
       console.error('Error creating mappings:', mappingsError);
-      throw mappingsError;
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: `Failed to create mappings: ${mappingsError.message}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Update session with completion
-    await supabase
+    const { error: finalUpdateError } = await supabase
       .from('xlsmart_upload_sessions')
       .update({ 
         status: 'completed',
@@ -247,6 +288,11 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
         }
       })
       .eq('id', sessionId);
+
+    if (finalUpdateError) {
+      console.error('Error updating session completion:', finalUpdateError);
+      // Don't return error here since the main work is done
+    }
 
     console.log('Role standardization completed successfully');
 
