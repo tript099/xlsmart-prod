@@ -397,7 +397,7 @@ export const RoleUpload = () => {
                     <Button 
                       onClick={processRoleStandardization} 
                       disabled={isUploading || !xlFile || !smartFile || !fileFormat} 
-                      className="xl-button-primary"
+                      className="xlsmart-button-primary"
                     >
                       <Zap className="mr-2 h-4 w-4" />
                       Create XLSMART Role Catalog

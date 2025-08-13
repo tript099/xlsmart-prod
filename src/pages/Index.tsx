@@ -89,38 +89,40 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* XL-style Header with Gradient */}
-      <header className="xl-gradient-bg text-white">
+      {/* XLSMART Header with Official Gradient */}
+      <header className="xlsmart-gradient-bg text-white">
           <div className="container mx-auto px-6 py-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  <Smartphone className="h-8 w-8" />
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-white/10 rounded-xl backdrop-blur-sm">
+                    <Smartphone className="h-8 w-8 text-white" />
+                  </div>
                   <div>
-                    <h1 className="text-3xl font-bold">{t('platform.title')}</h1>
-                    <p className="text-blue-100 text-sm">{t('platform.subtitle')}</p>
+                    <h1 className="text-4xl font-bold">XLSMART</h1>
+                    <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform</p>
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center gap-4">
                 <LanguageToggle />
-                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                  {t('header.badge')}
+                <Badge variant="secondary" className="bg-white/15 text-white border-white/20 backdrop-blur-sm">
+                  AI Platform
                 </Badge>
-                <Button className="xl-button-teal">
-                  {t('header.cta')}
+                <Button className="xlsmart-button-secondary shadow-xl">
+                  Get Started
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
             </div>
             
-            <div className="mt-8 space-y-2">
-              <h2 className="text-2xl font-light">
-                {t('platform.description')} <span className="font-semibold"></span>
+            <div className="mt-12 space-y-4">
+              <h2 className="text-3xl font-light">
+                Revolutionizing HR with <span className="font-bold text-white">Artificial Intelligence</span>
               </h2>
-              <p className="text-blue-100 text-lg max-w-2xl">
-                {t('platform.tagline')}
+              <p className="text-white/80 text-xl max-w-3xl leading-relaxed">
+                Streamline role standardization, skill assessment, and career development with our AI-powered platform built for the telecommunications industry.
               </p>
             </div>
           </div>
@@ -139,40 +141,40 @@ const Index = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={feature.id} className="xl-card group cursor-pointer relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-bl-full"></div>
+              <Card key={feature.id} className="xlsmart-card group cursor-pointer relative overflow-hidden hover:scale-105">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-primary/10 to-accent/10 rounded-bl-3xl"></div>
                 
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
-                    <div className="p-3 bg-blue-50 rounded-xl">
-                      <feature.icon className="h-6 w-6 text-blue-600" />
+                    <div className="p-4 bg-primary/10 rounded-2xl group-hover:bg-primary/20 transition-colors">
+                      <feature.icon className="h-7 w-7 text-primary group-hover:text-primary/80" />
                     </div>
                     <Badge 
                       variant="outline" 
-                      className={`text-xs ${
-                        feature.badge === 'AI' ? 'border-cyan-200 text-cyan-700 bg-cyan-50' :
-                        feature.badge === 'Core' ? 'border-blue-200 text-blue-700 bg-blue-50' :
-                        feature.badge === 'Analytics' ? 'border-purple-200 text-purple-700 bg-purple-50' :
-                        'border-gray-200 text-gray-700 bg-gray-50'
+                      className={`text-xs font-medium border-2 ${
+                        feature.badge === 'AI' ? 'border-accent/30 text-accent bg-accent/10' :
+                        feature.badge === 'Core' ? 'border-primary/30 text-primary bg-primary/10' :
+                        feature.badge === 'Analytics' ? 'border-purple-500/30 text-purple-600 bg-purple-50' :
+                        'border-muted-foreground/30 text-muted-foreground bg-muted/10'
                       }`}
                     >
                       {feature.badge}
                     </Badge>
                   </div>
-                  <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                  <CardTitle className="text-xl font-bold text-card-foreground group-hover:text-primary transition-colors duration-300">
                     {feature.title}
                   </CardTitle>
                 </CardHeader>
                 
                 <CardContent className="space-y-4">
-                  <p className="text-gray-600 text-sm leading-relaxed">
+                  <p className="text-muted-foreground text-sm leading-relaxed">
                     {feature.description}
                   </p>
                   
                   {feature.dialogContent ? (
                     <Dialog open={activeDialog === feature.id} onOpenChange={(open) => setActiveDialog(open ? feature.id : null)}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full group-hover:xl-blue-gradient group-hover:text-white transition-all duration-200">
+                        <Button variant="outline" className="w-full group-hover:xlsmart-primary-gradient group-hover:text-white group-hover:border-transparent transition-all duration-300 shadow-sm hover:shadow-md">
                           {feature.id === 'upload' ? t('feature.upload.button') : t('feature.chat.button')}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
@@ -184,7 +186,7 @@ const Index = () => {
                    ) : (
                     <Button 
                       variant="outline" 
-                      className="w-full group-hover:xl-blue-gradient group-hover:text-white transition-all duration-200"
+                      className="w-full group-hover:xlsmart-primary-gradient group-hover:text-white group-hover:border-transparent transition-all duration-300 shadow-sm hover:shadow-md"
                       onClick={() => {
                         if (feature.id === 'jd-generator' || feature.id === 'assessment' || feature.id === 'mobility' || feature.id === 'development') {
                           toast({
@@ -215,11 +217,11 @@ const Index = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {stats.map((stat, index) => (
-              <Card key={index} className="xl-card text-center">
+              <Card key={index} className="xlsmart-card text-center hover:scale-105">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center space-y-3">
-                    <div className={`p-3 rounded-full bg-gradient-to-br ${
-                      index % 2 === 0 ? 'from-blue-500 to-blue-600' : 'from-cyan-500 to-cyan-600'
+                    <div className={`p-4 rounded-2xl bg-gradient-to-br ${
+                      index % 2 === 0 ? 'from-primary to-primary/80' : 'from-accent to-accent/80'
                     }`}>
                       <stat.icon className="h-6 w-6 text-white" />
                     </div>
@@ -239,21 +241,21 @@ const Index = () => {
         </section>
 
         {/* CTA Section */}
-        <section className="xl-gradient-bg rounded-2xl p-8 text-white text-center">
+        <section className="xlsmart-gradient-bg rounded-3xl p-12 text-white text-center shadow-2xl">
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-bold mb-4">{t('cta.title')}</h2>
-              <p className="text-blue-100 text-lg max-w-2xl mx-auto">
-                {t('cta.description')}
+              <h2 className="text-4xl font-bold mb-6">Ready to Transform Your HR?</h2>
+              <p className="text-white/90 text-xl max-w-3xl mx-auto leading-relaxed">
+                Join the future of human resources with AI-powered role standardization, skills assessment, and career development planning.
               </p>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <Dialog open={activeDialog === 'quick-upload'} onOpenChange={(open) => setActiveDialog(open ? 'quick-upload' : null)}>
                 <DialogTrigger asChild>
-                  <Button size="lg" className="xl-button-teal px-8">
-                    <Upload className="mr-2 h-5 w-5" />
-                    {t('cta.upload')}
+                  <Button size="lg" className="xlsmart-button-secondary px-12 py-4 text-lg shadow-2xl">
+                    <Upload className="mr-3 h-6 w-6" />
+                    Upload Role Catalogs
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -263,9 +265,9 @@ const Index = () => {
               
               <Dialog open={activeDialog === 'quick-chat'} onOpenChange={(open) => setActiveDialog(open ? 'quick-chat' : null)}>
                 <DialogTrigger asChild>
-                  <Button size="lg" variant="outline" className="px-8 bg-white/10 border-white/30 text-white hover:bg-white/20">
-                    <MessageCircle className="mr-2 h-5 w-5" />
-                    {t('cta.chat')}
+                  <Button size="lg" variant="outline" className="px-12 py-4 text-lg bg-white/10 border-white/30 text-white hover:bg-white/20 hover:scale-105 transition-all shadow-xl backdrop-blur-sm">
+                    <MessageCircle className="mr-3 h-6 w-6" />
+                    Try AI Assistant
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">

@@ -118,7 +118,7 @@ export const AIJobDescriptionGenerator = () => {
           <Button 
             onClick={generateJobDescription} 
             disabled={isGenerating || !roleTitle || !department || !level}
-            className="w-full xl-button-primary"
+            className="w-full xlsmart-button-primary"
           >
             <Zap className="mr-2 h-4 w-4" />
             {isGenerating ? "Generating..." : "Generate Job Description"}

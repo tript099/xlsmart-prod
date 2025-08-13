@@ -131,7 +131,7 @@ export const AISkillsAssessment = () => {
           <Button 
             onClick={runAssessment} 
             disabled={isAssessing || !selectedEmployee || !selectedRole}
-            className="w-full xl-button-primary"
+            className="w-full xlsmart-button-primary"
           >
             <Brain className="mr-2 h-4 w-4" />
             {isAssessing ? "Analyzing..." : "Run AI Assessment"}
