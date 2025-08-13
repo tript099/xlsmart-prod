@@ -29,7 +29,7 @@ export const RoleUpload = () => {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
   const [xlFile, setXlFile] = useState<File | null>(null);
   const [smartFile, setSmartFile] = useState<File | null>(null);
-  const [industryFile, setIndustryFile] = useState<File | null>(null);
+  const [includeIndustryStandards, setIncludeIndustryStandards] = useState(false);
   const [fileFormat, setFileFormat] = useState<string>('');
   const [catalogId, setCatalogId] = useState<string | null>(null);
   const [mappingResults, setMappingResults] = useState<RoleMappingResult[]>([]);
@@ -37,21 +37,20 @@ export const RoleUpload = () => {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, fileType: 'xl' | 'smart' | 'industry') => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, fileType: 'xl' | 'smart') => {
     const file = event.target.files?.[0];
     if (file) {
       if (fileType === 'xl') setXlFile(file);
       else if (fileType === 'smart') setSmartFile(file);
-      else if (fileType === 'industry') setIndustryFile(file);
       setUploadStatus('idle');
     }
   };
 
   const processRoleStandardization = async () => {
-    if (!xlFile || !smartFile || !industryFile || !fileFormat) {
+    if (!xlFile || !smartFile || !fileFormat) {
       toast({
         title: "Missing Files",
-        description: "Please upload all 3 files (XL roles, Smart roles, and Industry standard roles) before processing.",
+        description: "Please upload both XL and SMART role files before processing.",
         variant: "destructive"
       });
       return;
@@ -66,10 +65,10 @@ export const RoleUpload = () => {
       const { data: catalogData, error: catalogError } = await supabase
         .from('xlsmart_role_catalogs')
         .insert({
-          source_company: 'XLSMART',
-          file_name: `${xlFile.name}, ${smartFile.name}, ${industryFile.name}`,
+          source_company: includeIndustryStandards ? 'XLSMART+Industry' : 'XLSMART',
+          file_name: includeIndustryStandards ? `${xlFile.name}, ${smartFile.name}, AI Industry Standards` : `${xlFile.name}, ${smartFile.name}`,
           file_format: fileFormat,
-          file_size: xlFile.size + smartFile.size + industryFile.size,
+          file_size: xlFile.size + smartFile.size,
           upload_status: 'processing',
           uploaded_by: '00000000-0000-0000-0000-000000000000' // Should be auth.uid()
         })
@@ -128,7 +127,7 @@ export const RoleUpload = () => {
         body: {
           xlRoles: simulatedRoleData,
           smartRoles: simulatedRoleData,
-          industryRoles: simulatedRoleData,
+          includeIndustryStandards: includeIndustryStandards,
           catalogId: catalogData.id
         }
       });
@@ -219,7 +218,7 @@ export const RoleUpload = () => {
   const resetUpload = () => {
     setXlFile(null);
     setSmartFile(null);
-    setIndustryFile(null);
+    setIncludeIndustryStandards(false);
     setUploadProgress(0);
     setUploadStatus('idle');
     setIsUploading(false);
@@ -239,7 +238,7 @@ export const RoleUpload = () => {
     <div className="space-y-6 p-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-card-foreground mb-2">AI-Powered Role Standardization</h2>
-        <p className="text-muted-foreground">Upload XL, SMART, and Industry standard role catalogs to create XLSMART standard roles using AI</p>
+        <p className="text-muted-foreground">Upload XL and SMART role catalogs, optionally include AI-generated industry standards to create XLSMART roles</p>
       </div>
 
       <Card className="border-border bg-card">
@@ -250,26 +249,43 @@ export const RoleUpload = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* File Format Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="format" className="text-card-foreground">File Format</Label>
-            <Select value={fileFormat} onValueChange={setFileFormat}>
-              <SelectTrigger className="bg-background border-border text-foreground">
-                <SelectValue placeholder="Select file format for all uploads" />
-              </SelectTrigger>
-              <SelectContent className="z-50 bg-popover border-border" sideOffset={5} alignOffset={0}>
-                <SelectItem value="excel" className="text-popover-foreground hover:bg-accent">Excel (.xlsx)</SelectItem>
-                <SelectItem value="csv" className="text-popover-foreground hover:bg-accent">CSV (.csv)</SelectItem>
-                <SelectItem value="json" className="text-popover-foreground hover:bg-accent">JSON (.json)</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Options */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="format" className="text-card-foreground">File Format</Label>
+              <Select value={fileFormat} onValueChange={setFileFormat}>
+                <SelectTrigger className="bg-background border-border text-foreground">
+                  <SelectValue placeholder="Select file format for uploads" />
+                </SelectTrigger>
+                <SelectContent className="z-50 bg-popover border-border" sideOffset={5} alignOffset={0}>
+                  <SelectItem value="excel" className="text-popover-foreground hover:bg-accent">Excel (.xlsx)</SelectItem>
+                  <SelectItem value="csv" className="text-popover-foreground hover:bg-accent">CSV (.csv)</SelectItem>
+                  <SelectItem value="json" className="text-popover-foreground hover:bg-accent">JSON (.json)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-card-foreground">Include Industry Standards</Label>
+              <div className="flex items-center space-x-2 p-3 border border-border rounded-md bg-background">
+                <input
+                  type="checkbox"
+                  id="include-industry"
+                  checked={includeIndustryStandards}
+                  onChange={(e) => setIncludeIndustryStandards(e.target.checked)}
+                  className="rounded border-border"
+                />
+                <label htmlFor="include-industry" className="text-sm text-foreground">
+                  Use AI-generated industry standards
+                </label>
+              </div>
+            </div>
           </div>
 
-          {/* Three File Upload Sections */}
+          {/* Two Required File Upload Sections */}
           <div className="space-y-6">
             {/* XL Roles Upload */}
             <div className="space-y-2">
-              <Label className="text-card-foreground font-medium">1. XL Axiata Roles</Label>
+              <Label className="text-card-foreground font-medium">1. XL Axiata Roles (Required)</Label>
               <div className="border-2 border-dashed border-border rounded-lg p-4 text-center bg-background">
                 <input
                   type="file"
@@ -289,7 +305,7 @@ export const RoleUpload = () => {
 
             {/* SMART Roles Upload */}
             <div className="space-y-2">
-              <Label className="text-card-foreground font-medium">2. SMART Telecom Roles</Label>
+              <Label className="text-card-foreground font-medium">2. SMART Telecom Roles (Required)</Label>
               <div className="border-2 border-dashed border-border rounded-lg p-4 text-center bg-background">
                 <input
                   type="file"
@@ -307,28 +323,21 @@ export const RoleUpload = () => {
               </div>
             </div>
 
-            {/* Industry Standard Roles Upload */}
-            <div className="space-y-2">
-              <Label className="text-card-foreground font-medium">3. Industry Standard Roles</Label>
-              <div className="border-2 border-dashed border-border rounded-lg p-4 text-center bg-background">
-                <input
-                  type="file"
-                  id="industry-file-upload"
-                  className="hidden"
-                  accept=".xlsx,.csv,.json"
-                  onChange={(e) => handleFileSelect(e, 'industry')}
-                />
-                <label htmlFor="industry-file-upload" className="cursor-pointer flex flex-col items-center space-y-2">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                  <div className="text-sm font-medium text-foreground">
-                    {industryFile ? industryFile.name : "Upload industry standard role catalog"}
-                  </div>
-                </label>
+            {/* Industry Standards Info */}
+            {includeIndustryStandards && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-800 mb-2">
+                  <Zap className="h-4 w-4" />
+                  <span className="font-medium">AI Industry Standards Enabled</span>
+                </div>
+                <p className="text-sm text-blue-700">
+                  AI will generate telecommunications industry standard roles and include them in the XLSMART role creation process.
+                </p>
               </div>
-            </div>
+            )}
           </div>
 
-            {(xlFile || smartFile || industryFile) && (
+            {(xlFile || smartFile) && (
               <div className="space-y-4">
                 {/* File Summary */}
                 <div className="p-4 bg-muted rounded-lg border border-border">
@@ -345,8 +354,8 @@ export const RoleUpload = () => {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={industryFile ? "text-green-600" : "text-muted-foreground"}>
-                        Industry Standards: {industryFile ? `✓ ${industryFile.name}` : "❌ Not uploaded"}
+                      <span className={includeIndustryStandards ? "text-green-600" : "text-muted-foreground"}>
+                        Industry Standards: {includeIndustryStandards ? "✓ AI-generated" : "❌ Not included"}
                       </span>
                     </div>
                   </div>
@@ -366,8 +375,9 @@ export const RoleUpload = () => {
                     </div>
                     <Progress value={uploadProgress} className="bg-muted" />
                     <div className="text-xs text-muted-foreground text-center">
-                      {uploadProgress < 30 && "Analyzing all 3 role catalogs..."}
-                      {uploadProgress >= 30 && uploadProgress < 60 && "AI merging XL, SMART, and industry roles..."}
+                      {uploadProgress < 30 && "Analyzing XL and SMART role catalogs..."}
+                      {uploadProgress >= 30 && uploadProgress < 60 && includeIndustryStandards && "AI generating industry standards..."}
+                      {uploadProgress >= 30 && uploadProgress < 60 && !includeIndustryStandards && "AI merging XL and SMART roles..."}
                       {uploadProgress >= 60 && uploadProgress < 90 && "Creating XLSMART standard roles..."}
                       {uploadProgress >= 90 && "Finalizing XLSMART catalog..."}
                     </div>
@@ -381,7 +391,7 @@ export const RoleUpload = () => {
                       <span className="font-medium">XLSMART Role Catalog Created!</span>
                     </div>
                     <p className="text-sm text-green-700 mt-1">
-                      Successfully merged {mappingResults.length} roles from 3 sources • Created unified XLSMART standard catalog • {reviewRequiredCount} mappings need review
+                      Successfully merged {mappingResults.length} roles from {includeIndustryStandards ? '3 sources (XL + SMART + AI Industry)' : '2 sources (XL + SMART)'} • Created unified XLSMART catalog • {reviewRequiredCount} mappings need review
                     </p>
                   </div>
                 )}
@@ -390,7 +400,7 @@ export const RoleUpload = () => {
                   {uploadStatus === 'idle' && (
                     <Button 
                       onClick={processRoleStandardization} 
-                      disabled={isUploading || !xlFile || !smartFile || !industryFile || !fileFormat} 
+                      disabled={isUploading || !xlFile || !smartFile || !fileFormat} 
                       className="xl-button-primary"
                     >
                       <Zap className="mr-2 h-4 w-4" />
@@ -447,7 +457,8 @@ export const RoleUpload = () => {
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <h3 className="font-semibold text-blue-800 mb-2">How XLSMART Role Creation Works:</h3>
                 <ul className="text-sm text-blue-700 space-y-1">
-                  <li>• AI analyzes role data from XL Axiata, SMART Telecom, and industry standards</li>
+                  <li>• AI analyzes role data from XL Axiata and SMART Telecom uploads</li>
+                  {includeIndustryStandards && <li>• AI generates telecommunications industry standard roles for reference</li>}
                   <li>• Merges and reconciles overlapping roles to create unified XLSMART catalog</li>
                   <li>• Creates standardized job families, levels, and titles for telecommunications industry</li>
                   <li>• Flags roles requiring manual review when sources conflict or confidence is low</li>

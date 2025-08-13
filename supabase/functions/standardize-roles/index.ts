@@ -19,9 +19,9 @@ serve(async (req) => {
   }
 
   try {
-    const { xlRoles, smartRoles, industryRoles, catalogId } = await req.json();
+    const { xlRoles, smartRoles, includeIndustryStandards, catalogId } = await req.json();
     
-    console.log('Processing XLSMART role creation for:', { catalogId, xlCount: xlRoles.length, smartCount: smartRoles.length, industryCount: industryRoles.length });
+    console.log('Processing XLSMART role creation for:', { catalogId, xlCount: xlRoles.length, smartCount: smartRoles.length, includeIndustry: includeIndustryStandards });
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -42,14 +42,53 @@ serve(async (req) => {
 
     const mappingResults = [];
 
-    // Step 2: Merge all role data from 3 sources
+    // Step 2: Generate industry standards if requested
+    let industryRoles = [];
+    if (includeIndustryStandards) {
+      console.log('Generating AI industry standards...');
+      
+      // Call OpenAI to generate industry standard roles
+      const industryPrompt = `Generate a comprehensive list of 15-20 telecommunications industry standard roles. Include roles across Technology, Marketing, Sales, HR, Finance, and Operations. For each role, provide: title, department, level, and brief description. Format as JSON array with objects containing: {title, department, level, description}`;
+      
+      const industryResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are an expert in telecommunications industry role standards. Always respond with valid JSON.' },
+            { role: 'user', content: industryPrompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 2000,
+        }),
+      });
+
+      if (industryResponse.ok) {
+        const industryData = await industryResponse.json();
+        try {
+          industryRoles = JSON.parse(industryData.choices[0].message.content);
+          console.log(`Generated ${industryRoles.length} AI industry standard roles`);
+        } catch (error) {
+          console.error('Failed to parse AI industry roles:', error);
+          industryRoles = [];
+        }
+      }
+    }
+
+    // Step 3: Merge all role data from available sources
     const allRoleData = [
       ...xlRoles.map(role => ({ ...role, source: 'XL' })),
       ...smartRoles.map(role => ({ ...role, source: 'SMART' })),
-      ...industryRoles.map(role => ({ ...role, source: 'Industry' }))
+      ...(includeIndustryStandards ? industryRoles.map(role => ({ ...role, source: 'Industry' })) : [])
     ];
 
-    // Step 3: Process each input role to create XLSMART standards
+    console.log(`Processing ${allRoleData.length} total roles from ${includeIndustryStandards ? 3 : 2} sources`);
+
+    // Step 4: Process each input role to create XLSMART standards
     for (const inputRole of allRoleData) {
       console.log('Processing role:', inputRole.title);
 
@@ -161,7 +200,7 @@ If confidence is below 80%, set requiresManualReview to true.
       console.log(`Mapped "${inputRole.title}" to "${matchedStandardRole.role_title}" with ${aiMapping.confidence}% confidence`);
     }
 
-    // Step 3: Insert all mappings into database
+    // Step 5: Insert all mappings into database
     const { data: insertedMappings, error: insertError } = await supabase
       .from('xlsmart_role_mappings')
       .insert(mappingResults)
@@ -171,7 +210,7 @@ If confidence is below 80%, set requiresManualReview to true.
       throw new Error(`Failed to insert mappings: ${insertError.message}`);
     }
 
-    // Step 4: Update catalog with results
+    // Step 6: Update catalog with results
     const totalRoles = mappingResults.length;
     const autoMappedCount = mappingResults.filter(m => m.mapping_status === 'auto_mapped').length;
     const averageConfidence = mappingResults.reduce((sum, m) => sum + m.mapping_confidence, 0) / totalRoles;
