@@ -78,7 +78,7 @@ export const RoleUploadNew = () => {
           file_names: files.map(f => f.name),
           temp_table_names: [],
           total_rows: parsedFiles.reduce((sum, file) => sum + file.rows.length, 0),
-          status: 'uploaded',
+          status: 'analyzing',
           created_by: user.user.id,
           ai_analysis: { raw_data: parsedFiles }
         })
