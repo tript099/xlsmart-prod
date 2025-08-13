@@ -56,7 +56,24 @@ serve(async (req) => {
       console.log('📤 Starting upload action');
       console.log('📊 Excel data received:', excelData?.length, 'files');
 
-      // Create upload session without user authentication since JWT is disabled
+      // Get user ID from JWT token
+      const authHeader = req.headers.get('authorization');
+      if (!authHeader) {
+        console.error('❌ No authorization header found');
+        throw new Error('Authorization required');
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      
+      if (authError || !user) {
+        console.error('❌ Authentication failed:', authError);
+        throw new Error('Authentication failed');
+      }
+
+      console.log('✅ User authenticated:', user.id);
+
+      // Create upload session with created_by field
       console.log('💾 Creating upload session...');
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
@@ -66,6 +83,7 @@ serve(async (req) => {
           temp_table_names: [], // Not using actual tables
           total_rows: excelData.reduce((sum: number, file: any) => sum + file.rows.length, 0),
           status: 'analyzing',
+          created_by: user.id,
           ai_analysis: {
             raw_data: excelData // Store all Excel data as JSON
           }
@@ -197,6 +215,16 @@ OUTPUT FORMAT (JSON only):
       // Create standard roles and mappings in database
       console.log('💾 Saving standardized roles to database...');
       
+      // Get user ID for creating standard roles
+      const authHeader = req.headers.get('authorization');
+      let userId = null;
+      
+      if (authHeader) {
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user } } = await supabase.auth.getUser(token);
+        userId = user?.id;
+      }
+
       // Insert standard roles
       const { data: standardRoles, error: rolesError } = await supabase
         .from('xlsmart_standard_roles')
@@ -207,7 +235,8 @@ OUTPUT FORMAT (JSON only):
             job_family: role.roleFamily,
             role_level: role.seniorityBand,
             role_category: role.department,
-            standard_description: role.description
+            standard_description: role.description,
+            created_by: userId || session.created_by
           }))
         )
         .select();
