@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, Search, Star, TrendingUp, Users } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { BarChart3, Search, Star, TrendingUp, Users, Grid3X3, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Skill {
@@ -23,6 +24,7 @@ export const SkillsListDetails = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const pageSize = 12;
 
   useEffect(() => {
@@ -79,12 +81,32 @@ export const SkillsListDetails = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-6">
-        <BarChart3 className="h-6 w-6 text-primary" />
-        <h2 className="text-2xl font-bold">Skills Inventory</h2>
-        <Badge variant="secondary" className="ml-auto">
-          {skills.length} Total Skills
-        </Badge>
+      {/* Header with View Toggle */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <BarChart3 className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold">Skills Inventory</h2>
+          <Badge variant="secondary">
+            {skills.length} Total Skills
+          </Badge>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === 'card' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('card')}
+          >
+            <Grid3X3 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filter */}
@@ -120,67 +142,145 @@ export const SkillsListDetails = () => {
         </div>
       </div>
 
-      {/* Skills Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {paginatedSkills.map((skill) => (
-          <Card key={skill.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-accent/10 rounded-lg">
-                    <Star className="h-4 w-4 text-accent" />
+      {/* Skills Grid or List */}
+      {viewMode === 'card' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {paginatedSkills.map((skill) => (
+            <Card key={skill.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-accent/10 rounded-lg">
+                      <Star className="h-4 w-4 text-accent" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-semibold">
+                        {skill.name}
+                      </CardTitle>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-base font-semibold">
-                      {skill.name}
-                    </CardTitle>
-                  </div>
+                  {skill.usage_count && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="h-3 w-3" />
+                      <span>{skill.usage_count}</span>
+                    </div>
+                  )}
                 </div>
-                {skill.usage_count && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    <span>{skill.usage_count}</span>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {skill.category && (
+                    <Badge variant="secondary" className="text-xs">
+                      {skill.category}
+                    </Badge>
+                  )}
+                  {skill.proficiency_level && (
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${
+                        skill.proficiency_level === 'Expert' ? 'border-green-500 text-green-600' :
+                        skill.proficiency_level === 'Advanced' ? 'border-blue-500 text-blue-600' :
+                        skill.proficiency_level === 'Intermediate' ? 'border-yellow-500 text-yellow-600' :
+                        'border-gray-500 text-gray-600'
+                      }`}
+                    >
+                      {skill.proficiency_level}
+                    </Badge>
+                  )}
+                </div>
+                
+                {skill.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-3">
+                    {skill.description}
+                  </p>
+                )}
+                
+                {skill.created_at && (
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    Added: {new Date(skill.created_at).toLocaleDateString()}
                   </div>
                 )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex flex-wrap gap-2">
-                {skill.category && (
-                  <Badge variant="secondary" className="text-xs">
-                    {skill.category}
-                  </Badge>
-                )}
-                {skill.proficiency_level && (
-                  <Badge 
-                    variant="outline" 
-                    className={`text-xs ${
-                      skill.proficiency_level === 'Expert' ? 'border-green-500 text-green-600' :
-                      skill.proficiency_level === 'Advanced' ? 'border-blue-500 text-blue-600' :
-                      skill.proficiency_level === 'Intermediate' ? 'border-yellow-500 text-yellow-600' :
-                      'border-gray-500 text-gray-600'
-                    }`}
-                  >
-                    {skill.proficiency_level}
-                  </Badge>
-                )}
-              </div>
-              
-              {skill.description && (
-                <p className="text-xs text-muted-foreground line-clamp-3">
-                  {skill.description}
-                </p>
-              )}
-              
-              {skill.created_at && (
-                <div className="text-xs text-muted-foreground pt-2 border-t">
-                  Added: {new Date(skill.created_at).toLocaleDateString()}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Skill Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Proficiency</TableHead>
+              <TableHead>Usage</TableHead>
+              <TableHead>Added</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedSkills.map((skill) => (
+              <TableRow key={skill.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-accent/10 rounded-lg">
+                      <Star className="h-3 w-3 text-accent" />
+                    </div>
+                    <div>
+                      <div className="font-medium">{skill.name}</div>
+                      {skill.description && (
+                        <div className="text-sm text-muted-foreground line-clamp-1">
+                          {skill.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {skill.category ? (
+                    <Badge variant="secondary" className="text-xs">
+                      {skill.category}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {skill.proficiency_level ? (
+                    <Badge 
+                      variant="outline" 
+                      className={`text-xs ${
+                        skill.proficiency_level === 'Expert' ? 'border-green-500 text-green-600' :
+                        skill.proficiency_level === 'Advanced' ? 'border-blue-500 text-blue-600' :
+                        skill.proficiency_level === 'Intermediate' ? 'border-yellow-500 text-yellow-600' :
+                        'border-gray-500 text-gray-600'
+                      }`}
+                    >
+                      {skill.proficiency_level}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {skill.usage_count ? (
+                    <div className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      <span>{skill.usage_count}</span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">0</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {skill.created_at ? (
+                    <span className="text-sm">{new Date(skill.created_at).toLocaleDateString()}</span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {/* Empty State */}
       {filteredSkills.length === 0 && (

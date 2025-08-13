@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Search, User, MapPin, Mail, Phone } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Users, Search, User, MapPin, Mail, Phone, Grid3X3, List } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Employee {
@@ -25,6 +26,7 @@ export const EmployeeListDetails = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const pageSize = 10;
 
   useEffect(() => {
@@ -73,12 +75,32 @@ export const EmployeeListDetails = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-6">
-        <Users className="h-6 w-6 text-primary" />
-        <h2 className="text-2xl font-bold">Employee Directory</h2>
-        <Badge variant="secondary" className="ml-auto">
-          {employees.length} Total Employees
-        </Badge>
+      {/* Header with View Toggle */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Users className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold">Employee Directory</h2>
+          <Badge variant="secondary">
+            {employees.length} Total Employees
+          </Badge>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant={viewMode === 'card' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('card')}
+          >
+            <Grid3X3 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Search */}
@@ -92,59 +114,123 @@ export const EmployeeListDetails = () => {
         />
       </div>
 
-      {/* Employee List */}
-      <div className="space-y-4">
-        {paginatedEmployees.map((employee) => (
-          <Card key={employee.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-primary/10 rounded-full">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-lg">{employee.first_name} {employee.last_name}</h3>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{employee.current_position}</Badge>
-                        {employee.current_department && (
-                          <Badge variant="secondary">{employee.current_department}</Badge>
+      {/* Employee List - Card or List View */}
+      {viewMode === 'card' ? (
+        <div className="space-y-4">
+          {paginatedEmployees.map((employee) => (
+            <Card key={employee.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-primary/10 rounded-full">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="space-y-2">
+                      <h3 className="font-semibold text-lg">{employee.first_name} {employee.last_name}</h3>
+                      <div className="space-y-1 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{employee.current_position}</Badge>
+                          {employee.current_department && (
+                            <Badge variant="secondary">{employee.current_department}</Badge>
+                          )}
+                        </div>
+                        {employee.current_location && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span>{employee.current_location}</span>
+                          </div>
+                        )}
+                        {employee.email && (
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            <span>{employee.email}</span>
+                          </div>
+                        )}
+                        {employee.phone && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            <span>{employee.phone}</span>
+                          </div>
                         )}
                       </div>
-                      {employee.current_location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          <span>{employee.current_location}</span>
-                        </div>
-                      )}
-                      {employee.email && (
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          <span>{employee.email}</span>
-                        </div>
-                      )}
-                      {employee.phone && (
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          <span>{employee.phone}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
+                  {employee.hire_date && (
+                    <div className="text-right text-sm text-muted-foreground">
+                      <span>Hired</span>
+                      <div className="font-medium">
+                        {new Date(employee.hire_date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {employee.hire_date && (
-                  <div className="text-right text-sm text-muted-foreground">
-                    <span>Hired</span>
-                    <div className="font-medium">
-                      {new Date(employee.hire_date).toLocaleDateString()}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Employee</TableHead>
+              <TableHead>Position</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Hire Date</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedEmployees.map((employee) => (
+              <TableRow key={employee.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <User className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="font-medium">{employee.first_name} {employee.last_name}</div>
+                      <div className="text-sm text-muted-foreground">{employee.employee_number}</div>
                     </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{employee.current_position}</Badge>
+                </TableCell>
+                <TableCell>
+                  {employee.current_department ? (
+                    <Badge variant="secondary">{employee.current_department}</Badge>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1 text-sm">
+                    {employee.email && (
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-3 w-3" />
+                        <span>{employee.email}</span>
+                      </div>
+                    )}
+                    {employee.phone && (
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-3 w-3" />
+                        <span>{employee.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {employee.hire_date ? (
+                    <span>{new Date(employee.hire_date).toLocaleDateString()}</span>
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
