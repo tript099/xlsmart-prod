@@ -25,7 +25,8 @@ serve(async (req) => {
         success: true,
         message: 'Edge function is working with LiteLLM',
         timestamp: new Date().toISOString(),
-        liteLLMEndpoint: 'https://proxyllm.ximplify.id'
+        liteLLMEndpoint: 'https://proxyllm.ximplify.id',
+        hasLiteLLMKey: !!Deno.env.get('OPENAI_API_KEY')
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -113,7 +114,12 @@ serve(async (req) => {
         throw new Error('Upload session not found');
       }
 
-      // LiteLLM proxy is already configured - no API key needed
+      // Get LiteLLM API key
+      const liteLLMApiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!liteLLMApiKey) {
+        throw new Error('LiteLLM API key not configured');
+      }
+      
       console.log('Using LiteLLM proxy for AI processing');
 
       // Update status
@@ -193,6 +199,7 @@ Focus on telecommunications-specific roles and create comprehensive standard rol
       const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer ${liteLLMApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
