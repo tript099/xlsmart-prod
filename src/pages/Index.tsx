@@ -20,10 +20,14 @@ import { AIChat } from "@/components/AIChat";
 import { RoleUpload } from "@/components/RoleUpload";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAIStats } from "@/components/AIStatsProvider";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const { t } = useLanguage();
+  const aiStats = useAIStats();
+  const { toast } = useToast();
 
   const features = [
     {
@@ -77,10 +81,10 @@ const Index = () => {
   ];
 
   const stats = [
-    { value: "2,847", label: t('stats.employees'), icon: Users, color: "text-blue-600" },
-    { value: "156", label: t('stats.roles'), icon: Target, color: "text-cyan-600" },
-    { value: "89%", label: t('stats.accuracy'), icon: Zap, color: "text-blue-600" },
-    { value: "342", label: t('stats.skills'), icon: BarChart3, color: "text-cyan-600" }
+    { value: aiStats.loading ? "..." : aiStats.employees, label: t('stats.employees'), icon: Users, color: "text-blue-600" },
+    { value: aiStats.loading ? "..." : aiStats.roles, label: t('stats.roles'), icon: Target, color: "text-cyan-600" },
+    { value: aiStats.loading ? "..." : aiStats.accuracy, label: t('stats.accuracy'), icon: Zap, color: "text-blue-600" },
+    { value: aiStats.loading ? "..." : aiStats.skills, label: t('stats.skills'), icon: BarChart3, color: "text-cyan-600" }
   ];
 
   return (
@@ -177,12 +181,23 @@ const Index = () => {
                         {feature.id === 'upload' ? <RoleUpload /> : <AIChat />}
                       </DialogContent>
                     </Dialog>
-                  ) : (
-                    <Button variant="outline" className="w-full group-hover:xl-blue-gradient group-hover:text-white transition-all duration-200">
+                   ) : (
+                    <Button 
+                      variant="outline" 
+                      className="w-full group-hover:xl-blue-gradient group-hover:text-white transition-all duration-200"
+                      onClick={() => {
+                        if (feature.id === 'jd-generator' || feature.id === 'assessment' || feature.id === 'mobility' || feature.id === 'development') {
+                          toast({
+                            title: "AI Feature",
+                            description: `${feature.title} will be powered by AI engine. Feature coming soon!`
+                          });
+                        }
+                      }}
+                    >
                       {t('button.learn_more')}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
-                  )}
+                   )}
                 </CardContent>
               </Card>
             ))}

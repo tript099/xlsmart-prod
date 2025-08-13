@@ -80,53 +80,49 @@ export const RoleUpload = () => {
 
       setUploadProgress(20);
 
-      // Step 2: Simulate file parsing (in real implementation, parse the actual file)
-      const simulatedRoleData = [
-        {
-          title: "Senior Software Engineer",
-          department: "Technology",
-          level: "Senior",
-          description: "Responsible for developing and maintaining software applications"
-        },
-        {
-          title: "Marketing Manager",
-          department: "Marketing", 
-          level: "Manager",
-          description: "Manage marketing campaigns and team"
-        },
-        {
-          title: "Business Development Associate", 
-          department: "Sales",
-          level: "Associate",
-          description: "Generate new business opportunities"
-        },
-        {
-          title: "HR Specialist",
-          department: "Human Resources",
-          level: "Specialist", 
-          description: "Handle employee relations and HR processes"
-        },
-        {
-          title: "Network Engineer",
-          department: "Technology",
-          level: "Mid-level",
-          description: "Design and maintain telecommunications network infrastructure"
-        },
-        {
-          title: "Customer Success Manager",
-          department: "Customer Service",
-          level: "Manager",
-          description: "Ensure customer satisfaction and retention"
-        }
-      ];
+      // Step 2: Parse actual uploaded files
+      const parseRoleFile = async (file: File): Promise<any[]> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            try {
+              const text = e.target?.result as string;
+              if (fileFormat === 'json') {
+                resolve(JSON.parse(text));
+              } else if (fileFormat === 'csv') {
+                // Basic CSV parsing - in production, use a proper CSV parser
+                const lines = text.split('\n');
+                const headers = lines[0].split(',');
+                const roles = lines.slice(1).map(line => {
+                  const values = line.split(',');
+                  return headers.reduce((obj, header, index) => {
+                    obj[header.trim()] = values[index]?.trim() || '';
+                    return obj;
+                  }, {} as any);
+                });
+                resolve(roles.filter(role => role.title || role.name));
+              } else {
+                reject(new Error('Excel parsing not implemented - please use JSON or CSV format'));
+              }
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.onerror = () => reject(new Error('File reading failed'));
+          reader.readAsText(file);
+        });
+      };
+
+      const xlRoles = await parseRoleFile(xlFile);
+      const smartRoles = await parseRoleFile(smartFile);
 
       setUploadProgress(40);
 
       // Step 3: Call AI standardization service to create XLSMART roles
       const { data: standardizationResult, error: standardizationError } = await supabase.functions.invoke('standardize-roles', {
         body: {
-          xlRoles: simulatedRoleData,
-          smartRoles: simulatedRoleData,
+          xlRoles: xlRoles,
+          smartRoles: smartRoles,
           includeIndustryStandards: includeIndustryStandards,
           catalogId: catalogData.id
         }
