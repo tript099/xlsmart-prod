@@ -94,16 +94,13 @@ const Index = () => {
           <div className="container mx-auto px-6 py-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-3">
+                <div className="flex flex-col items-center space-y-3">
                   <img 
                     src="/xlsmart-logo.svg" 
                     alt="XLSMART Logo" 
-                    className="h-12 w-auto"
+                    className="h-16 w-auto"
                   />
-                  <div>
-                    <h1 className="text-4xl font-bold">XLSMART</h1>
-                    <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by SimplifyAI</p>
-                  </div>
+                  <p className="text-white/90 text-lg font-medium text-center">AI-Powered HR Platform by SimplifyAI</p>
                 </div>
               </div>
               
