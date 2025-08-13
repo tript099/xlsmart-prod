@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Upload, Users, FileText, Brain, TrendingUp, MessageCircle } from "lucide-react";
+import { AIChat } from "@/components/AIChat";
+import { RoleUpload } from "@/components/RoleUpload";
 
 const Index = () => {
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -34,9 +40,16 @@ const Index = () => {
               <p className="text-muted-foreground mb-4">
                 Upload XL and SMART role catalogs and auto-map to XLSMART Standard Roles
               </p>
-              <Button variant="outline" className="w-full">
-                Upload Role Catalogs
-              </Button>
+              <Dialog open={activeDialog === 'upload'} onOpenChange={(open) => setActiveDialog(open ? 'upload' : null)}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    Upload Role Catalogs
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                  <RoleUpload />
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 
@@ -88,9 +101,16 @@ const Index = () => {
               <p className="text-muted-foreground mb-4">
                 Chat with AI to tweak JDs, get recommendations, and insights
               </p>
-              <Button variant="outline" className="w-full">
-                Open Chat
-              </Button>
+              <Dialog open={activeDialog === 'chat'} onOpenChange={(open) => setActiveDialog(open ? 'chat' : null)}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    Open Chat
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <AIChat />
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 
