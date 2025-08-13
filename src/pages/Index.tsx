@@ -18,7 +18,7 @@ import {
   User
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
-import { RoleUploadFlexible } from "@/components/RoleUploadFlexible"; // Fixed component import
+import { RoleUploadNew } from "@/components/RoleUploadNew"; // Fixed component import
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
 import { EmployeeMobilityPlanningEnhanced } from "@/components/EmployeeMobilityPlanningEnhanced";
@@ -229,7 +229,7 @@ const Index = () => {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className={feature.id === 'upload' ? "max-w-4xl max-h-[80vh] overflow-y-auto" : "max-w-4xl max-h-[80vh] overflow-y-auto"}>
-                        {feature.id === 'upload' ? <RoleUploadFlexible /> : <AIChat />}
+                        {feature.id === 'upload' ? <RoleUploadNew /> : <AIChat />}
                       </DialogContent>
                     </Dialog>
                    ) : (
@@ -335,7 +335,7 @@ const Index = () => {
                           <h2>Role Upload Dialog</h2>
                           <p>Upload and standardize role catalogs using AI</p>
                         </div>
-                         <RoleUploadFlexible />
+                <RoleUploadNew />
                       </DialogContent>
               </Dialog>
               
