@@ -1,1 +1,7 @@
 project_id = "nwohehoountzfudzygqg"
+
+[functions.ai-chat]
+verify_jwt = false
+
+[functions.standardize-roles]
+verify_jwt = false

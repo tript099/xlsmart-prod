@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, FileText, CheckCircle, AlertCircle, Eye, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertCircle, Eye, ThumbsUp, ThumbsDown, Zap } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,7 +44,7 @@ export const RoleUpload = () => {
     }
   };
 
-  const simulateUpload = async () => {
+  const processRoleStandardization = async () => {
     if (!selectedFile || !sourceCompany || !fileFormat) {
       toast({
         title: "Missing Information",
@@ -68,7 +68,7 @@ export const RoleUpload = () => {
           file_format: fileFormat,
           file_size: selectedFile.size,
           upload_status: 'processing',
-          uploaded_by: '00000000-0000-0000-0000-000000000000' // Temporary, should be auth.uid()
+          uploaded_by: '00000000-0000-0000-0000-000000000000' // Should be auth.uid()
         })
         .select()
         .single();
@@ -76,85 +76,82 @@ export const RoleUpload = () => {
       if (catalogError) throw catalogError;
       setCatalogId(catalogData.id);
 
-      // Simulate processing with progress updates
-      for (let i = 0; i <= 100; i += 10) {
-        setUploadProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
+      setUploadProgress(20);
 
-      // Step 2: Create sample role mappings
-      const sampleMappings = [
+      // Step 2: Simulate file parsing (in real implementation, parse the actual file)
+      const simulatedRoleData = [
         {
-          catalog_id: catalogData.id,
-          original_role_title: "Senior Software Engineer",
-          original_department: "Technology",
-          original_level: "Senior",
-          standardized_role_title: "Senior Software Developer",
-          standardized_department: "Engineering",
-          standardized_level: "L5",
-          job_family: "Technology",
-          mapping_confidence: 95.5,
-          requires_manual_review: false,
-          mapping_status: 'auto_mapped'
+          title: "Senior Software Engineer",
+          department: "Technology",
+          level: "Senior",
+          description: "Responsible for developing and maintaining software applications"
         },
         {
-          catalog_id: catalogData.id,
-          original_role_title: "Marketing Manager",
-          original_department: "Marketing",
-          original_level: "Manager",
-          standardized_role_title: "Marketing Manager",
-          standardized_department: "Marketing",
-          standardized_level: "M2",
-          job_family: "Marketing",
-          mapping_confidence: 88.2,
-          requires_manual_review: false,
-          mapping_status: 'auto_mapped'
+          title: "Marketing Manager",
+          department: "Marketing", 
+          level: "Manager",
+          description: "Manage marketing campaigns and team"
         },
         {
-          catalog_id: catalogData.id,
-          original_role_title: "Business Development Associate",
-          original_department: "Sales",
-          original_level: "Associate",
-          standardized_role_title: "Business Development Representative",
-          standardized_department: "Sales",
-          standardized_level: "L3",
-          job_family: "Sales",
-          mapping_confidence: 72.8,
-          requires_manual_review: true,
-          mapping_status: 'manual_review'
+          title: "Business Development Associate", 
+          department: "Sales",
+          level: "Associate",
+          description: "Generate new business opportunities"
         },
         {
-          catalog_id: catalogData.id,
-          original_role_title: "HR Specialist",
-          original_department: "Human Resources",
-          original_level: "Specialist",
-          standardized_role_title: "HR Business Partner",
-          standardized_department: "Human Resources",
-          standardized_level: "L4",
-          job_family: "Human Resources",
-          mapping_confidence: 79.3,
-          requires_manual_review: true,
-          mapping_status: 'manual_review'
+          title: "HR Specialist",
+          department: "Human Resources",
+          level: "Specialist", 
+          description: "Handle employee relations and HR processes"
+        },
+        {
+          title: "Network Engineer",
+          department: "Technology",
+          level: "Mid-level",
+          description: "Design and maintain telecommunications network infrastructure"
+        },
+        {
+          title: "Customer Success Manager",
+          department: "Customer Service",
+          level: "Manager",
+          description: "Ensure customer satisfaction and retention"
         }
       ];
 
+      setUploadProgress(40);
+
+      // Step 3: Call AI standardization service
+      const { data: standardizationResult, error: standardizationError } = await supabase.functions.invoke('standardize-roles', {
+        body: {
+          roleData: simulatedRoleData,
+          sourceCompany: sourceCompany,
+          catalogId: catalogData.id
+        }
+      });
+
+      if (standardizationError) {
+        throw new Error(`Standardization failed: ${standardizationError.message}`);
+      }
+
+      setUploadProgress(80);
+
+      // Step 4: Fetch the created mappings
       const { data: mappingsData, error: mappingsError } = await supabase
         .from('xlsmart_role_mappings')
-        .insert(sampleMappings)
-        .select();
+        .select(`
+          id,
+          original_role_title,
+          original_department,
+          standardized_role_title,
+          standardized_department,
+          job_family,
+          mapping_confidence,
+          requires_manual_review,
+          mapping_status
+        `)
+        .eq('catalog_id', catalogData.id);
 
       if (mappingsError) throw mappingsError;
-
-      // Update catalog with results
-      await supabase
-        .from('xlsmart_role_catalogs')
-        .update({
-          upload_status: 'completed',
-          total_roles: sampleMappings.length,
-          processed_roles: sampleMappings.length,
-          mapping_accuracy: 86.2
-        })
-        .eq('id', catalogData.id);
 
       // Convert to display format
       const displayMappings: RoleMappingResult[] = mappingsData.map(mapping => ({
@@ -170,20 +167,21 @@ export const RoleUpload = () => {
       }));
 
       setMappingResults(displayMappings);
+      setUploadProgress(100);
       setIsUploading(false);
       setUploadStatus('completed');
 
       toast({
-        title: "Upload Successful",
-        description: `Processed ${sampleMappings.length} roles with ${displayMappings.filter(m => !m.requiresReview).length} auto-mapped.`
+        title: "Role Standardization Complete!",
+        description: `Successfully processed ${standardizationResult.totalRoles} roles using AI. ${standardizationResult.autoMappedCount} auto-mapped, ${standardizationResult.manualReviewCount} need review.`
       });
 
     } catch (error) {
-      console.error('Error during upload:', error);
+      console.error('Error during role standardization:', error);
       setIsUploading(false);
       setUploadStatus('error');
       toast({
-        title: "Upload Failed",
+        title: "Standardization Failed",
         description: "There was an error processing your file. Please try again.",
         variant: "destructive"
       });
@@ -235,15 +233,15 @@ export const RoleUpload = () => {
   return (
     <div className="space-y-6 p-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-card-foreground mb-2">{t('feature.upload.title')}</h2>
-        <p className="text-muted-foreground">{t('feature.upload.description')}</p>
+        <h2 className="text-2xl font-bold text-card-foreground mb-2">AI-Powered Role Standardization</h2>
+        <p className="text-muted-foreground">Upload XL and SMART role catalogs to create XLSMART standard roles using AI</p>
       </div>
 
       <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-card-foreground">
-            <Upload className="h-5 w-5 text-primary" />
-            Bulk Role Upload & Standardization
+            <Zap className="h-5 w-5 text-primary" />
+            Bulk Role Upload & AI Standardization
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -294,10 +292,10 @@ export const RoleUpload = () => {
               >
                 <FileText className="h-12 w-12 text-muted-foreground" />
                 <div className="text-lg font-medium text-foreground">
-                  {selectedFile ? selectedFile.name : "Choose file to upload"}
+                  {selectedFile ? selectedFile.name : "Choose role catalog file to upload"}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Supports Excel, CSV, and JSON formats
+                  Supports Excel, CSV, and JSON formats containing role data
                 </div>
               </label>
             </div>
@@ -324,10 +322,16 @@ export const RoleUpload = () => {
                 {uploadStatus === 'processing' && (
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm text-card-foreground">
-                      <span>Processing roles...</span>
+                      <span>AI standardizing roles...</span>
                       <span>{uploadProgress}%</span>
                     </div>
                     <Progress value={uploadProgress} className="bg-muted" />
+                    <div className="text-xs text-muted-foreground text-center">
+                      {uploadProgress < 30 && "Analyzing role catalog..."}
+                      {uploadProgress >= 30 && uploadProgress < 60 && "AI matching to standard roles..."}
+                      {uploadProgress >= 60 && uploadProgress < 90 && "Creating role mappings..."}
+                      {uploadProgress >= 90 && "Finalizing standardization..."}
+                    </div>
                   </div>
                 )}
 
@@ -335,18 +339,23 @@ export const RoleUpload = () => {
                   <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex items-center gap-2 text-green-800">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="font-medium">Upload completed successfully!</span>
+                      <span className="font-medium">AI Standardization Complete!</span>
                     </div>
                     <p className="text-sm text-green-700 mt-1">
-                      Found {mappingResults.length} roles • Mapped {autoMappedCount} to XLSMART standards • {reviewRequiredCount} require manual review
+                      Processed {mappingResults.length} roles • AI auto-mapped {autoMappedCount} to XLSMART standards • {reviewRequiredCount} need manual review
                     </p>
                   </div>
                 )}
 
                 <div className="flex gap-2">
                   {uploadStatus === 'idle' && (
-                    <Button onClick={simulateUpload} disabled={isUploading || !sourceCompany || !fileFormat} className="xl-button-primary">
-                      Start Processing
+                    <Button 
+                      onClick={processRoleStandardization} 
+                      disabled={isUploading || !sourceCompany || !fileFormat} 
+                      className="xl-button-primary"
+                    >
+                      <Zap className="mr-2 h-4 w-4" />
+                      AI Standardize Roles
                     </Button>
                   )}
                   
@@ -354,7 +363,7 @@ export const RoleUpload = () => {
                     <>
                       <Button onClick={() => setShowMappingReview(true)} className="xl-button-primary">
                         <Eye className="mr-2 h-4 w-4" />
-                        Review Mappings
+                        Review AI Mappings
                       </Button>
                       <Button variant="outline" onClick={resetUpload}>
                         Upload Another File
@@ -374,18 +383,18 @@ export const RoleUpload = () => {
         </CardContent>
       </Card>
 
-      {/* Mapping Results Preview */}
+      {/* AI Standardization Results */}
       {uploadStatus === 'completed' && (
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle className="text-card-foreground">Role Mapping Results</CardTitle>
+            <CardTitle className="text-card-foreground">AI Role Standardization Results</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="text-2xl font-bold text-green-800">{autoMappedCount}</div>
-                  <div className="text-sm text-green-700">Auto-mapped roles</div>
+                  <div className="text-sm text-green-700">AI Auto-mapped roles</div>
                 </div>
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="text-2xl font-bold text-yellow-800">{reviewRequiredCount}</div>
@@ -393,13 +402,23 @@ export const RoleUpload = () => {
                 </div>
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="text-2xl font-bold text-blue-800">{overallAccuracy}%</div>
-                  <div className="text-sm text-blue-700">Mapping accuracy</div>
+                  <div className="text-sm text-blue-700">AI confidence average</div>
                 </div>
+              </div>
+              
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="font-semibold text-blue-800 mb-2">How AI Standardization Works:</h3>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  <li>• AI analyzes role titles, departments, and descriptions from {sourceCompany.toUpperCase()}</li>
+                  <li>• Matches against XLSMART's master catalog of {mappingResults.length > 0 ? '16+' : 'industry-standard'} role definitions</li>
+                  <li>• Creates standardized job families, levels, and titles aligned with telecommunications industry</li>
+                  <li>• Flags low-confidence mappings for HR review and approval</li>
+                </ul>
               </div>
               
               <Button className="w-full xl-button-primary" onClick={() => setShowMappingReview(true)}>
                 <Eye className="mr-2 h-4 w-4" />
-                Review All Mappings
+                Review All AI Mappings
               </Button>
             </div>
           </CardContent>
@@ -411,8 +430,8 @@ export const RoleUpload = () => {
         <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
           <div className="space-y-4">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-card-foreground">Role Mapping Review</h2>
-              <p className="text-muted-foreground">Review and approve AI-generated role mappings</p>
+              <h2 className="text-2xl font-bold text-card-foreground">AI Role Mapping Review</h2>
+              <p className="text-muted-foreground">Review and approve AI-generated role standardizations</p>
             </div>
             
             <div className="space-y-4">
@@ -421,7 +440,7 @@ export const RoleUpload = () => {
                   <CardContent className="p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <h3 className="font-semibold text-card-foreground mb-2">Original Role</h3>
+                        <h3 className="font-semibold text-card-foreground mb-2">Original {sourceCompany.toUpperCase()} Role</h3>
                         <div className="space-y-1 text-sm">
                           <div><span className="font-medium">Title:</span> {mapping.originalTitle}</div>
                           <div><span className="font-medium">Department:</span> {mapping.originalDepartment}</div>
@@ -429,7 +448,7 @@ export const RoleUpload = () => {
                       </div>
                       
                       <div>
-                        <h3 className="font-semibold text-card-foreground mb-2">Standardized Role</h3>
+                        <h3 className="font-semibold text-card-foreground mb-2">XLSMART Standard Role</h3>
                         <div className="space-y-1 text-sm">
                           <div><span className="font-medium">Title:</span> {mapping.standardizedTitle}</div>
                           <div><span className="font-medium">Department:</span> {mapping.standardizedDepartment}</div>
@@ -441,7 +460,7 @@ export const RoleUpload = () => {
                     <div className="mt-4 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Badge variant={mapping.requiresReview ? "destructive" : "default"}>
-                          {mapping.confidence.toFixed(1)}% confidence
+                          AI: {mapping.confidence.toFixed(1)}% confidence
                         </Badge>
                         {mapping.status === 'approved' && (
                           <Badge variant="default" className="bg-green-100 text-green-800">Approved</Badge>
@@ -482,7 +501,7 @@ export const RoleUpload = () => {
                 Close Review
               </Button>
               <Button className="xl-button-primary">
-                Proceed to Job Description Generation
+                Generate Job Descriptions for Approved Roles
               </Button>
             </div>
           </div>

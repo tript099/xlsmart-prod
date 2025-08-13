@@ -1434,6 +1434,7 @@ export type Database = {
           requires_manual_review: boolean | null
           reviewed_at: string | null
           reviewed_by: string | null
+          standard_role_id: string | null
           standardized_department: string | null
           standardized_level: string | null
           standardized_role_title: string
@@ -1452,6 +1453,7 @@ export type Database = {
           requires_manual_review?: boolean | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          standard_role_id?: string | null
           standardized_department?: string | null
           standardized_level?: string | null
           standardized_role_title: string
@@ -1470,6 +1472,7 @@ export type Database = {
           requires_manual_review?: boolean | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          standard_role_id?: string | null
           standardized_department?: string | null
           standardized_level?: string | null
           standardized_role_title?: string
@@ -1481,6 +1484,13 @@ export type Database = {
             columns: ["catalog_id"]
             isOneToOne: false
             referencedRelation: "xlsmart_role_catalogs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xlsmart_role_mappings_standard_role_id_fkey"
+            columns: ["standard_role_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_standard_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -1553,6 +1563,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      xlsmart_standard_roles: {
+        Row: {
+          approved_by: string | null
+          core_responsibilities: Json | null
+          created_at: string
+          created_by: string
+          department: string
+          education_requirements: Json | null
+          experience_range_max: number | null
+          experience_range_min: number | null
+          id: string
+          industry_alignment: string | null
+          is_active: boolean | null
+          job_family: string
+          keywords: Json | null
+          required_skills: Json | null
+          role_category: string
+          role_level: string
+          role_title: string
+          salary_grade: string | null
+          standard_description: string | null
+          updated_at: string
+          version: number | null
+        }
+        Insert: {
+          approved_by?: string | null
+          core_responsibilities?: Json | null
+          created_at?: string
+          created_by: string
+          department: string
+          education_requirements?: Json | null
+          experience_range_max?: number | null
+          experience_range_min?: number | null
+          id?: string
+          industry_alignment?: string | null
+          is_active?: boolean | null
+          job_family: string
+          keywords?: Json | null
+          required_skills?: Json | null
+          role_category: string
+          role_level: string
+          role_title: string
+          salary_grade?: string | null
+          standard_description?: string | null
+          updated_at?: string
+          version?: number | null
+        }
+        Update: {
+          approved_by?: string | null
+          core_responsibilities?: Json | null
+          created_at?: string
+          created_by?: string
+          department?: string
+          education_requirements?: Json | null
+          experience_range_max?: number | null
+          experience_range_min?: number | null
+          id?: string
+          industry_alignment?: string | null
+          is_active?: boolean | null
+          job_family?: string
+          keywords?: Json | null
+          required_skills?: Json | null
+          role_category?: string
+          role_level?: string
+          role_title?: string
+          salary_grade?: string | null
+          standard_description?: string | null
+          updated_at?: string
+          version?: number | null
+        }
+        Relationships: []
       }
     }
     Views: {
