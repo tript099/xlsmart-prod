@@ -19,9 +19,9 @@ serve(async (req) => {
   }
 
   try {
-    const { roleData, sourceCompany, catalogId } = await req.json();
+    const { xlRoles, smartRoles, industryRoles, catalogId } = await req.json();
     
-    console.log('Processing role standardization for:', { sourceCompany, catalogId, roleCount: roleData.length });
+    console.log('Processing XLSMART role creation for:', { catalogId, xlCount: xlRoles.length, smartCount: smartRoles.length, industryCount: industryRoles.length });
 
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
@@ -42,19 +42,27 @@ serve(async (req) => {
 
     const mappingResults = [];
 
-    // Step 2: Process each input role
-    for (const inputRole of roleData) {
+    // Step 2: Merge all role data from 3 sources
+    const allRoleData = [
+      ...xlRoles.map(role => ({ ...role, source: 'XL' })),
+      ...smartRoles.map(role => ({ ...role, source: 'SMART' })),
+      ...industryRoles.map(role => ({ ...role, source: 'Industry' }))
+    ];
+
+    // Step 3: Process each input role to create XLSMART standards
+    for (const inputRole of allRoleData) {
       console.log('Processing role:', inputRole.title);
 
-      // Create AI prompt for role standardization
+      // Create AI prompt for XLSMART role creation
       const aiPrompt = `
-You are an AI specialist in HR role standardization for telecommunications companies. Your task is to map the following role from ${sourceCompany.toUpperCase()} to the most appropriate XLSMART standard role.
+You are an AI specialist in HR role standardization for telecommunications companies. Your task is to create a standardized XLSMART role by analyzing this role from ${inputRole.source} and matching it against industry standards.
 
-INPUT ROLE:
+INPUT ROLE FROM ${inputRole.source}:
 - Title: ${inputRole.title}
 - Department: ${inputRole.department || 'Not specified'}
 - Level: ${inputRole.level || 'Not specified'}
 - Description: ${inputRole.description || 'Not specified'}
+- Source: ${inputRole.source}
 
 AVAILABLE STANDARD ROLES:
 ${standardRoles.map(role => `
@@ -62,11 +70,11 @@ ${standardRoles.map(role => `
   Keywords: ${JSON.parse(role.keywords).join(', ')}
 `).join('')}
 
-Please analyze the input role and provide:
-1. The BEST matching standard role ID from the list above
-2. Confidence score (0-100)
-3. Whether manual review is needed (true/false)
-4. Brief explanation of the mapping decision
+Please analyze the input role and create a standardized XLSMART role by:
+1. Finding the BEST matching standard role ID from the list above
+2. Providing confidence score (0-100) for the match
+3. Determining if manual review is needed (true/false)
+4. Brief explanation of how this creates value for XLSMART
 
 Respond in JSON format:
 {
