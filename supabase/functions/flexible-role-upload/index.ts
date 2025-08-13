@@ -12,12 +12,19 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
+  console.log('🚀 Function invoked:', req.method, req.url);
+  
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { action, sessionName, excelData, sessionId } = await req.json();
+    console.log('📥 Parsing request body...');
+    const requestBody = await req.json();
+    console.log('📋 Request action:', requestBody.action);
+    
+    const { action, sessionName, excelData, sessionId } = requestBody;
     
     // Test endpoint
     if (action === 'test') {
@@ -73,7 +80,7 @@ serve(async (req) => {
         throw new Error(`Failed to create upload session: ${sessionError.message}`);
       }
 
-      console.log('Upload session created with ID:', session.id);
+      console.log('✅ Upload session created with ID:', session.id);
 
       return new Response(JSON.stringify({
         success: true,
@@ -370,10 +377,12 @@ Focus on telecommunications-specific roles and create comprehensive standard rol
     }
 
   } catch (error) {
-    console.error('Error in flexible role upload:', error);
+    console.error('❌ Function error:', error);
+    console.error('📍 Error stack:', error.stack);
     return new Response(JSON.stringify({ 
       success: false,
-      error: error.message 
+      error: error.message,
+      stack: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
