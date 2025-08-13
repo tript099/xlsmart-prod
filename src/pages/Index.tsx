@@ -18,7 +18,7 @@ import {
   User
 } from "lucide-react";
 import { AIChat } from "@/components/AIChat";
-import { SimpleRoleUpload } from "@/components/SimpleRoleUpload"; // Fixed component import
+import { RoleStandardizationSystem } from "@/components/RoleStandardizationSystem";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
 import { EmployeeMobilityPlanningEnhanced } from "@/components/EmployeeMobilityPlanningEnhanced";
@@ -228,8 +228,8 @@ const Index = () => {
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className={feature.id === 'upload' ? "max-w-4xl max-h-[80vh] overflow-y-auto" : "max-w-4xl max-h-[80vh] overflow-y-auto"}>
-                        {feature.id === 'upload' ? <SimpleRoleUpload /> : <AIChat />}
+                      <DialogContent className={feature.id === 'upload' ? "max-w-5xl max-h-[80vh] overflow-y-auto" : "max-w-4xl max-h-[80vh] overflow-y-auto"}>
+                        {feature.id === 'upload' ? <RoleStandardizationSystem /> : <AIChat />}
                       </DialogContent>
                     </Dialog>
                    ) : (
@@ -330,12 +330,12 @@ const Index = () => {
                     Upload Role Catalogs
                   </Button>
                 </DialogTrigger>
-                      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                      <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
                         <div className="sr-only">
                           <h2>Role Upload Dialog</h2>
                           <p>Upload and standardize role catalogs using AI</p>
                         </div>
-                <SimpleRoleUpload />
+                <RoleStandardizationSystem />
                       </DialogContent>
               </Dialog>
               
