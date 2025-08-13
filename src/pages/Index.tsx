@@ -21,8 +21,8 @@ import { AIChat } from "@/components/AIChat";
 import { RoleUpload } from "@/components/RoleUpload";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
-import { EmployeeMobilityPlanning } from "@/components/EmployeeMobilityPlanning";
-import { DevelopmentPathways } from "@/components/DevelopmentPathways";
+import { EmployeeMobilityPlanningEnhanced } from "@/components/EmployeeMobilityPlanningEnhanced";
+import { DevelopmentPathwaysEnhanced } from "@/components/DevelopmentPathwaysEnhanced";
 import { EmployeeListDetails } from "@/components/EmployeeListDetails";
 import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails";
 import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
@@ -239,8 +239,8 @@ const Index = () => {
                         {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
                         {feature.id === 'employee-upload' && <EmployeeUpload />}
                         {feature.id === 'assessment' && <AISkillsAssessmentEnhanced />}
-                        {feature.id === 'mobility' && <EmployeeMobilityPlanning />}
-                        {feature.id === 'development' && <DevelopmentPathways />}
+                        {feature.id === 'mobility' && <EmployeeMobilityPlanningEnhanced />}
+                        {feature.id === 'development' && <DevelopmentPathwaysEnhanced />}
                       </DialogContent>
                     </Dialog>
                    )}

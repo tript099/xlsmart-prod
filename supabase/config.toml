@@ -35,3 +35,15 @@ verify_jwt = false
 
 [functions.ai-skills-assessment-progress]
 verify_jwt = false
+
+[functions.employee-mobility-planning-bulk]
+verify_jwt = false
+
+[functions.employee-mobility-planning-progress]
+verify_jwt = false
+
+[functions.development-pathways-bulk]
+verify_jwt = false
+
+[functions.development-pathways-progress]
+verify_jwt = false
