@@ -263,10 +263,32 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
 
     setIsSaving(true);
     try {
+      // Parse the updated content to extract structured data
+      const lines = updatedJDContent.split('\n');
+      const summaryEnd = updatedJDContent.indexOf('\n\nResponsibilities:');
+      const summary = summaryEnd > 0 ? updatedJDContent.substring(0, summaryEnd) : lines[0];
+      
+      // Extract responsibilities and qualifications from the updated content
+      const responsibilitiesStart = updatedJDContent.indexOf('Responsibilities:\n');
+      const qualificationsStart = updatedJDContent.indexOf('Qualifications:\n');
+      
+      let responsibilities: string[] = [];
+      let qualifications: string[] = [];
+      
+      if (responsibilitiesStart > 0 && qualificationsStart > 0) {
+        const respSection = updatedJDContent.substring(responsibilitiesStart + 16, qualificationsStart).trim();
+        responsibilities = respSection.split('\n').filter(line => line.trim());
+        
+        const qualSection = updatedJDContent.substring(qualificationsStart + 15).trim();
+        qualifications = qualSection.split('\n').filter(line => line.trim());
+      }
+
       const { error } = await supabase
         .from('xlsmart_job_descriptions')
         .update({
-          summary: updatedJDContent.split('\n\n')[0],
+          summary: summary,
+          responsibilities: responsibilities.length > 0 ? responsibilities : selectedJDForChat.responsibilities,
+          required_qualifications: qualifications.length > 0 ? qualifications : selectedJDForChat.requiredQualifications,
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedJDForChat.id);
