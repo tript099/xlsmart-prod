@@ -1,188 +1,235 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle, AlertCircle, MessageCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Loader2, CheckCircle, AlertCircle, Zap } from "lucide-react";
 
-export const LiteLLMTest = () => {
+export function LiteLLMTest() {
+  const [loading, setLoading] = useState(false);
+  const [testMessage, setTestMessage] = useState("Test LiteLLM connection");
+  const [results, setResults] = useState<any[]>([]);
   const { toast } = useToast();
-  const [message, setMessage] = useState("Hello, how are you?");
-  const [isLoading, setIsLoading] = useState(false);
-  const [response, setResponse] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const testLiteLLM = async () => {
-    setIsLoading(true);
-    setResponse(null);
-    setError(null);
+  const aiFunctions = [
+    { name: 'test-litellm', description: 'Test basic LiteLLM connection' },
+    { name: 'ai-chat', description: 'General AI chat functionality' },
+    { name: 'ai-skills-assessment', description: 'Employee skills assessment' },
+    { name: 'ai-employee-engagement', description: 'Employee engagement analysis' },
+    { name: 'ai-succession-planning', description: 'Succession planning analysis' },
+    { name: 'ai-diversity-inclusion', description: 'Diversity & inclusion analysis' },
+    { name: 'ai-advanced-role-intelligence', description: 'Advanced role intelligence' },
+    { name: 'ai-compensation-intelligence', description: 'Compensation analysis' },
+    { name: 'ai-learning-development', description: 'Learning development analysis' },
+    { name: 'ai-job-descriptions-intelligence', description: 'Job description analysis' }
+  ];
 
+  const testSingleFunction = async (functionName: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('test-litellm', {
-        body: { message }
+      console.log(`Testing function: ${functionName}`);
+      
+      let payload;
+      if (functionName === 'test-litellm') {
+        payload = { message: testMessage };
+      } else if (functionName === 'ai-chat') {
+        payload = { message: testMessage, context: "hr_assistant" };
+      } else {
+        // For intelligence functions, provide basic test parameters
+        payload = {
+          analysisType: getDefaultAnalysisType(functionName),
+          departmentFilter: null,
+          timeFrame: '3_months'
+        };
+      }
+
+      const { data, error } = await supabase.functions.invoke(functionName, {
+        body: payload
       });
 
       if (error) throw error;
 
-      if (data.success) {
-        setResponse(data);
-        toast({
-          title: "✅ LiteLLM Test Successful",
-          description: "Successfully connected to your LiteLLM proxy!",
-        });
-      } else {
-        throw new Error(data.error || 'Unknown error');
+      return {
+        function: functionName,
+        status: 'success',
+        response: data,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error: any) {
+      console.error(`Error testing ${functionName}:`, error);
+      return {
+        function: functionName,
+        status: 'error',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  };
+
+  const getDefaultAnalysisType = (functionName: string) => {
+    const defaults: Record<string, string> = {
+      'ai-employee-engagement': 'sentiment_analysis',
+      'ai-succession-planning': 'leadership_pipeline',
+      'ai-diversity-inclusion': 'diversity_metrics',
+      'ai-advanced-role-intelligence': 'role_evolution',
+      'ai-compensation-intelligence': 'pay_equity',
+      'ai-learning-development': 'personalized_learning',
+      'ai-job-descriptions-intelligence': 'jd_optimization'
+    };
+    return defaults[functionName] || 'default';
+  };
+
+  const testAllFunctions = async () => {
+    setLoading(true);
+    setResults([]);
+    
+    try {
+      // Test functions in batches to avoid overwhelming the server
+      const batchSize = 3;
+      const allResults: any[] = [];
+      
+      for (let i = 0; i < aiFunctions.length; i += batchSize) {
+        const batch = aiFunctions.slice(i, i + batchSize);
+        const batchPromises = batch.map(func => testSingleFunction(func.name));
+        const batchResults = await Promise.all(batchPromises);
+        allResults.push(...batchResults);
+        
+        // Update results incrementally
+        setResults([...allResults]);
+        
+        // Small delay between batches
+        if (i + batchSize < aiFunctions.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
 
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      setError(errorMessage);
+      const successCount = allResults.filter(r => r.status === 'success').length;
+      const errorCount = allResults.filter(r => r.status === 'error').length;
+
       toast({
-        title: "❌ LiteLLM Test Failed",
-        description: errorMessage,
+        title: "Testing Complete",
+        description: `${successCount} functions working, ${errorCount} functions have issues`,
+        variant: successCount === allResults.length ? "default" : "destructive"
+      });
+
+    } catch (error: any) {
+      console.error('Error testing functions:', error);
+      toast({
+        title: "Test Failed",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" />
-          LiteLLM Proxy Test
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Test connection to your LiteLLM proxy at proxyllm.ximplify.id
-        </p>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="test-message">Test Message</Label>
-          <Input
-            id="test-message"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Enter a test message..."
-            disabled={isLoading}
-          />
-        </div>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5" />
+            LiteLLM AI Functions Test
+          </CardTitle>
+          <CardDescription>
+            Test all {aiFunctions.length} AI functions to ensure they're using LiteLLM correctly and the API key is working
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="test-message" className="text-sm font-medium">
+              Test Message:
+            </label>
+            <Textarea
+              id="test-message"
+              value={testMessage}
+              onChange={(e) => setTestMessage(e.target.value)}
+              placeholder="Enter a test message for AI functions..."
+              className="min-h-[80px]"
+            />
+          </div>
+          
+          <Button
+            onClick={testAllFunctions}
+            disabled={loading}
+            className="w-full"
+            size="lg"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Testing AI Functions...
+              </>
+            ) : (
+              `Test All ${aiFunctions.length} AI Functions`
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
-        <Button
-          onClick={testLiteLLM}
-          disabled={isLoading || !message.trim()}
-          className="w-full"
-        >
-          {isLoading ? (
-            <>
-              <MessageCircle className="mr-2 h-4 w-4 animate-spin" />
-              Testing Connection...
-            </>
-          ) : (
-            <>
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Test LiteLLM Connection
-            </>
-          )}
-        </Button>
-
-        {/* Debug Test Function */}
-        <Button
-          onClick={async () => {
-            setIsLoading(true);
-            setError(null);
-            setResponse(null);
-            
-            try {
-              console.log('Calling debug-test function...');
-              
-              const { data, error } = await supabase.functions.invoke('debug-test', {
-                body: { 
-                  test: 'debug message',
-                  timestamp: new Date().toISOString()
-                }
-              });
-              
-              console.log('Debug function result:', { data, error });
-              
-              if (error) {
-                console.error('Debug function error:', error);
-                throw error;
-              }
-              
-              setResponse({ 
-                message: 'Debug test completed', 
-                data: data,
-                model: 'debug-test function',
-                proxy: 'edge function'
-              });
-              
-            } catch (err) {
-              console.error('Debug function test error:', err);
-              setError(err instanceof Error ? err.message : 'Debug test failed');
-            } finally {
-              setIsLoading(false);
-            }
-          }}
-          variant="outline"
-          className="w-full"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <MessageCircle className="mr-2 h-4 w-4 animate-spin" />
-              Testing Debug Function...
-            </>
-          ) : (
-            <>
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Test Debug Function
-            </>
-          )}
-        </Button>
-
-        {/* Success Response */}
-        {response && (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription>
-              <div className="space-y-2 text-green-800">
-                <p className="font-medium">✅ Connection Successful!</p>
-                <div className="text-sm">
-                  <p><strong>Model:</strong> {response.model}</p>
-                  <p><strong>Proxy:</strong> {response.proxy}</p>
-                  <p><strong>Response:</strong> {response.message}</p>
+      {results.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Test Results</CardTitle>
+            <CardDescription>
+              Results from testing AI functions ({results.length}/{aiFunctions.length} completed)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {results.map((result, index) => (
+                <div key={index} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{result.function}</span>
+                      {result.status === 'success' ? (
+                        <Badge variant="default" className="flex items-center gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Success
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          Error
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(result.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  
+                  {result.status === 'success' ? (
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-600">
+                        ✅ Function working correctly with LiteLLM
+                      </p>
+                      {result.response && (
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-muted-foreground">
+                            View response details
+                          </summary>
+                          <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto max-h-32">
+                            {JSON.stringify(result.response, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-red-600">
+                        ❌ Error: {result.error}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Error Response */}
-        {error && (
-          <Alert className="bg-red-50 border-red-200">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">
-              <div className="space-y-2">
-                <p className="font-medium">❌ Connection Failed</p>
-                <p className="text-sm">{error}</p>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p><strong>Proxy URL:</strong> https://proxyllm.ximplify.id</p>
-          <p><strong>Model:</strong> azure/gpt-4.1</p>
-          <p><strong>API Key:</strong> sk-BuORei3-MerRCuRgh4Eq1g</p>
-        </div>
-      </CardContent>
-    </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
-};
+}

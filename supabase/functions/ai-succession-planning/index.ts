@@ -72,14 +72,14 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${litellmApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'azure/gpt-4.1',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
