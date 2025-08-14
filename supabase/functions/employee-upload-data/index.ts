@@ -17,11 +17,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let sessionId: string | null = null;
+
   try {
-    console.log('Employee upload function started - v4');
+    console.log('Employee upload function started - v6');
+    console.log('Environment check - URL:', !!Deno.env.get('SUPABASE_URL'));
+    console.log('Environment check - Service Key:', !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
     
     const requestBody = await req.json();
-    console.log('Request body parsed:', Object.keys(requestBody));
+    console.log('Request body parsed successfully');
     
     const { employees, sessionName } = requestBody;
     
@@ -40,6 +44,8 @@ serve(async (req) => {
     if (!authHeader) {
       throw new Error('No authorization header provided');
     }
+
+    console.log('Auth header found, validating user...');
 
     const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -60,9 +66,10 @@ serve(async (req) => {
       throw new Error('Invalid authentication token');
     }
     
-    console.log('User authenticated:', user.id);
+    console.log('User authenticated successfully:', user.id);
     
-    // Create upload session
+    // Create upload session first
+    console.log('Creating upload session...');
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .insert({
@@ -81,14 +88,61 @@ serve(async (req) => {
       throw new Error(`Failed to create upload session: ${sessionError.message}`);
     }
 
-    console.log('Upload session created:', session.id);
+    sessionId = session.id;
+    console.log('Upload session created successfully:', sessionId);
 
-    // Process employees synchronously in smaller batches for reliability
-    const BATCH_SIZE = 10; // Smaller batches for better reliability
-    let processedCount = 0;
-    let errorCount = 0;
-    const errors: string[] = [];
+    // Return immediately and process in background
+    const response = new Response(JSON.stringify({
+      success: true,
+      sessionId: sessionId,
+      message: `Started processing ${employees.length} employee records`
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
+    // Process employees in background
+    processEmployeesInBackground(employees, session, user.id);
+
+    return response;
+
+  } catch (error) {
+    console.error('Critical error in employee-upload-data function:', error);
+    
+    // Update session status to failed if we have a session ID
+    if (sessionId) {
+      try {
+        await supabase
+          .from('xlsmart_upload_sessions')
+          .update({
+            status: 'failed',
+            error_message: error.message
+          })
+          .eq('id', sessionId);
+      } catch (updateError) {
+        console.error('Failed to update session status:', updateError);
+      }
+    }
+    
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: error.message,
+      details: error.stack
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function processEmployeesInBackground(employees: any[], session: any, userId: string) {
+  console.log('Starting background processing for', employees.length, 'employees');
+  
+  const BATCH_SIZE = 10;
+  let processedCount = 0;
+  let errorCount = 0;
+  const errors: string[] = [];
+
+  try {
     for (let i = 0; i < employees.length; i += BATCH_SIZE) {
       const batch = employees.slice(i, i + BATCH_SIZE);
       console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(employees.length/BATCH_SIZE)}`);
@@ -111,13 +165,13 @@ serve(async (req) => {
             years_of_experience: parseInt(String(employee['YearsExperience'] || employee['Years Experience'] || employee['Experience'] || '0')) || 0,
             salary: employee['Salary'] ? parseFloat(String(employee['Salary'])) : null,
             currency: String(employee['Currency'] || 'IDR'),
-            uploaded_by: session.created_by,
+            uploaded_by: userId,
             is_active: true,
             original_role_title: String(employee['CurrentRoleTitle'] || employee['Current Role Title'] || employee['Position'] || employee['Job Title'] || 'Unknown'),
             role_assignment_status: 'pending'
           };
 
-          // Handle skills - combine skills with aspirations and location as metadata
+          // Handle skills
           const skillsArray: string[] = [];
           if (employee['Skills']) {
             if (Array.isArray(employee['Skills'])) {
@@ -135,7 +189,6 @@ serve(async (req) => {
             skillsArray.push(`Location: ${String(employee['Location']).trim()}`);
           }
 
-          // Set skills as proper JSON array (required for JSONB)
           (normalizedEmployee as any).skills = skillsArray;
 
           // Handle certifications
@@ -148,14 +201,12 @@ serve(async (req) => {
             }
           }
           
-          // Set certifications as proper JSON array (required for JSONB)
           (normalizedEmployee as any).certifications = certificationsArray;
 
           // Handle performance rating
           if (employee['PerformanceRating'] || employee['Performance Rating']) {
             const rating = employee['PerformanceRating'] || employee['Performance Rating'];
             if (typeof rating === 'string') {
-              // Convert text ratings to numbers
               switch (rating.toLowerCase()) {
                 case 'exceeds': (normalizedEmployee as any).performance_rating = 4; break;
                 case 'meets': (normalizedEmployee as any).performance_rating = 3; break;
@@ -209,14 +260,20 @@ serve(async (req) => {
             assigned: 0,
             errors: errorCount,
             total: employees.length,
-            error_details: errors.slice(-10) // Keep last 10 errors
+            error_details: errors.slice(-10)
           }
         })
         .eq('id', session.id);
+
+      // Small delay between batches
+      if (i + BATCH_SIZE < employees.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
     // Mark session as completed
-    const finalStatus = errorCount === 0 ? 'completed' : (processedCount > 0 ? 'completed_with_errors' : 'failed');
+    const finalStatus = errorCount === 0 ? 'completed' : 
+                       processedCount > 0 ? 'completed_with_errors' : 'failed';
     
     await supabase
       .from('xlsmart_upload_sessions')
@@ -233,30 +290,25 @@ serve(async (req) => {
       })
       .eq('id', session.id);
 
-    console.log(`Upload completed: ${processedCount} processed, ${errorCount} errors`);
-
-    return new Response(JSON.stringify({
-      success: true,
-      sessionId: session.id,
-      processed: processedCount,
-      errors: errorCount,
-      total: employees.length,
-      message: errorCount === 0 ? 
-        `Successfully uploaded ${processedCount} employee records` :
-        `Uploaded ${processedCount} records with ${errorCount} errors`
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.log(`Background processing completed: ${processedCount} processed, ${errorCount} errors`);
 
   } catch (error) {
-    console.error('Critical error in employee-upload-data function:', error);
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: error.message,
-      details: error.stack
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Critical error in background processing:', error);
+    
+    // Mark session as failed
+    await supabase
+      .from('xlsmart_upload_sessions')
+      .update({
+        status: 'failed',
+        error_message: error.message,
+        ai_analysis: {
+          processed: processedCount,
+          assigned: 0,
+          errors: errorCount,
+          total: employees.length,
+          error_details: [...errors, `Critical error: ${error.message}`]
+        }
+      })
+      .eq('id', session.id);
   }
-});
+}
