@@ -45,7 +45,7 @@ serve(async (req) => {
       .gte('created_at', sessionStartTime.toISOString())
       .lte('created_at', sessionEndTime.toISOString())
       .eq('uploaded_by', session.created_by)
-      .is('standard_role_id', null); // Only unassigned employees
+      .eq('role_assignment_status', 'pending'); // Only employees pending assignment
 
     if (employeesError) {
       console.error('Error fetching employees:', employeesError);
@@ -55,12 +55,12 @@ serve(async (req) => {
     if (!employees || employees.length === 0) {
       console.log(`No unassigned employees found for session ${sessionId}. Checking all employees by user...`);
       
-      // Fallback: get all unassigned employees for this user
+      // Fallback: get all pending employees for this user
       const { data: allEmployees, error: allEmployeesError } = await supabase
         .from('xlsmart_employees')
         .select('*')
         .eq('uploaded_by', session.created_by)
-        .is('standard_role_id', null);
+        .eq('role_assignment_status', 'pending');
 
       if (allEmployeesError) throw allEmployeesError;
       
