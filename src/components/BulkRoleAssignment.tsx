@@ -16,9 +16,16 @@ const BulkRoleAssignment = () => {
     setProgress({ assigned: 0, failed: 0, total: 0 });
 
     try {
-      const { data, error } = await supabase.functions.invoke('bulk-assign-roles', {});
+      console.log('Starting bulk assignment...');
+      
+      const { data, error } = await supabase.functions.invoke('bulk-assign-roles', {
+        body: {}
+      });
+
+      console.log('Function response:', { data, error });
 
       if (error) {
+        console.error('Function error:', error);
         throw error;
       }
 
@@ -30,18 +37,19 @@ const BulkRoleAssignment = () => {
         });
 
         toast({
-          title: "Bulk Assignment Complete",
-          description: `Successfully assigned roles to ${data.assigned} employees. ${data.failed} failed assignments.`,
+          title: "Assignment Result",
+          description: `${data.message}. Assigned: ${data.assigned}, Failed: ${data.failed}`,
           variant: data.failed > 0 ? "destructive" : "default",
         });
       } else {
+        console.error('Function returned failure:', data);
         throw new Error(data?.error || 'Unknown error occurred');
       }
     } catch (error) {
       console.error('Bulk assignment error:', error);
       toast({
         title: "Assignment Failed",
-        description: error.message || "Failed to assign roles. Please try again.",
+        description: `Error: ${error.message || "Failed to assign roles. Please try again."}`,
         variant: "destructive",
       });
     } finally {
