@@ -174,11 +174,47 @@ Respond in JSON format:
       throw new Error('Failed to generate job description - invalid AI response format');
     }
 
-    // Create a dummy role mapping entry using service client
+    // First, create or get a role catalog entry using service client
+    const { data: existingCatalog, error: catalogSelectError } = await supabaseService
+      .from('xlsmart_role_catalogs')
+      .select('id')
+      .eq('source_company', 'AI Generated')
+      .eq('uploaded_by', userId)
+      .limit(1)
+      .single();
+
+    let catalogId;
+    if (existingCatalog) {
+      catalogId = existingCatalog.id;
+    } else {
+      // Create a new catalog entry
+      const { data: newCatalog, error: catalogInsertError } = await supabaseService
+        .from('xlsmart_role_catalogs')
+        .insert({
+          source_company: 'AI Generated',
+          file_name: 'ai-generated-roles.json',
+          file_format: 'json',
+          total_roles: 1,
+          processed_roles: 1,
+          mapping_accuracy: 100,
+          upload_status: 'completed',
+          uploaded_by: userId
+        })
+        .select('id')
+        .single();
+
+      if (catalogInsertError) {
+        console.error('Error creating catalog:', catalogInsertError);
+        throw new Error('Failed to create role catalog');
+      }
+      catalogId = newCatalog.id;
+    }
+
+    // Create a role mapping entry using service client
     const { data: dummyMapping, error: mappingError } = await supabaseService
       .from('xlsmart_role_mappings')
       .insert({
-        catalog_id: userId, // Use user ID as catalog
+        catalog_id: catalogId,
         original_role_title: roleTitle,
         original_department: department,
         original_level: level,
