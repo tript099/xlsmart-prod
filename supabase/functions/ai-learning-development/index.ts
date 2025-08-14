@@ -168,10 +168,12 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 }
 
 function cleanJsonResponse(text: string): string {
+  console.log('Raw AI response:', text);
+  
   // Remove markdown code blocks and extra whitespace
   let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
   
-  // Find the first { and last } to extract just the JSON object
+  // Remove any leading/trailing text that's not JSON
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
   
@@ -179,6 +181,16 @@ function cleanJsonResponse(text: string): string {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
   }
   
+  // Fix common JSON issues
+  cleaned = cleaned
+    // Remove any trailing commas before closing braces/brackets
+    .replace(/,(\s*[}\]])/g, '$1')
+    // Fix unescaped quotes in strings
+    .replace(/([^\\])"/g, '$1\\"')
+    // Remove any control characters
+    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+  
+  console.log('Cleaned JSON:', cleaned);
   return cleaned;
 }
 
