@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_results: {
+        Row: {
+          analysis_result: Json
+          analysis_type: string
+          created_at: string
+          created_by: string
+          function_name: string
+          id: string
+          input_parameters: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          analysis_result?: Json
+          analysis_type: string
+          created_at?: string
+          created_by: string
+          function_name: string
+          id?: string
+          input_parameters?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          analysis_result?: Json
+          analysis_type?: string
+          created_at?: string
+          created_by?: string
+          function_name?: string
+          id?: string
+          input_parameters?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_interview_sessions: {
         Row: {
           ai_assessment: Json | null
