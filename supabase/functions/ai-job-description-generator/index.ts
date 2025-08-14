@@ -43,6 +43,7 @@ serve(async (req) => {
       roleTitle, 
       department = '', 
       level = '', 
+      standardRoleId = null, // Optional link to standard role
       employmentType = 'full_time',
       locationStatus = 'office',
       salaryRange = '',
@@ -158,32 +159,35 @@ Respond in JSON format:
       throw new Error('Failed to generate job description - invalid AI response format');
     }
 
-    // Save to database - no role mapping needed
+    // Save to database with proper role linking
     console.log('Saving to database...');
+    const insertData = {
+      title: generatedJD.title,
+      summary: generatedJD.summary,
+      responsibilities: generatedJD.responsibilities,
+      required_qualifications: generatedJD.requiredQualifications,
+      preferred_qualifications: generatedJD.preferredQualifications,
+      required_skills: [],
+      preferred_skills: [],
+      salary_range_min: generatedJD.estimatedSalary?.min,
+      salary_range_max: generatedJD.estimatedSalary?.max,
+      currency: generatedJD.estimatedSalary?.currency || 'IDR',
+      experience_level: level,
+      education_level: 'bachelor',
+      employment_type: employmentType,
+      location_type: locationStatus,
+      ai_generated: true,
+      generated_by: userId,
+      ai_prompt_used: aiPrompt.substring(0, 1000), // Truncate if too long
+      tone: tone,
+      language: language,
+      status: 'draft',
+      ...(standardRoleId && { standard_role_id: standardRoleId }) // Link to role if provided
+    };
+
     const { data: savedJD, error: saveError } = await supabaseService
       .from('xlsmart_job_descriptions')
-      .insert({
-        title: generatedJD.title,
-        summary: generatedJD.summary,
-        responsibilities: generatedJD.responsibilities,
-        required_qualifications: generatedJD.requiredQualifications,
-        preferred_qualifications: generatedJD.preferredQualifications,
-        required_skills: [],
-        preferred_skills: [],
-        salary_range_min: generatedJD.estimatedSalary?.min,
-        salary_range_max: generatedJD.estimatedSalary?.max,
-        currency: generatedJD.estimatedSalary?.currency || 'IDR',
-        experience_level: level,
-        education_level: 'bachelor',
-        employment_type: employmentType,
-        location_type: locationStatus,
-        ai_generated: true,
-        generated_by: userId,
-        ai_prompt_used: aiPrompt.substring(0, 1000), // Truncate if too long
-        tone: tone,
-        language: language,
-        status: 'draft'
-      })
+      .insert(insertData)
       .select()
       .single();
 

@@ -1460,6 +1460,7 @@ export type Database = {
           salary: number | null
           skills: Json | null
           source_company: string
+          standard_role_id: string | null
           updated_at: string
           uploaded_by: string
           years_of_experience: number | null
@@ -1484,6 +1485,7 @@ export type Database = {
           salary?: number | null
           skills?: Json | null
           source_company: string
+          standard_role_id?: string | null
           updated_at?: string
           uploaded_by: string
           years_of_experience?: number | null
@@ -1508,6 +1510,7 @@ export type Database = {
           salary?: number | null
           skills?: Json | null
           source_company?: string
+          standard_role_id?: string | null
           updated_at?: string
           uploaded_by?: string
           years_of_experience?: number | null
@@ -1518,6 +1521,13 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "xlsmart_employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xlsmart_employees_standard_role_id_fkey"
+            columns: ["standard_role_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_standard_roles"
             referencedColumns: ["id"]
           },
         ]
@@ -1542,9 +1552,9 @@ export type Database = {
           required_skills: Json | null
           responsibilities: Json | null
           reviewed_by: string | null
-          role_mapping_id: string
           salary_range_max: number | null
           salary_range_min: number | null
+          standard_role_id: string | null
           status: string
           summary: string | null
           title: string
@@ -1570,9 +1580,9 @@ export type Database = {
           required_skills?: Json | null
           responsibilities?: Json | null
           reviewed_by?: string | null
-          role_mapping_id: string
           salary_range_max?: number | null
           salary_range_min?: number | null
+          standard_role_id?: string | null
           status?: string
           summary?: string | null
           title: string
@@ -1598,9 +1608,9 @@ export type Database = {
           required_skills?: Json | null
           responsibilities?: Json | null
           reviewed_by?: string | null
-          role_mapping_id?: string
           salary_range_max?: number | null
           salary_range_min?: number | null
+          standard_role_id?: string | null
           status?: string
           summary?: string | null
           title?: string
@@ -1609,10 +1619,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "xlsmart_job_descriptions_role_mapping_id_fkey"
-            columns: ["role_mapping_id"]
+            foreignKeyName: "xlsmart_job_descriptions_standard_role_id_fkey"
+            columns: ["standard_role_id"]
             isOneToOne: false
-            referencedRelation: "xlsmart_role_mappings"
+            referencedRelation: "xlsmart_standard_roles"
             referencedColumns: ["id"]
           },
         ]
