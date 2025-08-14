@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
-import { BookOpen, TrendingUp, Clock, Award } from "lucide-react";
+import { AILearningDevelopment } from "@/components/AILearningDevelopment";
+import { BookOpen, TrendingUp, Clock, Award, Brain } from "lucide-react";
 
 const DevelopmentDashboard = () => {
   const developmentStats = [
@@ -40,7 +42,7 @@ const DevelopmentDashboard = () => {
       <div className="space-y-4">
         <h1 className="text-3xl font-bold text-foreground">Development Pathways</h1>
         <p className="text-muted-foreground text-lg">
-          Create personalized learning paths and track skill development progress
+          Create personalized learning paths, track skill development progress, and leverage AI insights
         </p>
       </div>
 
@@ -84,107 +86,132 @@ const DevelopmentDashboard = () => {
         </div>
       </section>
 
-      {/* AI Development Pathways */}
-      <section>
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">AI Development Pathways</h2>
-          <p className="text-muted-foreground">
-            Generate personalized learning paths with AI-powered skill gap analysis
-          </p>
-        </div>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="ai-insights" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 lg:w-fit">
+          <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Insights</span>
+          </TabsTrigger>
+          <TabsTrigger value="pathways" className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Pathways</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            <span className="hidden sm:inline">Analytics</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <BookOpen className="h-5 w-5 text-primary" />
-              <span>Development Path Generator</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DevelopmentPathwaysAI />
-          </CardContent>
-        </Card>
-      </section>
+        <TabsContent value="ai-insights" className="space-y-6 mt-6">
+          <AILearningDevelopment />
+        </TabsContent>
 
-      {/* Development Insights */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Popular Learning Tracks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="font-medium">Cloud Computing</p>
-                  <p className="text-sm text-muted-foreground">456 learners</p>
-                </div>
-                <div className="text-blue-600 text-sm">92% completion</div>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="font-medium">Data Science</p>
-                  <p className="text-sm text-muted-foreground">378 learners</p>
-                </div>
-                <div className="text-green-600 text-sm">87% completion</div>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="font-medium">Leadership Skills</p>
-                  <p className="text-sm text-muted-foreground">234 learners</p>
-                </div>
-                <div className="text-purple-600 text-sm">95% completion</div>
-              </div>
+        <TabsContent value="pathways" className="space-y-6 mt-6">
+          {/* AI Development Pathways */}
+          <section>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">AI Development Pathways</h2>
+              <p className="text-muted-foreground">
+                Generate personalized learning paths with AI-powered skill gap analysis
+              </p>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Learning Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Technical Skills</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-20 h-2 bg-muted rounded-full">
-                    <div className="w-4/5 h-2 bg-blue-500 rounded-full"></div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  <span>Development Path Generator</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <DevelopmentPathwaysAI />
+              </CardContent>
+            </Card>
+          </section>
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6 mt-6">{/* Development Insights */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Popular Learning Tracks</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Cloud Computing</p>
+                      <p className="text-sm text-muted-foreground">456 learners</p>
+                    </div>
+                    <div className="text-blue-600 text-sm">92% completion</div>
                   </div>
-                  <span className="text-sm font-medium">80%</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Soft Skills</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-20 h-2 bg-muted rounded-full">
-                    <div className="w-3/4 h-2 bg-green-500 rounded-full"></div>
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Data Science</p>
+                      <p className="text-sm text-muted-foreground">378 learners</p>
+                    </div>
+                    <div className="text-green-600 text-sm">87% completion</div>
                   </div>
-                  <span className="text-sm font-medium">75%</span>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Industry Knowledge</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-20 h-2 bg-muted rounded-full">
-                    <div className="w-3/5 h-2 bg-purple-500 rounded-full"></div>
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">Leadership Skills</p>
+                      <p className="text-sm text-muted-foreground">234 learners</p>
+                    </div>
+                    <div className="text-purple-600 text-sm">95% completion</div>
                   </div>
-                  <span className="text-sm font-medium">60%</span>
                 </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Compliance Training</span>
-                <div className="flex items-center space-x-2">
-                  <div className="w-20 h-2 bg-muted rounded-full">
-                    <div className="w-full h-2 bg-orange-500 rounded-full"></div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Learning Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Technical Skills</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-20 h-2 bg-muted rounded-full">
+                        <div className="w-4/5 h-2 bg-blue-500 rounded-full"></div>
+                      </div>
+                      <span className="text-sm font-medium">80%</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-medium">100%</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Soft Skills</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-20 h-2 bg-muted rounded-full">
+                        <div className="w-3/4 h-2 bg-green-500 rounded-full"></div>
+                      </div>
+                      <span className="text-sm font-medium">75%</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Industry Knowledge</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-20 h-2 bg-muted rounded-full">
+                        <div className="w-3/5 h-2 bg-purple-500 rounded-full"></div>
+                      </div>
+                      <span className="text-sm font-medium">60%</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">Compliance Training</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-20 h-2 bg-muted rounded-full">
+                        <div className="w-full h-2 bg-orange-500 rounded-full"></div>
+                      </div>
+                      <span className="text-sm font-medium">100%</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+              </CardContent>
+            </Card>
+          </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

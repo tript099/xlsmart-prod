@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AIWorkforceIntelligence } from "@/components/AIWorkforceIntelligence";
 import { PieChart, BarChart3, TrendingUp, Users, Brain, Target, Zap, Shield, Clock, Award } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -165,8 +166,12 @@ const WorkforceAnalyticsDashboard = () => {
       </section>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-fit">
+      <Tabs defaultValue="ai-intelligence" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 lg:w-fit">
+          <TabsTrigger value="ai-intelligence" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Intelligence</span>
+          </TabsTrigger>
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -176,14 +181,18 @@ const WorkforceAnalyticsDashboard = () => {
             <span className="hidden sm:inline">Departments</span>
           </TabsTrigger>
           <TabsTrigger value="predictive" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            <span className="hidden sm:inline">AI Insights</span>
+            <Zap className="h-4 w-4" />
+            <span className="hidden sm:inline">Predictions</span>
           </TabsTrigger>
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Performance</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="ai-intelligence" className="space-y-6 mt-6">
+          <AIWorkforceIntelligence />
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
           {/* Skills Distribution & Trends */}

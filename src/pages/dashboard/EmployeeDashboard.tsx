@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeListDetails } from "@/components/EmployeeListDetails";
 import { EmployeeUploadTwoStep } from "@/components/EmployeeUploadTwoStep";
-import { Users, Upload, BarChart3, TrendingUp } from "lucide-react";
+import { AICompensationIntelligence } from "@/components/AICompensationIntelligence";
+import { Users, Upload, BarChart3, TrendingUp, DollarSign, Brain } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
 
 const EmployeeDashboard = () => {
@@ -44,7 +46,7 @@ const EmployeeDashboard = () => {
       <div className="space-y-4">
         <h1 className="text-3xl font-bold text-foreground">Employee Management</h1>
         <p className="text-muted-foreground text-lg">
-          Manage employee data, assignments, and analytics
+          Manage employee data, assignments, compensation analytics, and AI insights
         </p>
       </div>
 
@@ -88,43 +90,69 @@ const EmployeeDashboard = () => {
         </div>
       </section>
 
-      {/* Employee Upload Section */}
-      <section>
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">Employee Upload & Management</h2>
-          <p className="text-muted-foreground">
-            Upload employee data and manage AI-powered role assignments
-          </p>
-        </div>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="management" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 lg:w-fit">
+          <TabsTrigger value="management" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Management</span>
+          </TabsTrigger>
+          <TabsTrigger value="compensation" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            <span className="hidden sm:inline">Compensation</span>
+          </TabsTrigger>
+          <TabsTrigger value="directory" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Directory</span>
+          </TabsTrigger>
+        </TabsList>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Upload className="h-5 w-5 text-primary" />
-              <span>Employee Data Upload</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EmployeeUploadTwoStep />
-          </CardContent>
-        </Card>
-      </section>
+        <TabsContent value="management" className="space-y-6 mt-6">
+          {/* Employee Upload Section */}
+          <section>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Employee Upload & Management</h2>
+              <p className="text-muted-foreground">
+                Upload employee data and manage AI-powered role assignments
+              </p>
+            </div>
 
-      {/* Employee List and Analytics */}
-      <section>
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">Employee Directory & Analytics</h2>
-          <p className="text-muted-foreground">
-            Detailed view of all employees with analysis and recommendations
-          </p>
-        </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Upload className="h-5 w-5 text-primary" />
+                  <span>Employee Data Upload</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EmployeeUploadTwoStep />
+              </CardContent>
+            </Card>
+          </section>
+        </TabsContent>
 
-        <Card>
-          <CardContent className="p-0">
-            <EmployeeListDetails />
-          </CardContent>
-        </Card>
-      </section>
+        <TabsContent value="compensation" className="space-y-6 mt-6">
+          <AICompensationIntelligence />
+        </TabsContent>
+
+        <TabsContent value="directory" className="space-y-6 mt-6">
+          {/* Employee List and Analytics */}
+          <section>
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Employee Directory & Analytics</h2>
+              <p className="text-muted-foreground">
+                Detailed view of all employees with analysis and recommendations
+              </p>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <EmployeeListDetails />
+              </CardContent>
+            </Card>
+          </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
