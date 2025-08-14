@@ -12,7 +12,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,7 +23,7 @@ serve(async (req) => {
     const { sessionId } = await req.json();
     
     console.log(`Starting AI role assignment for session: ${sessionId}`);
-    console.log(`OpenAI API key configured: ${openAIApiKey ? 'Yes' : 'No'}`);
+    console.log(`LiteLLM API key configured: ${liteLLMApiKey ? 'Yes' : 'No'}`);
     
     // Get the session details
     const { data: session, error: sessionError } = await supabase
@@ -205,12 +205,12 @@ serve(async (req) => {
 async function assignRoleWithAI(employee: any, standardRoles: any[]) {
   console.log(`Processing AI role assignment for: ${employee.first_name} ${employee.last_name}`);
   
-  if (!openAIApiKey) {
-    console.error('OpenAI API key not configured in environment variables');
+  if (!liteLLMApiKey) {
+    console.error('LiteLLM API key not configured in environment variables');
     return null;
   }
 
-  console.log('OpenAI API key is configured, proceeding with AI assignment');
+  console.log('LiteLLM API key is configured, proceeding with AI assignment');
 
   try {
     const employeeSkills = Array.isArray(employee.skills) ? employee.skills.join(', ') : employee.skills || '';
@@ -269,7 +269,7 @@ Return only the UUID:`;
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${liteLLMApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -287,7 +287,9 @@ Return only the UUID:`;
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`LiteLLM API error: ${response.statusText} - ${errorText}`);
+      throw new Error(`LiteLLM API error: ${response.statusText}`);
     }
 
     const data = await response.json();
