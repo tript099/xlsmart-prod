@@ -112,7 +112,7 @@ export const EmployeeUploadTwoStep = () => {
       const { data, error } = await supabase.functions.invoke('employee-upload-data', {
         body: {
           employees: employeeData,
-          sessionName: `Employee Data Upload ${new Date().toISOString()}`
+          sessionName: `Employee Upload ${new Date().toISOString()}: ${Array.from(files).map(f => f.name).join(', ')}`
         }
       });
 
