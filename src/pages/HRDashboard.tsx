@@ -19,8 +19,8 @@ const HRDashboard = () => {
 
   // Redirect to analytics dashboard if on base dashboard route
   useEffect(() => {
-    if (location.pathname === '/dashboard') {
-      navigate('/dashboard/analytics');
+    if (location.pathname === '/dashboard' || location.pathname === '/dashboard/') {
+      navigate('/dashboard/analytics', { replace: true });
     }
   }, [location.pathname, navigate]);
 

@@ -118,7 +118,7 @@ export function HRSidebar() {
       className={collapsed ? "w-16" : "w-64"}
       collapsible="icon"
     >
-      <SidebarTrigger className="m-2 self-end" />
+      {/* Trigger is in the header, not here */}
 
       <SidebarContent>
         {/* Header */}
