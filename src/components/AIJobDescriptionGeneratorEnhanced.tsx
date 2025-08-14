@@ -220,47 +220,23 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
     setIsChatLoading(true);
 
     try {
-      // Instead of calling the JD generator, directly use AI to update content
-      // This prevents creating new JD records and just gets the updated text
-      const currentContent = updatedJDContent || selectedJDForChat.fullDescription;
-      const prompt = `You are an expert HR professional. Update the following job description based on this request: "${chatInput}"
-
-Current Job Description:
-${currentContent}
-
-Please provide only the updated job description content in a clear, professional format. Do not create a completely new job description, just modify the existing one based on the user's request.`;
-
-      // Make a direct call to AI service for content updates only
-      const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer demo-key`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'azure/gpt-4.1',
-          messages: [
-            { role: 'system', content: 'You are an expert HR professional. Provide clear, concise updates to job descriptions.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000,
-        }),
+      // Use the dedicated JD updater function
+      const { data, error } = await supabase.functions.invoke('ai-jd-updater', {
+        body: {
+          currentContent: updatedJDContent || selectedJDForChat.fullDescription,
+          updateRequest: chatInput
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-
-      const aiData = await response.json();
-      const updatedContent = aiData.choices[0].message.content;
+      if (error) throw error;
+      if (!data.success) throw new Error(data.message);
       
-      setUpdatedJDContent(updatedContent);
+      setUpdatedJDContent(data.updatedContent);
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `I've updated the job description based on your request. Here are the changes:\n\n${updatedContent}`,
+        content: `I've updated the job description based on your request. Here are the changes:\n\n${data.updatedContent}`,
         timestamp: new Date()
       };
 
