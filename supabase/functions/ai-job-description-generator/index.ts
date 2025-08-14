@@ -8,8 +8,16 @@ const corsHeaders = {
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+// Create client with auth context to get user ID
+const createSupabaseClient = (authHeader: string | null) => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: authHeader ? { authorization: authHeader } : {},
+    },
+  });
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -17,6 +25,16 @@ serve(async (req) => {
   }
 
   try {
+    // Get auth header to maintain user context
+    const authHeader = req.headers.get('authorization');
+    const supabase = createSupabaseClient(authHeader);
+
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      throw new Error('Authentication required');
+    }
+
     const { 
       roleTitle, 
       department, 
@@ -30,9 +48,9 @@ serve(async (req) => {
       language = 'en'
     } = await req.json();
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const openAIApiKey = Deno.env.get('LITELLM_API_KEY'); // Use LiteLLM key
     if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+      throw new Error('LiteLLM API key not configured');
     }
 
     // Get similar standard roles for context
@@ -132,7 +150,7 @@ Respond in JSON format:
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
+      throw new Error(`LiteLLM API error: ${response.statusText}`);
     }
 
     const aiData = await response.json();
@@ -145,13 +163,36 @@ Respond in JSON format:
       throw new Error('Failed to generate job description - invalid AI response format');
     }
 
+    // Create a dummy role mapping entry to satisfy the NOT NULL constraint
+    const { data: dummyMapping, error: mappingError } = await supabase
+      .from('xlsmart_role_mappings')
+      .insert({
+        catalog_id: user.id, // Use user ID as catalog
+        original_role_title: roleTitle,
+        original_department: department,
+        original_level: level,
+        standardized_role_title: roleTitle,
+        standardized_department: department,
+        standardized_level: level,
+        job_family: department,
+        mapping_confidence: 100,
+        mapping_status: 'ai_generated'
+      })
+      .select('id')
+      .single();
+
+    if (mappingError) {
+      console.error('Error creating role mapping:', mappingError);
+      throw new Error('Failed to create role mapping');
+    }
+
     // Save to database
     const { data: savedJD, error: saveError } = await supabase
       .from('xlsmart_job_descriptions')
       .insert({
         title: generatedJD.title,
         summary: generatedJD.summary,
-        role_mapping_id: null, // Can be linked later
+        role_mapping_id: dummyMapping.id,
         responsibilities: generatedJD.responsibilities,
         required_qualifications: generatedJD.requiredQualifications,
         preferred_qualifications: generatedJD.preferredQualifications,
@@ -165,7 +206,7 @@ Respond in JSON format:
         employment_type: employmentType,
         location_type: locationStatus,
         ai_generated: true,
-        generated_by: null, // Will be set by RLS
+        generated_by: user.id,
         ai_prompt_used: aiPrompt,
         tone: tone,
         language: language,
