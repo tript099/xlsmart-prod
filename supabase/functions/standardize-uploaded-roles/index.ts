@@ -19,9 +19,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
+    if (!litellmApiKey) {
+      throw new Error('LiteLLM API key not configured');
     }
 
     const { sessionId } = await req.json();
@@ -119,16 +119,16 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
   ]
 }`;
 
-    // Call OpenAI API
-    console.log('Calling OpenAI API...');
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+    // Call LiteLLM Proxy API
+    console.log('Calling LiteLLM Proxy API...');
+    const litellmResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${litellmApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           {
             role: 'system',
@@ -144,12 +144,12 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
       }),
     });
 
-    if (!openAIResponse.ok) {
-      throw new Error(`OpenAI API error: ${openAIResponse.statusText}`);
+    if (!litellmResponse.ok) {
+      throw new Error(`LiteLLM API error: ${litellmResponse.statusText}`);
     }
 
-    const openAIData = await openAIResponse.json();
-    let aiResponseText = openAIData.choices[0].message.content;
+    const litellmData = await litellmResponse.json();
+    let aiResponseText = litellmData.choices[0].message.content;
 
     // Clean and parse AI response
     aiResponseText = aiResponseText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
