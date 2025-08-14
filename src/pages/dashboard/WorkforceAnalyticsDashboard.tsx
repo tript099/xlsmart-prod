@@ -4,6 +4,7 @@ import { AIWorkforceIntelligence } from "@/components/AIWorkforceIntelligence";
 import { PieChart, BarChart3, TrendingUp, Users, Brain, Target, Zap, Shield, Clock, Award } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { LiteLLMTest } from "@/components/LiteLLMTest";
 
 const WorkforceAnalyticsDashboard = () => {
   const [workforceAnalytics, setWorkforceAnalytics] = useState({
@@ -167,7 +168,7 @@ const WorkforceAnalyticsDashboard = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="ai-intelligence" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-fit">
+        <TabsList className="grid w-full grid-cols-6 lg:w-fit">
           <TabsTrigger value="ai-intelligence" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             <span className="hidden sm:inline">AI Intelligence</span>
@@ -187,6 +188,10 @@ const WorkforceAnalyticsDashboard = () => {
           <TabsTrigger value="performance" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Performance</span>
+          </TabsTrigger>
+          <TabsTrigger value="litellm-test" className="flex items-center gap-2">
+            <Zap className="h-4 w-4" />
+            <span className="hidden sm:inline">LiteLLM Test</span>
           </TabsTrigger>
         </TabsList>
 
@@ -547,6 +552,10 @@ const WorkforceAnalyticsDashboard = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="litellm-test" className="space-y-6 mt-6">
+          <LiteLLMTest />
         </TabsContent>
       </Tabs>
     </div>
