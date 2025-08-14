@@ -36,12 +36,6 @@ const navigationItems = [
     description: "Platform overview & insights"
   },
   {
-    title: "Employee Management",
-    url: "/dashboard/employees",
-    icon: Users,
-    description: "Employee dashboard & analytics"
-  },
-  {
     title: "Role Management",
     url: "/dashboard/roles",
     icon: Briefcase,
@@ -54,46 +48,28 @@ const navigationItems = [
     description: "JD generation & management"
   },
   {
-    title: "Skill Assessment",
+    title: "Employee Management",
+    url: "/dashboard/employees",
+    icon: Users,
+    description: "Employee dashboard & analytics"
+  },
+  {
+    title: "Skills & Talent",
     url: "/dashboard/skills",
     icon: Brain,
-    description: "Skills analysis & recommendations"
+    description: "Skills analysis & talent optimization"
   },
   {
-    title: "Career Paths",
+    title: "Career Development",
     url: "/dashboard/career-paths",
     icon: TrendingUp,
-    description: "Career planning & progression"
-  },
-  {
-    title: "Employee Mobility",
-    url: "/dashboard/mobility",
-    icon: Target,
-    description: "Mobility planning & analysis"
-  },
-  {
-    title: "Development Pathways",
-    url: "/dashboard/development",
-    icon: BookOpen,
-    description: "Learning & development paths"
-  },
-  {
-    title: "Certifications",
-    url: "/dashboard/certifications",
-    icon: Award,
-    description: "Certification tracking"
+    description: "Career paths & development planning"
   },
   {
     title: "Workforce Analytics",
     url: "/dashboard/workforce-analytics",
     icon: PieChart,
     description: "Advanced workforce insights"
-  },
-  {
-    title: "Skill Inventory",
-    url: "/dashboard/skill-inventory",
-    icon: Package,
-    description: "Organization skill mapping"
   }
 ];
 
