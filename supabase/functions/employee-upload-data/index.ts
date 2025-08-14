@@ -20,8 +20,8 @@ serve(async (req) => {
   try {
     const { employees, sessionName } = await req.json();
     
-    console.log(`Starting employee data upload for ${employees.length} employees - v2`);
-    console.log('Source companies:', employees.map(emp => emp.Telco || emp.Company || 'Unknown').slice(0, 3));
+    console.log(`Starting employee data upload for ${employees.length} employees - v3`);
+    console.log('Source companies (first 3):', employees.map(emp => emp.Telco || emp.Company || 'Unknown').slice(0, 3));
     
     // Get the authenticated user from the request
     const authHeader = req.headers.get('Authorization');
