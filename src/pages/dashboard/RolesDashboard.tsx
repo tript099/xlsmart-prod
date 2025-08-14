@@ -4,36 +4,38 @@ import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails"
 import { RoleStandardizationSystem } from "@/components/RoleStandardizationSystem";
 import { AIAdvancedRoleIntelligence } from "@/components/AIAdvancedRoleIntelligence";
 import BulkRoleAssignment from "@/components/BulkRoleAssignment";
-import { Briefcase, Upload, Target, BarChart3, Brain } from "lucide-react";
+import { Briefcase, Upload, Target, BarChart3, Brain, Loader2 } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
+import { useRoleAnalytics } from "@/hooks/useRoleAnalytics";
 
 const RolesDashboard = () => {
   const aiStats = useAIStats();
+  const roleAnalytics = useRoleAnalytics();
 
   const roleStats = [
     { 
-      value: aiStats.loading ? "..." : aiStats.roles, 
+      value: roleAnalytics.loading ? "..." : roleAnalytics.totalRoles.toString(), 
       label: "Standardized Roles", 
       icon: Briefcase, 
       color: "text-blue-600",
       description: "Total role definitions"
     },
     { 
-      value: aiStats.loading ? "..." : aiStats.accuracy, 
+      value: roleAnalytics.loading ? "..." : `${roleAnalytics.mappingAccuracy}%`, 
       label: "Mapping Accuracy", 
       icon: Target, 
       color: "text-green-600",
       description: "Role assignment precision"
     },
     { 
-      value: "95%", 
+      value: roleAnalytics.loading ? "..." : `${roleAnalytics.standardizationRate}%`, 
       label: "Standardization Rate", 
       icon: BarChart3, 
       color: "text-purple-600",
       description: "Successfully standardized"
     },
     { 
-      value: "247", 
+      value: roleAnalytics.loading ? "..." : roleAnalytics.roleCategories.toString(), 
       label: "Role Categories", 
       icon: Briefcase, 
       color: "text-orange-600",
@@ -74,7 +76,8 @@ const RolesDashboard = () => {
                     <stat.icon className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className={`text-2xl font-bold ${stat.color}`}>
+                    <div className={`text-2xl font-bold ${stat.color} flex items-center gap-2`}>
+                      {roleAnalytics.loading && <Loader2 className="h-4 w-4 animate-spin" />}
                       {stat.value}
                     </div>
                     <p className="text-sm font-medium text-foreground">
