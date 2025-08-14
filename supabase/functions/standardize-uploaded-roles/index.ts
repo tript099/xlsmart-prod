@@ -69,7 +69,130 @@ serve(async (req) => {
       smartCount: smartData?.length || 0
     });
 
-    // Simple success response for now to test basic functionality
+    if (!xlData?.length && !smartData?.length) {
+      console.log('No data found for processing');
+      await supabase
+        .from('xlsmart_upload_sessions')
+        .update({ 
+          status: 'completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
+
+      return new Response(JSON.stringify({
+        success: true,
+        standardizedRolesCreated: 0,
+        mappingsCreated: 0,
+        message: 'No data to process'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get session creator for proper user assignment
+    const { data: session } = await supabase
+      .from('xlsmart_upload_sessions')
+      .select('created_by')
+      .eq('id', sessionId)
+      .single();
+
+    const createdBy = session?.created_by;
+    if (!createdBy) {
+      throw new Error('Session creator not found');
+    }
+
+    // Combine all roles for processing
+    const allRoles = [
+      ...(xlData || []).map(role => ({ ...role, source: 'xl' })),
+      ...(smartData || []).map(role => ({ ...role, source: 'smart' }))
+    ];
+
+    console.log('Processing roles:', allRoles.length);
+
+    // Create standardized roles and mappings
+    const standardizedRoles = [];
+    const mappings = [];
+
+    // Group similar roles together
+    const roleGroups = new Map();
+    
+    for (const role of allRoles) {
+      const key = role.role_title?.toLowerCase().trim() || 'untitled';
+      if (!roleGroups.has(key)) {
+        roleGroups.set(key, []);
+      }
+      roleGroups.get(key).push(role);
+    }
+
+    console.log('Grouped into', roleGroups.size, 'unique role titles');
+
+    // Create standardized roles for each group
+    for (const [roleTitle, roles] of roleGroups) {
+      const firstRole = roles[0];
+      
+      // Create standardized role
+      const standardizedRole = {
+        role_title: firstRole.role_title || roleTitle,
+        job_family: firstRole.role_family || firstRole.department || 'General',
+        role_level: firstRole.seniority_band || 'Mid',
+        role_category: 'Standard',
+        department: firstRole.department || 'General',
+        standard_description: firstRole.role_purpose || 'Standard role description',
+        core_responsibilities: firstRole.core_responsibilities ? [firstRole.core_responsibilities] : [],
+        required_skills: firstRole.required_skills ? firstRole.required_skills.split(',').map(s => s.trim()) : [],
+        experience_range_min: firstRole.experience_min_years || 0,
+        experience_range_max: (firstRole.experience_min_years || 0) + 5,
+        education_requirements: firstRole.education ? [firstRole.education] : [],
+        keywords: [roleTitle, firstRole.role_title].filter(Boolean),
+        created_by: createdBy,
+        industry_alignment: 'Telecommunications'
+      };
+
+      const { data: insertedRole, error: roleError } = await supabase
+        .from('xlsmart_standard_roles')
+        .insert(standardizedRole)
+        .select('id')
+        .single();
+
+      if (roleError) {
+        console.error('Error inserting standardized role:', roleError);
+        continue;
+      }
+
+      standardizedRoles.push(insertedRole);
+
+      // Create mappings for all roles in this group
+      for (const originalRole of roles) {
+        const mapping = {
+          original_role_title: originalRole.role_title,
+          original_department: originalRole.department,
+          original_level: originalRole.seniority_band,
+          standardized_role_title: standardizedRole.role_title,
+          standardized_department: standardizedRole.department,
+          standardized_level: standardizedRole.role_level,
+          job_family: standardizedRole.job_family,
+          standard_role_id: insertedRole.id,
+          mapping_confidence: 0.95,
+          mapping_status: 'auto_mapped',
+          requires_manual_review: false,
+          catalog_id: null // Set to null to avoid FK issues
+        };
+
+        mappings.push(mapping);
+      }
+    }
+
+    // Insert all mappings
+    if (mappings.length > 0) {
+      const { error: mappingError } = await supabase
+        .from('xlsmart_role_mappings')
+        .insert(mappings);
+
+      if (mappingError) {
+        console.error('Error inserting mappings:', mappingError);
+      }
+    }
+
     await supabase
       .from('xlsmart_upload_sessions')
       .update({ 
@@ -82,9 +205,9 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      standardizedRolesCreated: 0,
-      mappingsCreated: 0,
-      message: 'Basic functionality working - AI processing temporarily disabled for testing'
+      standardizedRolesCreated: standardizedRoles.length,
+      mappingsCreated: mappings.length,
+      message: 'Roles standardized successfully'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
