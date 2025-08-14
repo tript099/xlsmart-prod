@@ -57,25 +57,19 @@ const navigationItems = [
     title: "Skill Assessment",
     url: "/dashboard/skills",
     icon: Brain,
-    description: "Skills analysis & recommendations"
+    description: "Skills analysis & inventory"
   },
   {
-    title: "Career Paths",
+    title: "Career & Development",
     url: "/dashboard/career-paths",
     icon: TrendingUp,
-    description: "Career planning & progression"
+    description: "Career paths & development planning"
   },
   {
     title: "Employee Mobility",
     url: "/dashboard/mobility",
     icon: Target,
     description: "Mobility planning & analysis"
-  },
-  {
-    title: "Development Pathways",
-    url: "/dashboard/development",
-    icon: BookOpen,
-    description: "Learning & development paths"
   },
   {
     title: "Certifications",
@@ -88,12 +82,6 @@ const navigationItems = [
     url: "/dashboard/workforce-analytics",
     icon: PieChart,
     description: "Advanced workforce insights"
-  },
-  {
-    title: "Skill Inventory",
-    url: "/dashboard/skill-inventory",
-    icon: Package,
-    description: "Organization skill mapping"
   }
 ];
 
