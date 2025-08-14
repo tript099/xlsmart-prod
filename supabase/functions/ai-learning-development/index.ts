@@ -168,7 +168,14 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 }
 
 function cleanJsonResponse(text: string): string {
-  console.log('Raw AI response:', text);
+  console.log('Raw AI response length:', text.length);
+  console.log('Raw AI response preview:', text.substring(0, 500));
+  
+  // If response is too long, it might be truncated or malformed
+  if (text.length > 20000) {
+    console.warn('Response is very long, truncating to prevent parsing issues');
+    text = text.substring(0, 20000);
+  }
   
   // Remove markdown code blocks and extra whitespace
   let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
@@ -179,26 +186,50 @@ function cleanJsonResponse(text: string): string {
   
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  } else {
+    // If we can't find proper JSON structure, return a minimal valid response
+    console.warn('Could not find valid JSON structure, returning minimal response');
+    return '{"personalizedPlans":[],"learningRecommendations":{"immediateActions":[],"quarterlyGoals":[],"annualTargets":[],"budgetEstimate":0}}';
   }
   
-  // Fix common JSON issues
-  cleaned = cleaned
-    // Remove any trailing commas before closing braces/brackets
-    .replace(/,(\s*[}\]])/g, '$1')
-    // Fix unescaped quotes in strings
-    .replace(/([^\\])"/g, '$1\\"')
-    // Remove any control characters
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
-  
-  console.log('Cleaned JSON:', cleaned);
-  return cleaned;
+  // Fix common JSON issues more carefully
+  try {
+    // First try to parse as-is
+    JSON.parse(cleaned);
+    console.log('JSON is already valid');
+    return cleaned;
+  } catch (e) {
+    console.log('JSON needs cleaning, attempting fixes...');
+    
+    // Remove trailing commas
+    cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+    
+    // Fix unescaped quotes in strings (more careful approach)
+    cleaned = cleaned.replace(/([^\\])"([^"]*[^\\])"/g, '$1\\"$2\\"');
+    
+    // Remove control characters
+    cleaned = cleaned.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+    
+    // Try parsing again
+    try {
+      JSON.parse(cleaned);
+      console.log('JSON fixed successfully');
+      return cleaned;
+    } catch (e2) {
+      console.error('Could not fix JSON, returning minimal response');
+      return '{"personalizedPlans":[],"learningRecommendations":{"immediateActions":[],"quarterlyGoals":[],"annualTargets":[],"budgetEstimate":0}}';
+    }
+  }
 }
 
 async function performPersonalizedLearningAnalysis(
   employees: any[], skillAssessments: any[], employeeSkills: any[], 
   skillsMaster: any[], trainings: any[], standardRoles: any[], employeeId?: string
 ) {
-  const targetEmployees = employeeId ? employees.filter(emp => emp.id === employeeId) : employees.slice(0, 20);
+  // Limit employees to prevent overly large responses
+  const targetEmployees = employeeId 
+    ? employees.filter(emp => emp.id === employeeId).slice(0, 1)
+    : employees.slice(0, 5); // Reduced from 20 to 5
 
   const systemPrompt = `You are an AI learning & development specialist. Create personalized learning pathways based on individual employee profiles, skills, and career goals.
 
@@ -249,10 +280,16 @@ Return analysis in JSON format:
   }
 }`;
 
-  const prompt = `Create personalized learning plans for ${targetEmployees.length} employees:
+  const prompt = `Create personalized learning plans for ${targetEmployees.length} employees (limit analysis to essential data only):
 
-EMPLOYEES:
-${JSON.stringify(targetEmployees, null, 2)}
+EMPLOYEES (limited data):
+${JSON.stringify(targetEmployees.map(emp => ({
+  id: emp.id,
+  name: `${emp.first_name} ${emp.last_name}`,
+  position: emp.current_position,
+  department: emp.current_department,
+  experience: emp.years_of_experience
+})), null, 2)}
 
 SKILL ASSESSMENTS:
 ${JSON.stringify(skillAssessments.filter(sa => 
