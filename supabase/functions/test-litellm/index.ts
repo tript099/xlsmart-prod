@@ -15,17 +15,17 @@ serve(async (req) => {
     console.log('Testing LiteLLM proxy connection...');
 
     // Get the API key from Supabase secrets
-    const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
-    if (!litellmApiKey) {
-      throw new Error('LITELLM_API_KEY not found in environment variables');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not found in environment variables');
     }
 
     const { message = "Hello, how are you?" } = await req.json().catch(() => ({}));
 
-    const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${litellmApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -62,7 +62,7 @@ serve(async (req) => {
       success: true,
       message: aiResponse,
       model: 'azure/gpt-4.1',
-      proxy: 'proxyllm.ximplify.id'
+      proxy: 'proxyllm.ximplify.id/v1'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

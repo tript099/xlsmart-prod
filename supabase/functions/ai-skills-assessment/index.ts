@@ -24,10 +24,10 @@ serve(async (req) => {
       additionalSkills = []
     } = await req.json();
 
-  const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
-  if (!litellmApiKey) {
-    throw new Error('LiteLLM API key not configured');
-  }
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
+    }
 
     // Get employee data
     const { data: employee, error: employeeError } = await supabase
@@ -154,10 +154,10 @@ Respond in JSON format:
   "lastAssessed": "${new Date().toISOString()}"
 }`;
 
-    const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${litellmApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

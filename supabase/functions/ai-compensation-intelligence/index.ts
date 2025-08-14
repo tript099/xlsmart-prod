@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const litellmApiKey = Deno.env.get('LITELLM_API_KEY')!;
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -106,10 +106,10 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const response = await fetch('https://proxyllm.ximplify.id/chat/completions', {
+  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${litellmApiKey}`,
+      'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
