@@ -181,9 +181,14 @@ Respond in JSON format:
       .eq('source_company', 'AI Generated')
       .eq('uploaded_by', userId)
       .limit(1)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single to avoid error when no records found
 
     let catalogId;
+    if (catalogSelectError) {
+      console.error('Error checking existing catalog:', catalogSelectError);
+      throw new Error('Failed to check existing catalog');
+    }
+    
     if (existingCatalog) {
       catalogId = existingCatalog.id;
     } else {
