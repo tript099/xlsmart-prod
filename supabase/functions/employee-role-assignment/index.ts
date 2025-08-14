@@ -221,7 +221,7 @@ async function assignRoleWithAI(employee: any, standardRoles: any[]) {
       if (locationSkill) location = locationSkill.replace('Location:', '').trim();
     }
 
-    const prompt = `Analyze this employee profile and assign the most suitable standard role from the available options.
+    const prompt = `You are an expert HR system that assigns employees to the most appropriate standard roles. Analyze this employee profile and find the BEST MATCHING standard role from the available options.
 
 Employee Profile:
 - Employee ID: ${employee.employee_number}
@@ -236,17 +236,30 @@ Employee Profile:
 - Aspirations: ${aspirations || 'N/A'}
 - Location: ${location || 'N/A'}
 
-Available Standard Roles:
-${standardRoles.map(role => `- ID: ${role.id} | Title: ${role.role_title} | Family: ${role.job_family} | Level: ${role.role_level} | Category: ${role.role_category}`).join('\n')}
+Available Standard Roles (YOU MUST CHOOSE FROM THESE):
+${standardRoles.map(role => `- ID: ${role.id}
+  Title: ${role.role_title}
+  Family: ${role.job_family}
+  Level: ${role.role_level}
+  Category: ${role.role_category}
+  Department: ${role.department}
+  Description: ${role.standard_description || 'N/A'}`).join('\n\n')}
 
-Instructions:
-1. Analyze the employee's skills, experience, current position, and aspirations
-2. Find the best matching standard role based on skill alignment, experience level, and career progression
-3. Consider the employee's aspirations for future growth
-4. Return ONLY the role ID (UUID) of the best matching standard role
-5. If no suitable role exists, return "NO_MATCH"
+ANALYSIS CRITERIA:
+1. **Skills Match**: Compare employee skills with role requirements
+2. **Experience Level**: Match years of experience with role level expectations
+3. **Current Position**: Consider similarity to existing role title
+4. **Department Alignment**: Prefer roles in same/similar departments
+5. **Career Progression**: Consider employee aspirations and growth path
 
-Response format: Return only the UUID or "NO_MATCH"`;
+INSTRUCTIONS:
+- You MUST select ONE of the provided standard role IDs
+- Choose the role with the highest overall match score
+- Consider both current fit and growth potential
+- Return ONLY the UUID of the selected role
+- If truly no role fits (very rare), return "NO_MATCH"
+
+Return only the UUID:`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -255,11 +268,11 @@ Response format: Return only the UUID or "NO_MATCH"`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert HR system that assigns employees to the most appropriate standard roles based on their comprehensive profile. Always respond with only the role ID or NO_MATCH.' 
+            content: 'You are an expert HR system that assigns employees to the most appropriate standard roles. You must analyze employee profiles and match them to existing standard roles based on skills, experience, and career fit. Always return only a valid role UUID from the provided list.' 
           },
           { role: 'user', content: prompt }
         ],
