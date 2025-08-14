@@ -1,0 +1,145 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails";
+import { RoleStandardizationSystem } from "@/components/RoleStandardizationSystem";
+import BulkRoleAssignment from "@/components/BulkRoleAssignment";
+import { Briefcase, Upload, Target, BarChart3 } from "lucide-react";
+import { useAIStats } from "@/components/AIStatsProvider";
+
+const RolesDashboard = () => {
+  const aiStats = useAIStats();
+
+  const roleStats = [
+    { 
+      value: aiStats.loading ? "..." : aiStats.roles, 
+      label: "Standardized Roles", 
+      icon: Briefcase, 
+      color: "text-blue-600",
+      description: "Total role definitions"
+    },
+    { 
+      value: aiStats.loading ? "..." : aiStats.accuracy, 
+      label: "Mapping Accuracy", 
+      icon: Target, 
+      color: "text-green-600",
+      description: "Role assignment precision"
+    },
+    { 
+      value: "95%", 
+      label: "Standardization Rate", 
+      icon: BarChart3, 
+      color: "text-purple-600",
+      description: "Successfully standardized"
+    },
+    { 
+      value: "247", 
+      label: "Role Categories", 
+      icon: Briefcase, 
+      color: "text-orange-600",
+      description: "Distinct role families"
+    }
+  ];
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="space-y-4">
+        <h1 className="text-3xl font-bold text-foreground">Role Management</h1>
+        <p className="text-muted-foreground text-lg">
+          Standardize roles, manage assignments, and analyze role distribution
+        </p>
+      </div>
+
+      {/* Role Stats */}
+      <section className="bg-muted/50 rounded-xl p-6">
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Role Statistics</h2>
+          <p className="text-muted-foreground">
+            Overview of role standardization and management metrics
+          </p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {roleStats.map((stat, index) => (
+            <Card key={index} className="hover:shadow-md transition-all duration-200">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-2 rounded-lg bg-gradient-to-br ${
+                    index % 4 === 0 ? 'from-blue-500 to-blue-600' :
+                    index % 4 === 1 ? 'from-green-500 to-green-600' :
+                    index % 4 === 2 ? 'from-purple-500 to-purple-600' :
+                    'from-orange-500 to-orange-600'
+                  }`}>
+                    <stat.icon className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className={`text-2xl font-bold ${stat.color}`}>
+                      {stat.value}
+                    </div>
+                    <p className="text-sm font-medium text-foreground">
+                      {stat.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {stat.description}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* Role Standardization System */}
+      <section>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Role Standardization</h2>
+          <p className="text-muted-foreground">
+            Upload and standardize role catalogs using AI-powered processing
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Upload className="h-5 w-5 text-primary" />
+              <span>Role Upload & Standardization</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RoleStandardizationSystem />
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Bulk Role Assignment */}
+      <section>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Bulk Role Assignment</h2>
+          <p className="text-muted-foreground">
+            Automatically assign standardized roles to employees using AI
+          </p>
+        </div>
+
+        <BulkRoleAssignment />
+      </section>
+
+      {/* Role Directory and Analytics */}
+      <section>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-2">Role Directory & Analytics</h2>
+          <p className="text-muted-foreground">
+            Detailed view of all standardized roles with analysis and recommendations
+          </p>
+        </div>
+
+        <Card>
+          <CardContent className="p-0">
+            <StandardizedRolesDetails />
+          </CardContent>
+        </Card>
+      </section>
+    </div>
+  );
+};
+
+export default RolesDashboard;

@@ -7,6 +7,18 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import Index from "./pages/Index";
+import HRDashboard from "./pages/HRDashboard";
+import AnalyticsDashboard from "./pages/dashboard/AnalyticsDashboard";
+import EmployeeDashboard from "./pages/dashboard/EmployeeDashboard";
+import RolesDashboard from "./pages/dashboard/RolesDashboard";
+import JobDescriptionsDashboard from "./pages/dashboard/JobDescriptionsDashboard";
+import SkillsDashboard from "./pages/dashboard/SkillsDashboard";
+import CareerPathsDashboard from "./pages/dashboard/CareerPathsDashboard";
+import MobilityDashboard from "./pages/dashboard/MobilityDashboard";
+import DevelopmentDashboard from "./pages/dashboard/DevelopmentDashboard";
+import CertificationsDashboard from "./pages/dashboard/CertificationsDashboard";
+import WorkforceAnalyticsDashboard from "./pages/dashboard/WorkforceAnalyticsDashboard";
+import SkillInventoryDashboard from "./pages/dashboard/SkillInventoryDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,7 +33,20 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={<Index />} />
+            <Route path="/legacy-dashboard" element={<Index />} />
+            <Route path="/dashboard" element={<HRDashboard />}>
+              <Route path="analytics" element={<AnalyticsDashboard />} />
+              <Route path="employees" element={<EmployeeDashboard />} />
+              <Route path="roles" element={<RolesDashboard />} />
+              <Route path="job-descriptions" element={<JobDescriptionsDashboard />} />
+              <Route path="skills" element={<SkillsDashboard />} />
+              <Route path="career-paths" element={<CareerPathsDashboard />} />
+              <Route path="mobility" element={<MobilityDashboard />} />
+              <Route path="development" element={<DevelopmentDashboard />} />
+              <Route path="certifications" element={<CertificationsDashboard />} />
+              <Route path="workforce-analytics" element={<WorkforceAnalyticsDashboard />} />
+              <Route path="skill-inventory" element={<SkillInventoryDashboard />} />
+            </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
