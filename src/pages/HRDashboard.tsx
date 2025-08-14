@@ -1,14 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { HRSidebar } from "@/components/HRSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { LiteLLMTest } from "@/components/LiteLLMTest";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Zap } from "lucide-react";
+
 
 const HRDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isLiteLLMDialogOpen, setIsLiteLLMDialogOpen] = useState(false);
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -42,7 +48,19 @@ const HRDashboard = () => {
             />
             <span className="font-semibold text-lg text-primary">XLSMART HR Portal</span>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
+            <Dialog open={isLiteLLMDialogOpen} onOpenChange={setIsLiteLLMDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  <span className="hidden sm:inline">Test LiteLLM</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogTitle className="sr-only">LiteLLM Connection Test</DialogTitle>
+                <LiteLLMTest />
+              </DialogContent>
+            </Dialog>
             <LanguageToggle />
           </div>
         </header>
