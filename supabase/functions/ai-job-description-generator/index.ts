@@ -174,6 +174,8 @@ Respond in JSON format:
       throw new Error('Failed to generate job description - invalid AI response format');
     }
 
+    console.log('Starting catalog creation/lookup...');
+    
     // First, create or get a role catalog entry using service client
     const { data: existingCatalog, error: catalogSelectError } = await supabaseService
       .from('xlsmart_role_catalogs')
@@ -183,15 +185,19 @@ Respond in JSON format:
       .limit(1)
       .maybeSingle(); // Use maybeSingle instead of single to avoid error when no records found
 
+    console.log('Catalog lookup result:', { existingCatalog, catalogSelectError });
+
     let catalogId;
     if (catalogSelectError) {
       console.error('Error checking existing catalog:', catalogSelectError);
-      throw new Error('Failed to check existing catalog');
+      throw new Error(`Failed to check existing catalog: ${catalogSelectError.message}`);
     }
     
     if (existingCatalog) {
       catalogId = existingCatalog.id;
+      console.log('Using existing catalog:', catalogId);
     } else {
+      console.log('Creating new catalog...');
       // Create a new catalog entry
       const { data: newCatalog, error: catalogInsertError } = await supabaseService
         .from('xlsmart_role_catalogs')
@@ -208,12 +214,17 @@ Respond in JSON format:
         .select('id')
         .single();
 
+      console.log('Catalog creation result:', { newCatalog, catalogInsertError });
+
       if (catalogInsertError) {
         console.error('Error creating catalog:', catalogInsertError);
-        throw new Error('Failed to create role catalog');
+        throw new Error(`Failed to create role catalog: ${catalogInsertError.message}`);
       }
       catalogId = newCatalog.id;
+      console.log('Created new catalog:', catalogId);
     }
+
+    console.log('Creating role mapping with catalogId:', catalogId);
 
     // Create a role mapping entry using service client
     const { data: dummyMapping, error: mappingError } = await supabaseService
@@ -233,9 +244,11 @@ Respond in JSON format:
       .select('id')
       .single();
 
+    console.log('Role mapping result:', { dummyMapping, mappingError });
+
     if (mappingError) {
       console.error('Error creating role mapping:', mappingError);
-      throw new Error('Failed to create role mapping');
+      throw new Error(`Failed to create role mapping: ${mappingError.message}`);
     }
 
     // Save to database using service client
