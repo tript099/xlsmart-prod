@@ -91,7 +91,10 @@ serve(async (req) => {
                 salary: parseFloat(employee['Salary'] || employee['Annual Salary'] || '0') || null,
                 currency: employee['Currency'] || 'IDR',
                 uploaded_by: session.created_by,
-                is_active: true
+                is_active: true,
+                // Store original role information
+                original_role_title: employee['CurrentRoleTitle'] || employee['Current Role Title'] || employee['Position'] || employee['Job Title'] || 'Unknown',
+                role_assignment_status: 'pending'
               };
 
               // Handle skills - combine skills with aspirations and location as metadata

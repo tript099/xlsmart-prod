@@ -1441,6 +1441,9 @@ export type Database = {
       }
       xlsmart_employees: {
         Row: {
+          ai_suggested_role_id: string | null
+          assigned_by: string | null
+          assignment_notes: string | null
           certifications: Json | null
           created_at: string
           currency: string | null
@@ -1455,8 +1458,10 @@ export type Database = {
           is_active: boolean | null
           last_name: string
           manager_id: string | null
+          original_role_title: string | null
           performance_rating: number | null
           phone: string | null
+          role_assignment_status: string | null
           salary: number | null
           skills: Json | null
           source_company: string
@@ -1466,6 +1471,9 @@ export type Database = {
           years_of_experience: number | null
         }
         Insert: {
+          ai_suggested_role_id?: string | null
+          assigned_by?: string | null
+          assignment_notes?: string | null
           certifications?: Json | null
           created_at?: string
           currency?: string | null
@@ -1480,8 +1488,10 @@ export type Database = {
           is_active?: boolean | null
           last_name: string
           manager_id?: string | null
+          original_role_title?: string | null
           performance_rating?: number | null
           phone?: string | null
+          role_assignment_status?: string | null
           salary?: number | null
           skills?: Json | null
           source_company: string
@@ -1491,6 +1501,9 @@ export type Database = {
           years_of_experience?: number | null
         }
         Update: {
+          ai_suggested_role_id?: string | null
+          assigned_by?: string | null
+          assignment_notes?: string | null
           certifications?: Json | null
           created_at?: string
           currency?: string | null
@@ -1505,8 +1518,10 @@ export type Database = {
           is_active?: boolean | null
           last_name?: string
           manager_id?: string | null
+          original_role_title?: string | null
           performance_rating?: number | null
           phone?: string | null
+          role_assignment_status?: string | null
           salary?: number | null
           skills?: Json | null
           source_company?: string
@@ -1516,6 +1531,13 @@ export type Database = {
           years_of_experience?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "xlsmart_employees_ai_suggested_role_id_fkey"
+            columns: ["ai_suggested_role_id"]
+            isOneToOne: false
+            referencedRelation: "xlsmart_standard_roles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "xlsmart_employees_manager_id_fkey"
             columns: ["manager_id"]

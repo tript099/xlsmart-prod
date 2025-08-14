@@ -5,10 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Users, CheckCircle, AlertCircle, Loader2, Brain, ArrowRight } from "lucide-react";
+import { Upload, Users, CheckCircle, AlertCircle, Loader2, Brain, ArrowRight, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmployeeRoleAssignmentReview } from "@/components/EmployeeRoleAssignmentReview";
 import * as XLSX from 'xlsx';
 
 interface UploadProgress {
@@ -214,8 +215,8 @@ export const EmployeeUploadTwoStep = () => {
       if (error) throw error;
 
       toast({
-        title: "Starting AI role assignment...",
-        description: "Analyzing employee data and assigning roles"
+        title: "Starting AI role analysis...",
+        description: "Analyzing employee data and generating role suggestions"
       });
       
       // Poll for assignment progress
@@ -232,9 +233,11 @@ export const EmployeeUploadTwoStep = () => {
             setAssignmentComplete(true);
             setAssigning(false);
             toast({
-              title: "Role Assignment Complete!",
-              description: `Successfully assigned roles to ${progressData.progress.assigned} employees`
+              title: "AI Analysis Complete!",
+              description: `Generated ${progressData.progress.assigned} role suggestions for review`
             });
+            // Switch to review tab
+            setActiveTab("review");
           } else if (progressData.status === 'error') {
             clearInterval(pollProgress);
             setAssigning(false);
@@ -276,14 +279,18 @@ export const EmployeeUploadTwoStep = () => {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="upload" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               Step 1: Upload Data
             </TabsTrigger>
             <TabsTrigger value="assign" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
-              Step 2: Assign Roles
+              Step 2: Generate Suggestions
+            </TabsTrigger>
+            <TabsTrigger value="review" className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4" />
+              Step 3: Review & Assign
             </TabsTrigger>
           </TabsList>
 
@@ -395,11 +402,11 @@ export const EmployeeUploadTwoStep = () => {
             )}
           </TabsContent>
 
-          {/* Step 2: Assign Roles */}
+          {/* Step 2: Generate AI Suggestions */}
           <TabsContent value="assign" className="space-y-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Select Employee Upload Session for Role Assignment</Label>
+                <Label>Select Employee Upload Session for AI Analysis</Label>
                 <Button onClick={loadAvailableSessions} variant="outline" size="sm">
                   Refresh Sessions
                 </Button>
@@ -440,12 +447,12 @@ export const EmployeeUploadTwoStep = () => {
               {assigning ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Assigning Roles with AI...
+                  Generating AI Role Suggestions...
                 </>
               ) : (
                 <>
                   <Brain className="mr-2 h-4 w-4" />
-                  Start AI Role Assignment
+                  Generate AI Role Suggestions
                 </>
               )}
             </Button>
@@ -454,7 +461,7 @@ export const EmployeeUploadTwoStep = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Assignment Progress</span>
+                    <span>Analysis Progress</span>
                     <span>{getProgressPercentage(assignmentProgress)}%</span>
                   </div>
                   <Progress value={getProgressPercentage(assignmentProgress)} className="w-full" />
@@ -471,7 +478,7 @@ export const EmployeeUploadTwoStep = () => {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-500">{assignmentProgress.assigned}</div>
-                    <div className="text-sm text-muted-foreground">Assigned</div>
+                    <div className="text-sm text-muted-foreground">Suggestions</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-red-500">{assignmentProgress.errors}</div>
@@ -482,22 +489,50 @@ export const EmployeeUploadTwoStep = () => {
             )}
 
             {assignmentComplete && (
-              <div className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 text-green-700">
+              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 text-blue-700">
                   <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">AI Role Assignment Completed!</span>
+                  <span className="font-medium">AI Analysis Completed!</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="font-medium">Total Employees:</span> {assignmentProgress.total}
                   </div>
                   <div>
-                    <span className="font-medium">Roles Assigned:</span> {assignmentProgress.assigned}
+                    <span className="font-medium">AI Suggestions:</span> {assignmentProgress.assigned}
                   </div>
                   <div>
                     <span className="font-medium">Errors:</span> {assignmentProgress.errors}
                   </div>
                 </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    AI has generated role suggestions. Review and assign roles in the next step.
+                  </p>
+                  <Button onClick={() => setActiveTab("review")} size="sm" className="flex items-center gap-2">
+                    Review Assignments <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Step 3: Review & Assign Roles */}
+          <TabsContent value="review" className="space-y-6">
+            {selectedSessionForAssignment ? (
+              <EmployeeRoleAssignmentReview sessionId={selectedSessionForAssignment} />
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Please go back to Step 2 and select a session to review role assignments.
+                </p>
+                <Button 
+                  onClick={() => setActiveTab("assign")} 
+                  variant="outline" 
+                  className="mt-4"
+                >
+                  Go to Step 2
+                </Button>
               </div>
             )}
           </TabsContent>

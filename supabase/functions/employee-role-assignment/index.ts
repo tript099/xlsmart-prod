@@ -106,21 +106,24 @@ serve(async (req) => {
           // Process each employee in the batch
           for (const employee of batch) {
             try {
-              // Use AI to assign role
-              const assignedRoleId = await assignRoleWithAI(employee, standardRoles);
+              // Use AI to get role suggestion (don't auto-assign)
+              const suggestedRoleId = await assignRoleWithAI(employee, standardRoles);
               
-              if (assignedRoleId) {
-                // Update employee with assigned role
+              if (suggestedRoleId) {
+                // Store AI suggestion without auto-assigning
                 const { error: updateError } = await supabase
                   .from('xlsmart_employees')
-                  .update({ standard_role_id: assignedRoleId })
+                  .update({ 
+                    ai_suggested_role_id: suggestedRoleId,
+                    role_assignment_status: 'ai_suggested'
+                  })
                   .eq('id', employee.id);
 
                 if (updateError) {
-                  console.error('Error updating employee role:', updateError);
+                  console.error('Error storing AI suggestion:', updateError);
                   errorCount++;
                 } else {
-                  assignedCount++;
+                  assignedCount++; // Count as processed with suggestion
                 }
               }
               
@@ -182,7 +185,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       sessionId: sessionId,
-      message: `Started AI role assignment for ${employees.length} employees`
+      message: `Started AI role analysis for ${employees.length} employees. Please review suggestions in the assignment interface.`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
