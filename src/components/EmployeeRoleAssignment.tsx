@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle, Clock, UserCheck, Brain, Save, RefreshCw } from "lucide-react";
+import { CheckCircle, Clock, UserCheck, Brain, Save, RefreshCw, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,6 +37,8 @@ export const EmployeeRoleAssignment = () => {
   const [standardRoles, setStandardRoles] = useState<StandardRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
+  const [aiAssigning, setAiAssigning] = useState(false);
+  const [aiProgress, setAiProgress] = useState<{ processed: number; total: number } | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
@@ -146,6 +148,105 @@ export const EmployeeRoleAssignment = () => {
     await assignRole(employeeId, selectedRoleId);
   };
 
+  const handleAIAssignAll = async () => {
+    if (employees.length === 0) {
+      toast({
+        title: "No employees",
+        description: "No unassigned employees found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setAiAssigning(true);
+      setAiProgress({ processed: 0, total: employees.length });
+
+      toast({
+        title: "AI Assignment Started",
+        description: `Analyzing ${employees.length} employees for role suggestions...`,
+      });
+
+      // Create a session for this AI assignment
+      const sessionName = `AI Assignment - ${new Date().toISOString()}`;
+      
+      // Get current user for created_by field
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+      
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('xlsmart_upload_sessions')
+        .insert({
+          session_name: sessionName,
+          file_names: ['AI Assignment'],
+          temp_table_names: [],
+          total_rows: employees.length,
+          created_by: user.id,
+          status: 'assigning_roles'
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+
+      // Call the AI role assignment function
+      const { data, error } = await supabase.functions.invoke('employee-role-assignment', {
+        body: { sessionId: sessionData.id }
+      });
+
+      if (error) throw error;
+
+      // Poll for progress
+      const pollProgress = async () => {
+        const { data: session } = await supabase
+          .from('xlsmart_upload_sessions')
+          .select('ai_analysis, status')
+          .eq('id', sessionData.id)
+          .single();
+
+        if (session?.ai_analysis) {
+          const progress = session.ai_analysis as any;
+          setAiProgress({
+            processed: progress.assigned || progress.processed || 0,
+            total: progress.total || employees.length
+          });
+
+          if (session.status === 'completed' || session.status === 'completed_with_errors') {
+            setAiAssigning(false);
+            setAiProgress(null);
+            
+            // Refresh the employee list to show updated assignments
+            await fetchUnassignedEmployees();
+            
+            toast({
+              title: "AI Assignment Completed",
+              description: `Assigned roles to ${progress.assigned || 0} employees`,
+            });
+            return;
+          }
+        }
+
+        // Continue polling if still in progress
+        if (session?.status === 'assigning_roles') {
+          setTimeout(pollProgress, 2000);
+        }
+      };
+
+      // Start polling after a short delay
+      setTimeout(pollProgress, 1000);
+
+    } catch (error: any) {
+      console.error('Error in AI assignment:', error);
+      setAiAssigning(false);
+      setAiProgress(null);
+      toast({
+        title: "AI Assignment Failed",
+        description: error.message || "Failed to assign roles with AI",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     const loadData = async () => {
       console.log('Starting to load data...');
@@ -191,11 +292,46 @@ export const EmployeeRoleAssignment = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserCheck className="h-5 w-5" />
-            Employees Pending Role Assignment
-            <Badge variant="secondary">{employees.length} unassigned</Badge>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5" />
+              Employees Pending Role Assignment
+              <Badge variant="secondary">{employees.length} unassigned</Badge>
+            </CardTitle>
+            {employees.length > 0 && (
+              <Button
+                onClick={handleAIAssignAll}
+                disabled={aiAssigning || loading}
+                className="ml-auto"
+              >
+                {aiAssigning ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                    AI Assigning...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Assign All with AI
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          {aiProgress && (
+            <div className="mt-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Brain className="h-4 w-4" />
+                AI Progress: {aiProgress.processed}/{aiProgress.total} employees processed
+              </div>
+              <div className="w-full bg-secondary rounded-full h-2 mt-1">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(aiProgress.processed / aiProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {employees.length === 0 ? (
