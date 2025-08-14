@@ -9,19 +9,9 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
 
 // Service role client for database operations
 const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
-
-// Create client with auth context to get user ID
-const createSupabaseClient = (authHeader: string | null) => {
-  return createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: authHeader ? { authorization: authHeader } : {},
-    },
-  });
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -29,67 +19,55 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Function started, checking auth...');
+    console.log('=== JD Generator Function Started ===');
     
-    // Get auth header to maintain user context
+    // Get current user ID from authorization header
     const authHeader = req.headers.get('authorization');
-    const supabase = createSupabaseClient(authHeader);
-
-    // Get current user - allow fallback for testing
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    const userId = user?.id || 'd77125e3-bb96-442c-a2d1-80f15baf497d'; // Fallback to known super admin ID
+    let userId = 'd77125e3-bb96-442c-a2d1-80f15baf497d'; // Default fallback
     
-    console.log('User authentication:', { user: !!user, error: !!userError, userId });
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        userId = payload.sub || userId;
+        console.log('Extracted user ID from token:', userId);
+      } catch (e) {
+        console.log('Could not extract user ID from token, using fallback');
+      }
+    }
+
+    const requestBody = await req.json();
+    console.log('Request body:', requestBody);
 
     const { 
       roleTitle, 
-      department, 
-      level, 
+      department = '', 
+      level = '', 
       employmentType = 'full_time',
       locationStatus = 'office',
-      salaryRange,
-      requirements = [],
+      salaryRange = '',
+      requirements = '',
       customInstructions = '',
       tone = 'professional',
       language = 'en'
-    } = await req.json();
+    } = requestBody;
 
-    console.log('Request parsed:', { roleTitle, department, level });
+    console.log('Parsed inputs:', { roleTitle, department, level });
 
-    const openAIApiKey = Deno.env.get('LITELLM_API_KEY'); // Use LiteLLM key
+    if (!roleTitle) {
+      throw new Error('Role title is required');
+    }
+
+    const openAIApiKey = Deno.env.get('LITELLM_API_KEY');
     if (!openAIApiKey) {
-      console.error('LiteLLM API key not found');
+      console.error('LITELLM_API_KEY not found in environment');
       throw new Error('LiteLLM API key not configured');
     }
     
-    console.log('API key found, proceeding...');
+    console.log('API key found, proceeding with AI generation...');
 
-    // Get similar standard roles for context using service client
-    const { data: standardRoles, error: rolesError } = await supabaseService
-      .from('xlsmart_standard_roles')
-      .select('role_title, standard_description, core_responsibilities, required_skills, education_requirements')
-      .ilike('role_title', `%${roleTitle}%`)
-      .eq('is_active', true)
-      .limit(3);
-
-    if (rolesError) {
-      console.error('Error fetching standard roles:', rolesError);
-    }
-
-    // Get company context from employees data using service client
-    const { data: companyContext, error: contextError } = await supabaseService
-      .from('xlsmart_employees')
-      .select('current_department, current_position')
-      .eq('current_department', department)
-      .limit(10);
-
-    const contextInfo = standardRoles?.length > 0 
-      ? `\n\nSimilar roles in our database:\n${standardRoles.map(role => 
-          `- ${role.role_title}: ${role.standard_description}`
-        ).join('\n')}`
-      : '';
-
-    const aiPrompt = `You are an expert HR professional and job description writer specializing in telecommunications companies with 10,000+ employees.
+    // Build AI prompt
+    const aiPrompt = `You are an expert HR professional and job description writer specializing in telecommunications companies.
 
 Create a comprehensive, engaging job description for the following role:
 
@@ -102,15 +80,13 @@ ROLE DETAILS:
 - Salary Range: ${salaryRange || 'Competitive package'}
 
 ADDITIONAL REQUIREMENTS:
-${requirements.length > 0 ? requirements.join('\n- ') : 'Standard telecommunications industry requirements'}
+${requirements || 'Standard telecommunications industry requirements'}
 
 CUSTOM INSTRUCTIONS:
 ${customInstructions}
 
-TONE: ${tone} (professional, friendly, or corporate)
+TONE: ${tone}
 LANGUAGE: ${language}
-
-${contextInfo}
 
 Create a job description with the following structure:
 1. **Company Overview** (2-3 sentences about telecommunications leadership)
@@ -121,24 +97,26 @@ Create a job description with the following structure:
 6. **What We Offer** (benefits, growth opportunities, culture)
 7. **Application Process** (how to apply)
 
-Make it compelling, specific to telecommunications industry, and optimized for attracting top talent. Use inclusive language and highlight growth opportunities.
+Make it compelling, specific to telecommunications industry, and optimized for attracting top talent.
 
 Respond in JSON format:
 {
   "title": "Generated job title",
   "summary": "Role summary paragraph",
-  "responsibilities": ["responsibility 1", "responsibility 2", ...],
-  "requiredQualifications": ["qualification 1", "qualification 2", ...],
-  "preferredQualifications": ["preferred 1", "preferred 2", ...],
-  "benefits": ["benefit 1", "benefit 2", ...],
+  "responsibilities": ["responsibility 1", "responsibility 2", "..."],
+  "requiredQualifications": ["qualification 1", "qualification 2", "..."],
+  "preferredQualifications": ["preferred 1", "preferred 2", "..."],
+  "benefits": ["benefit 1", "benefit 2", "..."],
   "fullDescription": "Complete formatted job description",
-  "keywords": ["seo keyword 1", "keyword 2", ...],
+  "keywords": ["keyword 1", "keyword 2", "..."],
   "estimatedSalary": {
     "min": 75000,
     "max": 120000,
     "currency": "IDR"
   }
 }`;
+
+    console.log('Making request to LiteLLM API...');
 
     const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
@@ -160,119 +138,49 @@ Respond in JSON format:
       }),
     });
 
+    console.log('LiteLLM API response status:', response.status);
+
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error:', errorText);
       throw new Error(`LiteLLM API error: ${response.statusText}`);
     }
 
     const aiData = await response.json();
-    let generatedJD;
+    console.log('AI response received, parsing...');
     
+    let generatedJD;
     try {
       generatedJD = JSON.parse(aiData.choices[0].message.content);
+      console.log('Successfully parsed AI response');
     } catch (parseError) {
-      console.error('Failed to parse AI response:', aiData.choices[0].message.content);
+      console.error('Failed to parse AI response:', aiData.choices[0]?.message?.content);
       throw new Error('Failed to generate job description - invalid AI response format');
     }
 
-    console.log('Starting catalog creation/lookup...');
-    
-    // First, create or get a role catalog entry using service client
-    const { data: existingCatalog, error: catalogSelectError } = await supabaseService
-      .from('xlsmart_role_catalogs')
-      .select('id')
-      .eq('source_company', 'AI Generated')
-      .eq('uploaded_by', userId)
-      .limit(1)
-      .maybeSingle(); // Use maybeSingle instead of single to avoid error when no records found
-
-    console.log('Catalog lookup result:', { existingCatalog, catalogSelectError });
-
-    let catalogId;
-    if (catalogSelectError) {
-      console.error('Error checking existing catalog:', catalogSelectError);
-      throw new Error(`Failed to check existing catalog: ${catalogSelectError.message}`);
-    }
-    
-    if (existingCatalog) {
-      catalogId = existingCatalog.id;
-      console.log('Using existing catalog:', catalogId);
-    } else {
-      console.log('Creating new catalog...');
-      // Create a new catalog entry
-      const { data: newCatalog, error: catalogInsertError } = await supabaseService
-        .from('xlsmart_role_catalogs')
-        .insert({
-          source_company: 'AI Generated',
-          file_name: 'ai-generated-roles.json',
-          file_format: 'json',
-          total_roles: 1,
-          processed_roles: 1,
-          mapping_accuracy: 100,
-          upload_status: 'completed',
-          uploaded_by: userId
-        })
-        .select('id')
-        .single();
-
-      console.log('Catalog creation result:', { newCatalog, catalogInsertError });
-
-      if (catalogInsertError) {
-        console.error('Error creating catalog:', catalogInsertError);
-        throw new Error(`Failed to create role catalog: ${catalogInsertError.message}`);
-      }
-      catalogId = newCatalog.id;
-      console.log('Created new catalog:', catalogId);
-    }
-
-    console.log('Creating role mapping with catalogId:', catalogId);
-
-    // Create a role mapping entry using service client
-    const { data: dummyMapping, error: mappingError } = await supabaseService
-      .from('xlsmart_role_mappings')
-      .insert({
-        catalog_id: catalogId,
-        original_role_title: roleTitle,
-        original_department: department,
-        original_level: level,
-        standardized_role_title: roleTitle,
-        standardized_department: department,
-        standardized_level: level,
-        job_family: department,
-        mapping_confidence: 100,
-        mapping_status: 'ai_generated'
-      })
-      .select('id')
-      .single();
-
-    console.log('Role mapping result:', { dummyMapping, mappingError });
-
-    if (mappingError) {
-      console.error('Error creating role mapping:', mappingError);
-      throw new Error(`Failed to create role mapping: ${mappingError.message}`);
-    }
-
-    // Save to database using service client
+    // Save to database - simplified approach
+    console.log('Saving to database...');
     const { data: savedJD, error: saveError } = await supabaseService
       .from('xlsmart_job_descriptions')
       .insert({
         title: generatedJD.title,
         summary: generatedJD.summary,
-        role_mapping_id: dummyMapping.id,
+        role_mapping_id: null, // Skip complex mapping for now
         responsibilities: generatedJD.responsibilities,
         required_qualifications: generatedJD.requiredQualifications,
         preferred_qualifications: generatedJD.preferredQualifications,
-        required_skills: [], // Can be extracted from qualifications
+        required_skills: [],
         preferred_skills: [],
         salary_range_min: generatedJD.estimatedSalary?.min,
         salary_range_max: generatedJD.estimatedSalary?.max,
         currency: generatedJD.estimatedSalary?.currency || 'IDR',
         experience_level: level,
-        education_level: 'bachelor', // Default, can be customized
+        education_level: 'bachelor',
         employment_type: employmentType,
         location_type: locationStatus,
         ai_generated: true,
         generated_by: userId,
-        ai_prompt_used: aiPrompt,
+        ai_prompt_used: aiPrompt.substring(0, 1000), // Truncate if too long
         tone: tone,
         language: language,
         status: 'draft'
@@ -282,10 +190,12 @@ Respond in JSON format:
 
     if (saveError) {
       console.error('Error saving job description:', saveError);
-      // Still return the generated content even if save fails
+      // Continue anyway, return the generated content
+    } else {
+      console.log('Successfully saved to database with ID:', savedJD?.id);
     }
 
-    console.log('Successfully generated job description for:', roleTitle);
+    console.log('=== JD Generation Complete ===');
 
     return new Response(JSON.stringify({
       success: true,
@@ -298,17 +208,13 @@ Respond in JSON format:
     });
 
   } catch (error) {
-    console.error('Error in AI job description generator:', error);
-    console.error('Error details:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack
-    });
+    console.error('=== ERROR in JD Generator ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     return new Response(JSON.stringify({ 
       success: false,
       error: error.message,
-      errorType: error.name,
       message: 'Failed to generate job description'
     }), {
       status: 500,
