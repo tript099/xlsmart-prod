@@ -3,6 +3,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeListDetails } from "@/components/EmployeeListDetails";
 import { EmployeeUploadTwoStep } from "@/components/EmployeeUploadTwoStep";
 import { AICompensationIntelligence } from "@/components/AICompensationIntelligence";
+import { AIEmployeeEngagement } from "@/components/AIEmployeeEngagement";
+import { AISuccessionPlanning } from "@/components/AISuccessionPlanning";
+import { AIDiversityInclusion } from "@/components/AIDiversityInclusion";
 import { Users, Upload, BarChart3, TrendingUp, DollarSign, Brain } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
 

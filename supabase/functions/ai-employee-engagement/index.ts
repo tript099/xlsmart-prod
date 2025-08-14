@@ -1,0 +1,343 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+const litellmApiKey = Deno.env.get('LITELLM_API_KEY')!;
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const { analysisType, departmentFilter, timeFrame } = await req.json();
+
+    console.log(`Starting employee engagement analysis: ${analysisType}`);
+
+    // Fetch employee data
+    let employeesQuery = supabase
+      .from('xlsmart_employees')
+      .select('*');
+
+    if (departmentFilter) {
+      employeesQuery = employeesQuery.eq('department', departmentFilter);
+    }
+
+    const { data: employees } = await employeesQuery;
+
+    // Fetch related data
+    const { data: skillAssessments } = await supabase
+      .from('xlsmart_skill_assessments')
+      .select('*');
+
+    const { data: trainings } = await supabase
+      .from('employee_trainings')
+      .select('*');
+
+    let result;
+    switch (analysisType) {
+      case 'sentiment_analysis':
+        result = await performSentimentAnalysis(employees || [], skillAssessments || [], timeFrame);
+        break;
+      case 'engagement_prediction':
+        result = await performEngagementPrediction(employees || [], trainings || []);
+        break;
+      case 'retention_modeling':
+        result = await performRetentionModeling(employees || [], departmentFilter);
+        break;
+      case 'early_warning':
+        result = await performEarlyWarning(employees || [], skillAssessments || []);
+        break;
+      default:
+        throw new Error('Invalid analysis type');
+    }
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error in ai-employee-engagement function:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
+
+async function callLiteLLM(prompt: string, systemPrompt: string) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${litellmApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`LiteLLM API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function performSentimentAnalysis(employees: any[], skillAssessments: any[], timeFrame?: string) {
+  const systemPrompt = `You are an expert in employee engagement and sentiment analysis. Analyze employee sentiment patterns from performance, skills assessments, and engagement indicators.
+
+Return a JSON object with this structure:
+{
+  "overallSentiment": {
+    "score": number,
+    "trend": "positive|negative|stable",
+    "primaryDrivers": ["string"]
+  },
+  "departmentSentiment": [
+    {
+      "department": "string",
+      "sentimentScore": number,
+      "employeeCount": number,
+      "topConcerns": ["string"],
+      "positiveIndicators": ["string"]
+    }
+  ],
+  "sentimentFactors": [
+    {
+      "factor": "string",
+      "impact": "high|medium|low",
+      "affectedEmployees": number,
+      "recommendation": "string"
+    }
+  ],
+  "riskSegments": [
+    {
+      "segment": "string",
+      "riskLevel": "high|medium|low",
+      "employeeCount": number,
+      "indicators": ["string"]
+    }
+  ]
+}`;
+
+  const prompt = `Analyze employee sentiment and engagement patterns:
+
+Employee Data: ${JSON.stringify(employees.slice(0, 25).map(emp => ({
+    department: emp.department,
+    role: emp.current_role,
+    performance: emp.performance_rating,
+    experience: emp.years_experience,
+    lastUpdate: emp.updated_at
+  })))}
+
+Skills Assessments: ${JSON.stringify(skillAssessments.slice(0, 15).map(assessment => ({
+    employeeId: assessment.employee_id,
+    assessmentDate: assessment.assessment_date,
+    overallScore: assessment.overall_score,
+    status: assessment.status
+  })))}
+
+${timeFrame ? `Analysis timeframe: ${timeFrame}` : ''}
+
+Analyze sentiment patterns, identify engagement drivers, and provide actionable insights.`;
+
+  const response = await callLiteLLM(prompt, systemPrompt);
+  return JSON.parse(response);
+}
+
+async function performEngagementPrediction(employees: any[], trainings: any[]) {
+  const systemPrompt = `You are an expert in employee engagement prediction and workforce analytics. Predict future engagement levels and identify interventions needed.
+
+Return a JSON object with this structure:
+{
+  "engagementForecasting": {
+    "currentEngagementRate": number,
+    "predictedEngagementRate": number,
+    "forecastConfidence": number,
+    "keyPredictors": ["string"]
+  },
+  "employeeSegments": [
+    {
+      "segment": "string",
+      "currentEngagement": number,
+      "predictedEngagement": number,
+      "employeeCount": number,
+      "interventionNeeded": boolean
+    }
+  ],
+  "engagementDrivers": [
+    {
+      "driver": "string",
+      "currentImpact": number,
+      "predictedImpact": number,
+      "actionable": boolean,
+      "recommendation": "string"
+    }
+  ],
+  "interventionStrategies": [
+    {
+      "strategy": "string",
+      "targetSegment": "string",
+      "expectedImprovement": number,
+      "implementationPriority": "high|medium|low"
+    }
+  ]
+}`;
+
+  const prompt = `Predict employee engagement trends and recommend interventions:
+
+Employees: ${JSON.stringify(employees.slice(0, 20).map(emp => ({
+    department: emp.department,
+    role: emp.current_role,
+    performance: emp.performance_rating,
+    experience: emp.years_experience,
+    hireDate: emp.hire_date
+  })))}
+
+Training Participation: ${JSON.stringify(trainings.slice(0, 15).map(training => ({
+    employeeId: training.employee_id,
+    trainingType: training.training_name,
+    completionStatus: training.completion_date ? 'completed' : 'in_progress',
+    duration: training.duration_hours
+  })))}
+
+Predict engagement patterns and recommend targeted interventions.`;
+
+  const response = await callLiteLLM(prompt, systemPrompt);
+  return JSON.parse(response);
+}
+
+async function performRetentionModeling(employees: any[], departmentFilter?: string) {
+  const systemPrompt = `You are an expert in employee retention analysis and predictive modeling. Analyze retention risks and create actionable retention strategies.
+
+Return a JSON object with this structure:
+{
+  "retentionMetrics": {
+    "overallRetentionRate": number,
+    "predictedRetentionRate": number,
+    "averageTenure": number,
+    "criticalRetentionRisk": number
+  },
+  "riskAnalysis": [
+    {
+      "employee": "string",
+      "retentionProbability": number,
+      "riskFactors": ["string"],
+      "retentionActions": ["string"],
+      "timeToRisk": "string"
+    }
+  ],
+  "departmentRetention": [
+    {
+      "department": "string",
+      "retentionRate": number,
+      "averageTenure": number,
+      "topRiskFactors": ["string"],
+      "retentionStrategies": ["string"]
+    }
+  ],
+  "retentionStrategies": [
+    {
+      "strategy": "string",
+      "targetRisk": "high|medium|low",
+      "expectedImpact": number,
+      "implementationCost": "high|medium|low"
+    }
+  ]
+}`;
+
+  const prompt = `Analyze employee retention patterns and predict retention risks:
+
+Employee Data: ${JSON.stringify(employees.slice(0, 25).map(emp => ({
+    id: emp.id,
+    department: emp.department,
+    role: emp.current_role,
+    performance: emp.performance_rating,
+    experience: emp.years_experience,
+    hireDate: emp.hire_date,
+    lastPromotion: emp.last_promotion_date
+  })))}
+
+${departmentFilter ? `Focus analysis on department: ${departmentFilter}` : ''}
+
+Identify retention risks and recommend targeted retention strategies.`;
+
+  const response = await callLiteLLM(prompt, systemPrompt);
+  return JSON.parse(response);
+}
+
+async function performEarlyWarning(employees: any[], skillAssessments: any[]) {
+  const systemPrompt = `You are an expert in early warning systems for employee engagement and retention. Identify early indicators of disengagement and turnover risk.
+
+Return a JSON object with this structure:
+{
+  "warningSystem": {
+    "totalEmployeesMonitored": number,
+    "highRiskEmployees": number,
+    "mediumRiskEmployees": number,
+    "earlyWarningAccuracy": number
+  },
+  "riskIndicators": [
+    {
+      "indicator": "string",
+      "riskLevel": "high|medium|low",
+      "frequency": number,
+      "predictiveValue": number,
+      "description": "string"
+    }
+  ],
+  "alertedEmployees": [
+    {
+      "employee": "string",
+      "riskScore": number,
+      "primaryWarnings": ["string"],
+      "recommendedActions": ["string"],
+      "urgency": "immediate|soon|monitor"
+    }
+  ],
+  "preventiveActions": [
+    {
+      "action": "string",
+      "applicableRisks": ["string"],
+      "effectivenessRate": number,
+      "implementationTime": "string"
+    }
+  ]
+}`;
+
+  const prompt = `Create early warning analysis for employee disengagement:
+
+Employee Performance Data: ${JSON.stringify(employees.slice(0, 20).map(emp => ({
+    id: emp.id,
+    department: emp.department,
+    role: emp.current_role,
+    performance: emp.performance_rating,
+    experience: emp.years_experience,
+    lastUpdate: emp.updated_at
+  })))}
+
+Skills Assessment Trends: ${JSON.stringify(skillAssessments.slice(0, 15).map(assessment => ({
+    employeeId: assessment.employee_id,
+    assessmentDate: assessment.assessment_date,
+    overallScore: assessment.overall_score,
+    progressTrend: assessment.progress_notes
+  })))}
+
+Identify early warning signals and recommend immediate interventions.`;
+
+  const response = await callLiteLLM(prompt, systemPrompt);
+  return JSON.parse(response);
+}
