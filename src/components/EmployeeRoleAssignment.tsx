@@ -1,0 +1,307 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CheckCircle, Clock, UserCheck, Brain, Save, RefreshCw } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Employee {
+  id: string;
+  first_name: string;
+  last_name: string;
+  employee_number: string;
+  original_role_title: string;
+  source_company: string;
+  current_position: string;
+  years_of_experience: number;
+  role_assignment_status: string;
+  standard_role_id: string | null;
+  ai_suggested_role_id: string | null;
+  skills: any; // Handle Json type from database
+}
+
+interface StandardRole {
+  id: string;
+  role_title: string;
+  job_family: string;
+  role_level: string;
+  department: string;
+  role_category: string;
+}
+
+export const EmployeeRoleAssignment = () => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [standardRoles, setStandardRoles] = useState<StandardRole[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
+  const { toast } = useToast();
+
+  const fetchUnassignedEmployees = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('xlsmart_employees')
+        .select('*')
+        .is('standard_role_id', null)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error: any) {
+      console.error('Error fetching unassigned employees:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch unassigned employees",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchStandardRoles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('xlsmart_standard_roles')
+        .select('id, role_title, job_family, role_level, department, role_category')
+        .eq('is_active', true)
+        .order('role_title');
+
+      if (error) throw error;
+      setStandardRoles(data || []);
+    } catch (error: any) {
+      console.error('Error fetching standard roles:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to fetch standard roles",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getAISuggestedRole = (employee: Employee) => {
+    if (!employee.ai_suggested_role_id) return null;
+    return standardRoles.find(role => role.id === employee.ai_suggested_role_id);
+  };
+
+  const acceptAISuggestion = async (employeeId: string, roleId: string) => {
+    setSelectedRoles(prev => ({ ...prev, [employeeId]: roleId }));
+    await assignRole(employeeId, roleId);
+  };
+
+  const assignRole = async (employeeId: string, roleId: string) => {
+    try {
+      setSaving(employeeId);
+      
+      const { error } = await supabase
+        .from('xlsmart_employees')
+        .update({
+          standard_role_id: roleId,
+          role_assignment_status: 'assigned',
+          assigned_by: (await supabase.auth.getUser()).data.user?.id
+        })
+        .eq('id', employeeId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Role assigned successfully",
+      });
+
+      // Remove the employee from the list since they're now assigned
+      setEmployees(prev => prev.filter(emp => emp.id !== employeeId));
+      
+    } catch (error: any) {
+      console.error('Error assigning role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign role",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleRoleSelection = (employeeId: string, roleId: string) => {
+    setSelectedRoles(prev => ({ ...prev, [employeeId]: roleId }));
+  };
+
+  const handleSaveAssignment = async (employeeId: string) => {
+    const selectedRoleId = selectedRoles[employeeId];
+    if (!selectedRoleId) {
+      toast({
+        title: "Error",
+        description: "Please select a role to assign",
+        variant: "destructive",
+      });
+      return;
+    }
+    await assignRole(employeeId, selectedRoleId);
+  };
+
+  useEffect(() => {
+    fetchUnassignedEmployees();
+    fetchStandardRoles();
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      const interval = setInterval(() => {
+        fetchUnassignedEmployees();
+      }, 30000); // Refresh every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [loading]);
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-8">
+          <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+          Loading employees...
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5" />
+            Employees Pending Role Assignment
+            <Badge variant="secondary">{employees.length} unassigned</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {employees.length === 0 ? (
+            <div className="text-center p-8">
+              <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
+              <h3 className="text-lg font-semibold mb-2">All Employees Assigned!</h3>
+              <p className="text-muted-foreground">
+                All employees have been assigned to standard roles.
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Original Role</TableHead>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Experience</TableHead>
+                  <TableHead>AI Suggestion</TableHead>
+                  <TableHead>Assign Role</TableHead>
+                  <TableHead>Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {employees.map((employee) => {
+                  const aiSuggestion = getAISuggestedRole(employee);
+                  const selectedRole = selectedRoles[employee.id];
+                  
+                  return (
+                    <TableRow key={employee.id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {employee.first_name} {employee.last_name}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {employee.employee_number}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">
+                          {employee.original_role_title}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="capitalize">
+                          {employee.source_company}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {employee.years_of_experience} years
+                      </TableCell>
+                      <TableCell>
+                        {aiSuggestion ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Brain className="h-4 w-4 text-blue-500" />
+                              <span className="text-sm font-medium">
+                                {aiSuggestion.role_title}
+                              </span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => acceptAISuggestion(employee.id, aiSuggestion.id)}
+                              disabled={saving === employee.id}
+                            >
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Accept
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Clock className="h-4 w-4" />
+                            <span className="text-sm">No suggestion</span>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          value={selectedRole || ""}
+                          onValueChange={(value) => handleRoleSelection(employee.id, value)}
+                          disabled={saving === employee.id}
+                        >
+                          <SelectTrigger className="w-[250px]">
+                            <SelectValue placeholder="Select a standard role..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background border border-border shadow-md z-50">
+                            {standardRoles.map((role) => (
+                              <SelectItem key={role.id} value={role.id}>
+                                <div>
+                                  <div className="font-medium">{role.role_title}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {role.job_family} • {role.role_level} • {role.department}
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveAssignment(employee.id)}
+                          disabled={!selectedRole || saving === employee.id}
+                        >
+                          {saving === employee.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                          ) : (
+                            <Save className="h-3 w-3 mr-1" />
+                          )}
+                          Assign
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};

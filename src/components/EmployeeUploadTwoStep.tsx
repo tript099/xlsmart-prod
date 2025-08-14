@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeRoleAssignmentReview } from "@/components/EmployeeRoleAssignmentReview";
+import { EmployeeRoleAssignment } from "@/components/EmployeeRoleAssignment";
 import * as XLSX from 'xlsx';
 
 interface UploadProgress {
@@ -279,7 +280,7 @@ export const EmployeeUploadTwoStep = () => {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="upload" className="flex items-center gap-2">
               <Upload className="h-4 w-4" />
               Step 1: Upload Data
@@ -291,6 +292,10 @@ export const EmployeeUploadTwoStep = () => {
             <TabsTrigger value="review" className="flex items-center gap-2">
               <UserCheck className="h-4 w-4" />
               Step 3: Review & Assign
+            </TabsTrigger>
+            <TabsTrigger value="manage" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Manage Assignments
             </TabsTrigger>
           </TabsList>
 
@@ -535,6 +540,11 @@ export const EmployeeUploadTwoStep = () => {
                 </Button>
               </div>
             )}
+          </TabsContent>
+
+          {/* Step 4: Manage All Assignments */}
+          <TabsContent value="manage" className="space-y-6">
+            <EmployeeRoleAssignment />
           </TabsContent>
         </Tabs>
 
