@@ -169,6 +169,7 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
             roleTitle: role.role_title,
             department: role.department,
             level: role.role_level,
+            standardRoleId: role.id, // Link to the standardized role
             employmentType: 'full_time',
             locationStatus: 'office',
             requirements: Array.isArray(role.required_skills) ? (role.required_skills as string[]).join(', ') : '',
