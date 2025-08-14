@@ -33,23 +33,42 @@ serve(async (req) => {
 
     if (sessionError) throw sessionError;
 
-    // Get employees from this session (uploaded employees don't have session_id directly, 
-    // so we'll use the upload time window)
+    // Get employees that were uploaded by the same user around the session time
+    // We'll use the session creator and a reasonable time window
     const sessionCreatedAt = new Date(session.created_at);
-    const sessionEndTime = new Date(sessionCreatedAt.getTime() + (60 * 60 * 1000)); // 1 hour window
+    const sessionStartTime = new Date(sessionCreatedAt.getTime() - (10 * 60 * 1000)); // 10 minutes before
+    const sessionEndTime = new Date(sessionCreatedAt.getTime() + (60 * 60 * 1000)); // 1 hour after
 
     const { data: employees, error: employeesError } = await supabase
       .from('xlsmart_employees')
       .select('*')
-      .gte('created_at', sessionCreatedAt.toISOString())
+      .gte('created_at', sessionStartTime.toISOString())
       .lte('created_at', sessionEndTime.toISOString())
       .eq('uploaded_by', session.created_by)
       .is('standard_role_id', null); // Only unassigned employees
 
-    if (employeesError) throw employeesError;
+    if (employeesError) {
+      console.error('Error fetching employees:', employeesError);
+      throw employeesError;
+    }
 
     if (!employees || employees.length === 0) {
-      throw new Error('No employees found for this session');
+      console.log(`No unassigned employees found for session ${sessionId}. Checking all employees by user...`);
+      
+      // Fallback: get all unassigned employees for this user
+      const { data: allEmployees, error: allEmployeesError } = await supabase
+        .from('xlsmart_employees')
+        .select('*')
+        .eq('uploaded_by', session.created_by)
+        .is('standard_role_id', null);
+
+      if (allEmployeesError) throw allEmployeesError;
+      
+      if (!allEmployees || allEmployees.length === 0) {
+        throw new Error('No unassigned employees found for this user');
+      }
+      
+      employees = allEmployees;
     }
 
     // Get existing standard roles for AI matching
@@ -188,6 +207,16 @@ async function assignRoleWithAI(employee: any, standardRoles: any[]) {
   try {
     const employeeSkills = Array.isArray(employee.skills) ? employee.skills.join(', ') : employee.skills || '';
     const employeeCerts = Array.isArray(employee.certifications) ? employee.certifications.join(', ') : employee.certifications || '';
+    
+    // Extract aspirations and location from skills if they were stored there
+    let aspirations = '';
+    let location = '';
+    if (Array.isArray(employee.skills)) {
+      const aspirationsSkill = employee.skills.find((s: string) => s.startsWith('Aspirations:'));
+      const locationSkill = employee.skills.find((s: string) => s.startsWith('Location:'));
+      if (aspirationsSkill) aspirations = aspirationsSkill.replace('Aspirations:', '').trim();
+      if (locationSkill) location = locationSkill.replace('Location:', '').trim();
+    }
 
     const prompt = `Analyze this employee profile and assign the most suitable standard role from the available options.
 
@@ -201,8 +230,8 @@ Employee Profile:
 - Skills: ${employeeSkills}
 - Certifications: ${employeeCerts}
 - Performance Rating: ${employee.performance_rating || 'N/A'}
-- Aspirations: ${employee.aspirations || 'N/A'}
-- Location: ${employee.location || 'N/A'}
+- Aspirations: ${aspirations || 'N/A'}
+- Location: ${location || 'N/A'}
 
 Available Standard Roles:
 ${standardRoles.map(role => `- ID: ${role.id} | Title: ${role.role_title} | Family: ${role.job_family} | Level: ${role.role_level} | Category: ${role.role_category}`).join('\n')}

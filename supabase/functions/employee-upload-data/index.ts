@@ -76,7 +76,7 @@ serve(async (req) => {
           // Process each employee in the batch
           for (const employee of batch) {
             try {
-              // Normalize employee data according to new format
+              // Normalize employee data according to xlsmart_employees schema
               const normalizedEmployee = {
                 employee_number: employee['EmployeeID'] || employee['Employee ID'] || employee['ID'] || `EMP${Date.now()}${Math.random()}`,
                 source_company: employee['Telco'] || employee['Company'] || employee['Organization'] || 'Unknown',
@@ -89,25 +89,57 @@ serve(async (req) => {
                 current_level: employee['Level'] || employee['Grade'] || employee['Seniority'] || '',
                 years_of_experience: parseInt(employee['YearsExperience'] || employee['Years Experience'] || employee['Experience'] || '0') || 0,
                 salary: parseFloat(employee['Salary'] || employee['Annual Salary'] || '0') || null,
-                skills: Array.isArray(employee['Skills']) ? employee['Skills'] : 
-                       typeof employee['Skills'] === 'string' ? employee['Skills'].split(',').map((s: string) => s.trim()) : [],
-                certifications: Array.isArray(employee['Certifications']) ? employee['Certifications'] : 
-                               typeof employee['Certifications'] === 'string' ? employee['Certifications'].split(',').map((c: string) => c.trim()) : [],
-                performance_rating: parseFloat(employee['PerformanceRating'] || employee['Performance Rating'] || '0') || null,
                 currency: employee['Currency'] || 'IDR',
                 uploaded_by: session.created_by,
-                is_active: true,
-                // Additional fields from new format
-                aspirations: employee['Aspirations'] || '',
-                location: employee['Location'] || ''
+                is_active: true
               };
 
-              // Add metadata for aspirations and location
-              if (normalizedEmployee.aspirations) {
-                normalizedEmployee.skills = [
-                  ...normalizedEmployee.skills,
-                  `Aspirations: ${normalizedEmployee.aspirations}`
-                ];
+              // Handle skills - combine skills with aspirations and location as metadata
+              let skillsArray = [];
+              if (employee['Skills']) {
+                if (Array.isArray(employee['Skills'])) {
+                  skillsArray = employee['Skills'];
+                } else if (typeof employee['Skills'] === 'string') {
+                  skillsArray = employee['Skills'].split(',').map((s: string) => s.trim());
+                }
+              }
+
+              // Add aspirations and location as skill metadata
+              if (employee['Aspirations']) {
+                skillsArray.push(`Aspirations: ${employee['Aspirations']}`);
+              }
+              if (employee['Location']) {
+                skillsArray.push(`Location: ${employee['Location']}`);
+              }
+
+              normalizedEmployee.skills = skillsArray;
+
+              // Handle certifications
+              let certificationsArray = [];
+              if (employee['Certifications']) {
+                if (Array.isArray(employee['Certifications'])) {
+                  certificationsArray = employee['Certifications'];
+                } else if (typeof employee['Certifications'] === 'string') {
+                  certificationsArray = employee['Certifications'].split(',').map((c: string) => c.trim());
+                }
+              }
+              normalizedEmployee.certifications = certificationsArray;
+
+              // Handle performance rating
+              if (employee['PerformanceRating'] || employee['Performance Rating']) {
+                const rating = employee['PerformanceRating'] || employee['Performance Rating'];
+                if (typeof rating === 'string') {
+                  // Convert text ratings to numbers
+                  switch (rating.toLowerCase()) {
+                    case 'exceeds': normalizedEmployee.performance_rating = 4; break;
+                    case 'meets': normalizedEmployee.performance_rating = 3; break;
+                    case 'below': normalizedEmployee.performance_rating = 2; break;
+                    case 'needs improvement': normalizedEmployee.performance_rating = 1; break;
+                    default: normalizedEmployee.performance_rating = parseFloat(rating) || null;
+                  }
+                } else {
+                  normalizedEmployee.performance_rating = parseFloat(rating) || null;
+                }
               }
 
               // Insert employee into xlsmart_employees table
