@@ -1,34 +1,37 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Package, TrendingUp, Search, Filter } from "lucide-react";
+import { Package, TrendingUp, Search, Filter, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSkillsAnalytics } from "@/hooks/useSkillsAnalytics";
 
 const SkillInventoryDashboard = () => {
+  const skillsAnalytics = useSkillsAnalytics();
+
   const inventoryStats = [
     { 
-      value: "1,847", 
+      value: skillsAnalytics.loading ? "..." : skillsAnalytics.totalSkills.toString(), 
       label: "Total Skills", 
       icon: Package, 
       color: "text-blue-600",
-      description: "Mapped skills"
+      description: "Mapped skills in system"
     },
     { 
-      value: "234", 
-      label: "Core Skills", 
+      value: skillsAnalytics.loading ? "..." : skillsAnalytics.employeesWithSkills.toString(), 
+      label: "Employees with Skills", 
       icon: TrendingUp, 
       color: "text-green-600",
-      description: "Critical for business"
+      description: "Have skill assessments"
     },
     { 
-      value: "456", 
-      label: "Emerging Skills", 
+      value: skillsAnalytics.loading ? "..." : skillsAnalytics.skillCategories.toString(), 
+      label: "Skill Categories", 
       icon: Package, 
       color: "text-purple-600",
-      description: "Future requirements"
+      description: "Different skill types"
     },
     { 
-      value: "89%", 
+      value: skillsAnalytics.loading ? "..." : `${skillsAnalytics.coverageRate}%`, 
       label: "Coverage Rate", 
       icon: TrendingUp, 
       color: "text-orange-600",
@@ -118,7 +121,8 @@ const SkillInventoryDashboard = () => {
                     <stat.icon className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className={`text-2xl font-bold ${stat.color}`}>
+                    <div className={`text-2xl font-bold ${stat.color} flex items-center gap-2`}>
+                      {skillsAnalytics.loading && <Loader2 className="h-4 w-4 animate-spin" />}
                       {stat.value}
                     </div>
                     <p className="text-sm font-medium text-foreground">
@@ -160,48 +164,25 @@ const SkillInventoryDashboard = () => {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold mb-4">Top Skills by Employee Count</h3>
-                <div className="space-y-3">
-                  {topSkills.slice(0, 4).map((skill, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium">{skill.skill}</p>
-                        <p className="text-sm text-muted-foreground">{skill.employees} employees</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{skill.level}</p>
-                        <span className="text-green-600 text-sm">{skill.trend}</span>
-                      </div>
-                    </div>
-                  ))}
+            {skillsAnalytics.totalSkills > 0 ? (
+              <div className="text-center p-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 text-primary/30" />
+                <p className="font-medium">Skills Analysis Available</p>
+                <p className="text-sm">Found {skillsAnalytics.totalSkills} skills across {skillsAnalytics.skillCategories} categories</p>
+                <p className="text-sm mt-2">{skillsAnalytics.employeesWithSkills} employees have skill assessments</p>
+                <div className="mt-4 text-sm">
+                  <p>• Use the search above to find specific skills</p>
+                  <p>• Export detailed reports from the actions below</p>
+                  <p>• View skill gap analysis for workforce planning</p>
                 </div>
               </div>
-
-              <div>
-                <h3 className="font-semibold mb-4">Skill Categories</h3>
-                <div className="space-y-3">
-                  {skillCategories.slice(0, 4).map((category, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <div>
-                        <p className="font-medium">{category.category}</p>
-                        <p className="text-sm text-muted-foreground">{category.count} skills</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant="outline" className={
-                          category.demand === 'High' ? 'border-red-300 text-red-700' :
-                          'border-orange-300 text-orange-700'
-                        }>
-                          {category.demand}
-                        </Badge>
-                        <span className="text-green-600 text-sm">{category.growth}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            ) : (
+              <div className="text-center p-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                <p className="font-medium">No Skills Data</p>
+                <p className="text-sm">Add employee skills data to see detailed analysis here.</p>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </section>
@@ -217,47 +198,26 @@ const SkillInventoryDashboard = () => {
 
         <Card>
           <CardContent className="p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-semibold">Category</th>
-                    <th className="text-left py-3 px-4 font-semibold">Skills Count</th>
-                    <th className="text-left py-3 px-4 font-semibold">Avg Proficiency</th>
-                    <th className="text-left py-3 px-4 font-semibold">Demand</th>
-                    <th className="text-left py-3 px-4 font-semibold">Growth</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {skillCategories.map((category, index) => (
-                    <tr key={index} className="border-b hover:bg-muted/30">
-                      <td className="py-3 px-4 font-medium">{category.category}</td>
-                      <td className="py-3 px-4">{category.count}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant="outline" className={
-                          category.proficiency === 'Expert' ? 'border-green-300 text-green-700' :
-                          category.proficiency === 'Advanced' ? 'border-blue-300 text-blue-700' :
-                          'border-orange-300 text-orange-700'
-                        }>
-                          {category.proficiency}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge variant="outline" className={
-                          category.demand === 'High' ? 'border-red-300 text-red-700' :
-                          'border-yellow-300 text-yellow-700'
-                        }>
-                          {category.demand}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="text-green-600 font-medium">{category.growth}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {skillsAnalytics.totalSkills > 0 ? (
+              <div className="text-center p-8 text-muted-foreground">
+                <TrendingUp className="h-12 w-12 mx-auto mb-4 text-primary/30" />
+                <p className="font-medium">Detailed Skills Breakdown</p>
+                <p className="text-sm">Skills analysis will be available with more detailed employee skill data.</p>
+                <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm font-medium">Current Overview:</p>
+                  <p className="text-xs text-muted-foreground">
+                    {skillsAnalytics.totalSkills} total skills • {skillsAnalytics.skillCategories} categories • 
+                    {skillsAnalytics.coverageRate}% employee coverage
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center p-8 text-muted-foreground">
+                <TrendingUp className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
+                <p className="font-medium">No Skills Analysis Available</p>
+                <p className="text-sm">Add skills master data and employee skill assessments to see detailed breakdown.</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>
