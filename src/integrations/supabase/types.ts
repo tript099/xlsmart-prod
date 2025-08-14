@@ -982,6 +982,50 @@ export type Database = {
         }
         Relationships: []
       }
+      role_standardization_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          mapping_confidence: number | null
+          mapping_reason: string | null
+          original_role_id: string | null
+          original_role_title: string
+          original_source: string
+          session_id: string
+          standardized_role_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mapping_confidence?: number | null
+          mapping_reason?: string | null
+          original_role_id?: string | null
+          original_role_title: string
+          original_source: string
+          session_id: string
+          standardized_role_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mapping_confidence?: number | null
+          mapping_reason?: string | null
+          original_role_id?: string | null
+          original_role_title?: string
+          original_source?: string
+          session_id?: string
+          standardized_role_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_standardization_mappings_standardized_role_id_fkey"
+            columns: ["standardized_role_id"]
+            isOneToOne: false
+            referencedRelation: "standardized_roles_final"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_gap_analysis: {
         Row: {
           ai_recommendations: string | null
@@ -1057,6 +1101,138 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_roles_data: {
+        Row: {
+          alternate_titles: string | null
+          certifications: string | null
+          core_responsibilities: string | null
+          created_at: string
+          department: string | null
+          education: string | null
+          experience_min_years: number | null
+          id: string
+          location: string | null
+          preferred_skills: string | null
+          required_skills: string | null
+          role_family: string | null
+          role_id: string | null
+          role_purpose: string | null
+          role_title: string
+          role_variant: string | null
+          seniority_band: string | null
+          session_id: string
+          tools_platforms: string | null
+        }
+        Insert: {
+          alternate_titles?: string | null
+          certifications?: string | null
+          core_responsibilities?: string | null
+          created_at?: string
+          department?: string | null
+          education?: string | null
+          experience_min_years?: number | null
+          id?: string
+          location?: string | null
+          preferred_skills?: string | null
+          required_skills?: string | null
+          role_family?: string | null
+          role_id?: string | null
+          role_purpose?: string | null
+          role_title: string
+          role_variant?: string | null
+          seniority_band?: string | null
+          session_id: string
+          tools_platforms?: string | null
+        }
+        Update: {
+          alternate_titles?: string | null
+          certifications?: string | null
+          core_responsibilities?: string | null
+          created_at?: string
+          department?: string | null
+          education?: string | null
+          experience_min_years?: number | null
+          id?: string
+          location?: string | null
+          preferred_skills?: string | null
+          required_skills?: string | null
+          role_family?: string | null
+          role_id?: string | null
+          role_purpose?: string | null
+          role_title?: string
+          role_variant?: string | null
+          seniority_band?: string | null
+          session_id?: string
+          tools_platforms?: string | null
+        }
+        Relationships: []
+      }
+      standardized_roles_final: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          id: string
+          session_id: string
+          smart_source_count: number | null
+          standardized_certifications: string | null
+          standardized_core_responsibilities: string | null
+          standardized_department: string | null
+          standardized_education: string | null
+          standardized_experience_min_years: number | null
+          standardized_location: string | null
+          standardized_preferred_skills: string | null
+          standardized_required_skills: string | null
+          standardized_role_family: string | null
+          standardized_role_purpose: string | null
+          standardized_role_title: string
+          standardized_seniority_band: string | null
+          standardized_tools_platforms: string | null
+          xl_source_count: number | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          session_id: string
+          smart_source_count?: number | null
+          standardized_certifications?: string | null
+          standardized_core_responsibilities?: string | null
+          standardized_department?: string | null
+          standardized_education?: string | null
+          standardized_experience_min_years?: number | null
+          standardized_location?: string | null
+          standardized_preferred_skills?: string | null
+          standardized_required_skills?: string | null
+          standardized_role_family?: string | null
+          standardized_role_purpose?: string | null
+          standardized_role_title: string
+          standardized_seniority_band?: string | null
+          standardized_tools_platforms?: string | null
+          xl_source_count?: number | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          session_id?: string
+          smart_source_count?: number | null
+          standardized_certifications?: string | null
+          standardized_core_responsibilities?: string | null
+          standardized_department?: string | null
+          standardized_education?: string | null
+          standardized_experience_min_years?: number | null
+          standardized_location?: string | null
+          standardized_preferred_skills?: string | null
+          standardized_required_skills?: string | null
+          standardized_role_family?: string | null
+          standardized_role_purpose?: string | null
+          standardized_role_title?: string
+          standardized_seniority_band?: string | null
+          standardized_tools_platforms?: string | null
+          xl_source_count?: number | null
+        }
+        Relationships: []
+      }
       vendors: {
         Row: {
           average_time_to_fill: number | null
@@ -1112,6 +1288,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      xl_roles_data: {
+        Row: {
+          alternate_titles: string | null
+          certifications: string | null
+          core_responsibilities: string | null
+          created_at: string
+          department: string | null
+          education: string | null
+          experience_min_years: number | null
+          id: string
+          location: string | null
+          preferred_skills: string | null
+          required_skills: string | null
+          role_family: string | null
+          role_id: string | null
+          role_purpose: string | null
+          role_title: string
+          role_variant: string | null
+          seniority_band: string | null
+          session_id: string
+          tools_platforms: string | null
+        }
+        Insert: {
+          alternate_titles?: string | null
+          certifications?: string | null
+          core_responsibilities?: string | null
+          created_at?: string
+          department?: string | null
+          education?: string | null
+          experience_min_years?: number | null
+          id?: string
+          location?: string | null
+          preferred_skills?: string | null
+          required_skills?: string | null
+          role_family?: string | null
+          role_id?: string | null
+          role_purpose?: string | null
+          role_title: string
+          role_variant?: string | null
+          seniority_band?: string | null
+          session_id: string
+          tools_platforms?: string | null
+        }
+        Update: {
+          alternate_titles?: string | null
+          certifications?: string | null
+          core_responsibilities?: string | null
+          created_at?: string
+          department?: string | null
+          education?: string | null
+          experience_min_years?: number | null
+          id?: string
+          location?: string | null
+          preferred_skills?: string | null
+          required_skills?: string | null
+          role_family?: string | null
+          role_id?: string | null
+          role_purpose?: string | null
+          role_title?: string
+          role_variant?: string | null
+          seniority_band?: string | null
+          session_id?: string
+          tools_platforms?: string | null
+        }
+        Relationships: []
       }
       xlsmart_development_plans: {
         Row: {

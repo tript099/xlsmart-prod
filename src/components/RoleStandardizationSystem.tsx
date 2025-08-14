@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, FileSpreadsheet, Brain, CheckCircle, AlertCircle, Zap } from "lucide-react";
+import { Upload, FileSpreadsheet, Brain, CheckCircle, AlertCircle, Zap, Database } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,8 @@ export const RoleStandardizationSystem = () => {
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("");
   const [results, setResults] = useState<any>(null);
+  const [sessionId, setSessionId] = useState<string>("");
+  const [uploadComplete, setUploadComplete] = useState(false);
 
   const parseExcelFile = useCallback((file: File, type: 'xl' | 'smart'): Promise<ParsedFile> => {
     return new Promise((resolve, reject) => {
@@ -68,7 +70,7 @@ export const RoleStandardizationSystem = () => {
     }
   }, []);
 
-  const processRoleStandardization = async () => {
+  const uploadToDatabase = async () => {
     if (xlFiles.length === 0 && smartFiles.length === 0) {
       toast({
         title: "No files selected",
@@ -94,7 +96,7 @@ export const RoleStandardizationSystem = () => {
     try {
       // Step 1: Parse files
       setCurrentStep("📊 Parsing Excel files...");
-      setProgress(10);
+      setProgress(20);
       
       const allFiles = [...xlFiles, ...smartFiles];
       const parsedFiles: ParsedFile[] = [];
@@ -109,28 +111,21 @@ export const RoleStandardizationSystem = () => {
         parsedFiles.push(parsed);
       }
 
-      // Step 2: Get user and create session
+      // Step 2: Create session
       setCurrentStep("🔐 Creating upload session...");
-      setProgress(20);
-      
-      console.log('User authenticated:', user.id);
+      setProgress(40);
 
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
         .insert({
-          session_name: `Role Standardization: ${allFiles.map(f => f.name).join(', ')}`,
+          session_name: `Role Upload: ${allFiles.map(f => f.name).join(', ')}`,
           file_names: allFiles.map(f => f.name),
           temp_table_names: [],
           total_rows: parsedFiles.reduce((sum, file) => sum + file.rows.length, 0),
-          status: 'analyzing',
+          status: 'uploading',
           created_by: user.id,
           ai_analysis: { 
-            raw_data: parsedFiles.map(f => ({
-              fileName: f.fileName,
-              headers: f.headers,
-              rows: f.rows,
-              type: f.type
-            })),
+            step: 'upload_started',
             xl_files: parsedFiles.filter(f => f.type === 'xl').length,
             smart_files: parsedFiles.filter(f => f.type === 'smart').length
           }
@@ -139,124 +134,123 @@ export const RoleStandardizationSystem = () => {
         .single();
 
       if (sessionError) throw sessionError;
+      setSessionId(session.id);
 
-      // Step 3: AI Analysis and Standardization
-      setCurrentStep("🧠 AI analyzing roles...");
-      setProgress(40);
+      // Step 3: Upload to database
+      setCurrentStep("💾 Uploading to database...");
+      setProgress(60);
 
-      const xlRoles = parsedFiles
+      const xlData = parsedFiles
         .filter(f => f.type === 'xl')
         .flatMap(file => file.rows.map(row => {
           const roleObj: any = {};
           file.headers.forEach((header, index) => {
             roleObj[header] = row[index];
           });
-          roleObj._source = 'xl';
-          roleObj._file = file.fileName;
           return roleObj;
         }));
 
-      const smartRoles = parsedFiles
+      const smartData = parsedFiles
         .filter(f => f.type === 'smart')
         .flatMap(file => file.rows.map(row => {
           const roleObj: any = {};
           file.headers.forEach((header, index) => {
             roleObj[header] = row[index];
           });
-          roleObj._source = 'smart';
-          roleObj._file = file.fileName;
           return roleObj;
         }));
 
-      const prompt = `Analyze these role data from XL and Smart sources and create standardized telecommunications roles:
-
-XL Roles (${xlRoles.length} roles):
-${xlRoles.slice(0, 5).map(role => JSON.stringify(role)).join('\n')}
-
-Smart Roles (${smartRoles.length} roles):
-${smartRoles.slice(0, 5).map(role => JSON.stringify(role)).join('\n')}
-
-Create 8-12 standardized roles that best represent both XL and Smart role structures. Return valid JSON:
-
-{
-  "standardRoles": [
-    {
-      "role_title": "Network Operations Engineer",
-      "department": "Network Operations", 
-      "job_family": "Engineering",
-      "role_level": "IC3-IC5",
-      "role_category": "Technology",
-      "standard_description": "Manages and monitors network infrastructure operations",
-      "industry_alignment": "Telecommunications"
-    }
-  ],
-  "mappings": [
-    {
-      "original_role_title": "RAN Performance Engineer",
-      "original_department": "Network",
-      "original_level": "Senior",
-      "standardized_role_title": "Network Operations Engineer",
-      "standardized_department": "Network Operations",
-      "standardized_level": "IC4",
-      "job_family": "Engineering",
-      "mapping_confidence": 85,
-      "mapping_status": "auto_mapped",
-      "catalog_id": "${session.id}"
-    }
-  ]
-}`;
-
-      setProgress(60);
-
-      console.log('Calling edge function with:', {
-        sessionId: session.id,
-        xlRolesCount: xlRoles.length,
-        smartRolesCount: smartRoles.length
-      });
-
-      // Call our debug function for now to test connection
-      const { data: aiResult, error: aiError } = await supabase.functions.invoke('debug-test', {
+      const { data: uploadResult, error: uploadError } = await supabase.functions.invoke('upload-role-data', {
         body: {
           sessionId: session.id,
-          xlRoles,
-          smartRoles,
-          type: 'role-standardization'
+          xlData,
+          smartData
         }
       });
 
-      console.log('Edge function response:', { aiResult, aiError });
-
-      if (aiError) {
-        console.error('Edge function error:', aiError);
-        throw new Error(`Standardization error: ${aiError.message}`);
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      if (!aiResult?.success) {
-        console.error('Edge function failed:', aiResult);
-        throw new Error(aiResult?.error || 'Standardization failed');
+      if (!uploadResult?.success) {
+        console.error('Upload failed:', uploadResult);
+        throw new Error(uploadResult?.error || 'Upload failed');
+      }
+
+      setProgress(100);
+      setCurrentStep("✅ Upload completed!");
+      setUploadComplete(true);
+
+      toast({
+        title: "🎉 Upload Success!",
+        description: `Uploaded ${uploadResult.totalInserted} roles to database`,
+        duration: 5000
+      });
+
+    } catch (error) {
+      console.error('Upload error details:', error);
+      
+      toast({
+        title: "❌ Upload Failed",
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+      setCurrentStep("");
+    }
+  };
+
+  const runStandardization = async () => {
+    if (!sessionId) {
+      toast({
+        title: "No upload session",
+        description: "Please upload data first",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setProgress(0);
+
+    try {
+      setCurrentStep("🧠 AI standardizing roles...");
+      setProgress(50);
+
+      const { data: result, error } = await supabase.functions.invoke('standardize-uploaded-roles', {
+        body: { sessionId }
+      });
+
+      if (error) {
+        console.error('Standardization error:', error);
+        throw new Error(`Standardization failed: ${error.message}`);
+      }
+
+      if (!result?.success) {
+        console.error('Standardization failed:', result);
+        throw new Error(result?.error || 'Standardization failed');
       }
 
       setProgress(100);
       setCurrentStep("✅ Standardization completed!");
 
       setResults({
-        standardRoles: aiResult.standardRoles,
-        mappings: aiResult.mappings,
-        xlRoles: aiResult.xlRoles,
-        smartRoles: aiResult.smartRoles,
-        totalProcessed: aiResult.totalProcessed
+        standardizedRolesCreated: result.standardizedRolesCreated,
+        mappingsCreated: result.mappingsCreated,
+        xlDataProcessed: result.xlDataProcessed,
+        smartDataProcessed: result.smartDataProcessed
       });
 
       toast({
-        title: "🎉 Success!",
-        description: `Created ${aiResult.standardRoles} standard roles with ${aiResult.mappings} mappings`,
+        title: "🎉 Standardization Success!",
+        description: `Created ${result.standardizedRolesCreated} standardized roles with ${result.mappingsCreated} mappings`,
         duration: 5000
       });
 
     } catch (error) {
       console.error('Standardization error details:', error);
-      console.error('Error type:', typeof error);
-      console.error('Error message:', error instanceof Error ? error.message : String(error));
       
       toast({
         title: "❌ Standardization Failed",
@@ -372,15 +366,15 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">
               <div className="space-y-2">
-                <p className="font-medium">Standardization completed successfully!</p>
+                <p className="font-medium">Process completed successfully!</p>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p>• XL Roles Processed: <strong>{results.xlRoles}</strong></p>
-                    <p>• Smart Roles Processed: <strong>{results.smartRoles}</strong></p>
+                    <p>• XL Roles Processed: <strong>{results.xlDataProcessed || 0}</strong></p>
+                    <p>• Smart Roles Processed: <strong>{results.smartDataProcessed || 0}</strong></p>
                   </div>
                   <div>
-                    <p>• Standard Roles Created: <strong>{results.standardRoles}</strong></p>
-                    <p>• Mappings Generated: <strong>{results.mappings}</strong></p>
+                    <p>• Standardized Roles Created: <strong>{results.standardizedRolesCreated || 0}</strong></p>
+                    <p>• Mappings Generated: <strong>{results.mappingsCreated || 0}</strong></p>
                   </div>
                 </div>
               </div>
@@ -388,25 +382,48 @@ Create 8-12 standardized roles that best represent both XL and Smart role struct
           </Alert>
         )}
 
-        {/* Action Button */}
-        <Button
-          onClick={processRoleStandardization}
-          disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
-          className="w-full h-12 text-lg"
-          size="lg"
-        >
-          {isProcessing ? (
-            <>
-              <Brain className="mr-2 h-5 w-5 animate-spin" />
-              Processing...
-            </>
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {!uploadComplete ? (
+            <Button
+              onClick={uploadToDatabase}
+              disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
+              className="w-full h-12 text-lg"
+              size="lg"
+            >
+              {isProcessing ? (
+                <>
+                  <Database className="mr-2 h-5 w-5 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Database className="mr-2 h-5 w-5" />
+                  Step 1: Upload to Database
+                </>
+              )}
+            </Button>
           ) : (
-            <>
-              <Upload className="mr-2 h-5 w-5" />
-              Standardize Roles with AI
-            </>
+            <Button
+              onClick={runStandardization}
+              disabled={!sessionId || isProcessing}
+              className="w-full h-12 text-lg"
+              size="lg"
+            >
+              {isProcessing ? (
+                <>
+                  <Brain className="mr-2 h-5 w-5 animate-spin" />
+                  Standardizing...
+                </>
+              ) : (
+                <>
+                  <Brain className="mr-2 h-5 w-5" />
+                  Step 2: AI Standardization
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </CardContent>
     </Card>
     </div>
