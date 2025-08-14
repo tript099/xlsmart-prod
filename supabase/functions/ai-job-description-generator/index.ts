@@ -158,14 +158,13 @@ Respond in JSON format:
       throw new Error('Failed to generate job description - invalid AI response format');
     }
 
-    // Save to database - simplified approach
+    // Save to database - no role mapping needed
     console.log('Saving to database...');
     const { data: savedJD, error: saveError } = await supabaseService
       .from('xlsmart_job_descriptions')
       .insert({
         title: generatedJD.title,
         summary: generatedJD.summary,
-        role_mapping_id: null, // Skip complex mapping for now
         responsibilities: generatedJD.responsibilities,
         required_qualifications: generatedJD.requiredQualifications,
         preferred_qualifications: generatedJD.preferredQualifications,
