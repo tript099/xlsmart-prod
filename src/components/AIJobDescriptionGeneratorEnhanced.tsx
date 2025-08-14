@@ -99,6 +99,8 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [selectedJDForChat, setSelectedJDForChat] = useState<GeneratedJD | null>(null);
   const [existingJDs, setExistingJDs] = useState<GeneratedJD[]>([]);
+  const [updatedJDContent, setUpdatedJDContent] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load standard roles and existing JDs on component mount
   useEffect(() => {
@@ -283,19 +285,28 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
     setIsChatLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
+      const { data, error } = await supabase.functions.invoke('ai-job-description-generator', {
         body: {
-          message: `Update this job description based on the user's request: "${chatInput}"\n\nCurrent JD:\n${selectedJDForChat.fullDescription}`,
-          context: 'jd_generator'
+          roleTitle: selectedJDForChat.title,
+          department: '',
+          level: '',
+          requirements: '',
+          customInstructions: `Update the existing job description based on this request: "${chatInput}"\n\nCurrent JD:\n${updatedJDContent || selectedJDForChat.fullDescription}`,
+          tone: 'professional',
+          language: 'en'
         }
       });
 
       if (error) throw error;
+      if (!data.success) throw new Error(data.message);
+
+      const updatedJD = data.jobDescription;
+      setUpdatedJDContent(updatedJD.fullDescription);
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: data.response,
+        content: `I've updated the job description. Here's what changed:\n\n${updatedJD.fullDescription}`,
         timestamp: new Date()
       };
 
@@ -309,6 +320,46 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
       });
     } finally {
       setIsChatLoading(false);
+    }
+  };
+
+  const handleSaveUpdatedJD = async () => {
+    if (!selectedJDForChat || !updatedJDContent) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('xlsmart_job_descriptions')
+        .update({
+          summary: updatedJDContent.split('\n\n')[0],
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedJDForChat.id);
+
+      if (error) throw error;
+
+      await loadExistingJDs(); // Refresh the list
+      toast({
+        title: "✅ Job Description Updated!",
+        description: "Your changes have been saved successfully",
+        duration: 5000,
+      });
+
+      // Update the selected JD with new content
+      setSelectedJDForChat(prev => prev ? {
+        ...prev,
+        fullDescription: updatedJDContent
+      } : null);
+      
+    } catch (error) {
+      console.error('Error saving JD:', error);
+      toast({
+        title: "❌ Save Failed",
+        description: error instanceof Error ? error.message : 'Failed to save job description',
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -374,13 +425,26 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="roleTitle">Role Title *</Label>
-                    <Input
-                      id="roleTitle"
-                      value={formData.roleTitle}
-                      onChange={(e) => handleInputChange('roleTitle', e.target.value)}
-                      placeholder="e.g., Senior Network Engineer"
-                      className="bg-background border-border"
-                    />
+                    <Select value={formData.roleTitle} onValueChange={(value) => handleInputChange('roleTitle', value)}>
+                      <SelectTrigger className="bg-background border-border">
+                        <SelectValue placeholder="Select a role or type custom role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {standardRoles.map((role) => (
+                          <SelectItem key={role.id} value={role.role_title}>
+                            {role.role_title} - {role.department}
+                          </SelectItem>
+                        ))}
+                        <SelectItem value="custom">Custom Role (type manually)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {formData.roleTitle === 'custom' && (
+                      <Input
+                        className="mt-2 bg-background border-border"
+                        placeholder="Enter custom role title"
+                        onChange={(e) => handleInputChange('roleTitle', e.target.value)}
+                      />
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -624,15 +688,16 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
                           className={`cursor-pointer transition-colors ${
                             selectedJDForChat?.id === jd.id ? 'border-primary' : 'border-border'
                           }`}
-                          onClick={() => {
-                            setSelectedJDForChat(jd);
-                            setChatMessages([{
-                              id: 'welcome',
-                              role: 'assistant',
-                              content: `I'll help you update the job description for "${jd.title}". What changes would you like to make?`,
-                              timestamp: new Date()
-                            }]);
-                          }}
+                           onClick={() => {
+                             setSelectedJDForChat(jd);
+                             setUpdatedJDContent(jd.fullDescription);
+                             setChatMessages([{
+                               id: 'welcome',
+                               role: 'assistant',
+                               content: `I'll help you update the job description for "${jd.title}". What changes would you like to make?`,
+                               timestamp: new Date()
+                             }]);
+                           }}
                         >
                           <CardContent className="p-4">
                             <h4 className="font-medium text-sm">{jd.title}</h4>
@@ -711,9 +776,42 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
                             </Button>
                           </div>
                         </CardContent>
-                      </Card>
-                    </>
-                  ) : (
+                       </Card>
+
+                       {/* Updated JD Preview and Save Button */}
+                       {updatedJDContent && updatedJDContent !== selectedJDForChat.fullDescription && (
+                         <Card className="border-border bg-muted/50">
+                           <CardHeader className="pb-3">
+                             <CardTitle className="text-lg flex items-center justify-between">
+                               Updated Job Description
+                               <Button
+                                 onClick={handleSaveUpdatedJD}
+                                 disabled={isSaving}
+                                 className="xl-button-primary"
+                               >
+                                 {isSaving ? (
+                                   <>
+                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                     Saving...
+                                   </>
+                                 ) : (
+                                   <>
+                                     <CheckCircle2 className="mr-2 h-4 w-4" />
+                                     Save Changes
+                                   </>
+                                 )}
+                               </Button>
+                             </CardTitle>
+                           </CardHeader>
+                           <CardContent>
+                             <ScrollArea className="h-60 p-4 bg-background rounded border">
+                               <pre className="text-sm whitespace-pre-wrap">{updatedJDContent}</pre>
+                             </ScrollArea>
+                           </CardContent>
+                         </Card>
+                       )}
+                     </>
+                   ) : (
                     <Card className="border-border border-dashed">
                       <CardContent className="flex items-center justify-center h-80">
                         <div className="text-center text-muted-foreground">
