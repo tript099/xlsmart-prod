@@ -77,7 +77,7 @@ serve(async (req) => {
           for (const employee of batch) {
             try {
               // Normalize employee data according to xlsmart_employees schema
-              const normalizedEmployee = {
+              const normalizedEmployee: any = {
                 employee_number: employee['EmployeeID'] || employee['Employee ID'] || employee['ID'] || `EMP${Date.now()}${Math.random()}`,
                 source_company: employee['Telco'] || employee['Company'] || employee['Organization'] || 'Unknown',
                 first_name: employee['Name']?.split(' ')[0] || employee['FirstName'] || employee['First Name'] || 'Unknown',
@@ -98,7 +98,7 @@ serve(async (req) => {
               };
 
               // Handle skills - combine skills with aspirations and location as metadata
-              let skillsArray = [];
+              let skillsArray: string[] = [];
               if (employee['Skills']) {
                 if (Array.isArray(employee['Skills'])) {
                   skillsArray = employee['Skills'];
@@ -118,7 +118,7 @@ serve(async (req) => {
               normalizedEmployee.skills = skillsArray;
 
               // Handle certifications
-              let certificationsArray = [];
+              let certificationsArray: string[] = [];
               if (employee['Certifications']) {
                 if (Array.isArray(employee['Certifications'])) {
                   certificationsArray = employee['Certifications'];
