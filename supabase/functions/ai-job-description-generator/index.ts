@@ -8,7 +8,11 @@ const corsHeaders = {
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
+// Service role client for database operations
+const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
 // Create client with auth context to get user ID
 const createSupabaseClient = (authHeader: string | null) => {
@@ -53,8 +57,8 @@ serve(async (req) => {
       throw new Error('LiteLLM API key not configured');
     }
 
-    // Get similar standard roles for context
-    const { data: standardRoles, error: rolesError } = await supabase
+    // Get similar standard roles for context using service client
+    const { data: standardRoles, error: rolesError } = await supabaseService
       .from('xlsmart_standard_roles')
       .select('role_title, standard_description, core_responsibilities, required_skills, education_requirements')
       .ilike('role_title', `%${roleTitle}%`)
@@ -65,8 +69,8 @@ serve(async (req) => {
       console.error('Error fetching standard roles:', rolesError);
     }
 
-    // Get company context from employees data
-    const { data: companyContext, error: contextError } = await supabase
+    // Get company context from employees data using service client
+    const { data: companyContext, error: contextError } = await supabaseService
       .from('xlsmart_employees')
       .select('current_department, current_position')
       .eq('current_department', department)
@@ -163,8 +167,8 @@ Respond in JSON format:
       throw new Error('Failed to generate job description - invalid AI response format');
     }
 
-    // Create a dummy role mapping entry to satisfy the NOT NULL constraint
-    const { data: dummyMapping, error: mappingError } = await supabase
+    // Create a dummy role mapping entry using service client
+    const { data: dummyMapping, error: mappingError } = await supabaseService
       .from('xlsmart_role_mappings')
       .insert({
         catalog_id: user.id, // Use user ID as catalog
@@ -186,8 +190,8 @@ Respond in JSON format:
       throw new Error('Failed to create role mapping');
     }
 
-    // Save to database
-    const { data: savedJD, error: saveError } = await supabase
+    // Save to database using service client
+    const { data: savedJD, error: saveError } = await supabaseService
       .from('xlsmart_job_descriptions')
       .insert({
         title: generatedJD.title,
