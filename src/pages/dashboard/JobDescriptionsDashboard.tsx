@@ -2,33 +2,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AIJobDescriptionsIntelligence } from "@/components/AIJobDescriptionsIntelligence";
-import { FileText, Zap, CheckCircle, Clock, Brain } from "lucide-react";
+import { useJobDescriptionStats } from "@/hooks/useJobDescriptionStats";
+import { useRecentJobDescriptions } from "@/hooks/useRecentJobDescriptions";
+import { FileText, Zap, CheckCircle, Clock, Brain, Loader2 } from "lucide-react";
 
 const JobDescriptionsDashboard = () => {
+  const { totalJDs, activeJDs, draftJDs, approvedJDs, loading } = useJobDescriptionStats();
+  const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
+
   const jdStats = [
     { 
-      value: "1,247", 
+      value: loading ? "Loading..." : totalJDs.toLocaleString(), 
       label: "Generated JDs", 
       icon: FileText, 
       color: "text-blue-600",
       description: "Total job descriptions"
     },
     { 
-      value: "98%", 
-      label: "Accuracy Rate", 
+      value: loading ? "Loading..." : `${approvedJDs}`, 
+      label: "Approved JDs", 
       icon: CheckCircle, 
       color: "text-green-600",
-      description: "AI generation accuracy"
+      description: "Approved job descriptions"
     },
     { 
-      value: "3.2 min", 
-      label: "Avg Generation Time", 
+      value: loading ? "Loading..." : `${draftJDs}`, 
+      label: "Draft JDs", 
       icon: Clock, 
       color: "text-purple-600",
-      description: "Time per JD"
+      description: "Job descriptions in draft"
     },
     { 
-      value: "847", 
+      value: loading ? "Loading..." : `${activeJDs}`, 
       label: "Active JDs", 
       icon: Zap, 
       color: "text-orange-600",
@@ -69,7 +74,8 @@ const JobDescriptionsDashboard = () => {
                     <stat.icon className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className={`text-2xl font-bold ${stat.color}`}>
+                    <div className={`text-2xl font-bold ${stat.color} flex items-center gap-2`}>
+                      {loading && <Loader2 className="h-4 w-4 animate-spin" />}
                       {stat.value}
                     </div>
                     <p className="text-sm font-medium text-foreground">
@@ -145,27 +151,38 @@ const JobDescriptionsDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="font-medium">Senior Software Engineer</p>
-                  <p className="text-sm text-muted-foreground">Generated 2 hours ago</p>
+              {recentLoading ? (
+                <div className="flex items-center justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading recent job descriptions...</span>
                 </div>
-                <div className="text-green-600 text-sm">✓ Approved</div>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="font-medium">Data Analyst</p>
-                  <p className="text-sm text-muted-foreground">Generated 4 hours ago</p>
+              ) : recentJDs.length > 0 ? (
+                recentJDs.map((jd) => (
+                  <div key={jd.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div>
+                      <p className="font-medium">{jd.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Generated {new Date(jd.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className={`text-sm ${
+                      jd.status === 'approved' ? 'text-green-600' :
+                      jd.status === 'published' ? 'text-blue-600' :
+                      jd.status === 'review' ? 'text-yellow-600' :
+                      'text-gray-600'
+                    }`}>
+                      {jd.status === 'approved' && '✓ Approved'}
+                      {jd.status === 'published' && '✓ Published'}
+                      {jd.status === 'review' && '⏳ Review'}
+                      {jd.status === 'draft' && '📝 Draft'}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center p-8 text-muted-foreground">
+                  No job descriptions found. Generate your first JD using the tools above.
                 </div>
-                <div className="text-yellow-600 text-sm">⏳ Review</div>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="font-medium">Project Manager</p>
-                  <p className="text-sm text-muted-foreground">Generated 6 hours ago</p>
-                </div>
-                <div className="text-green-600 text-sm">✓ Published</div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
