@@ -89,6 +89,17 @@ export const RoleStandardizationSystem = () => {
       return;
     }
 
+    // Check if user session is valid
+    const { data: { user: currentUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !currentUser) {
+      toast({
+        title: "Session Expired",
+        description: "Please refresh the page and log in again",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsProcessing(true);
     setProgress(0);
     setResults(null);
