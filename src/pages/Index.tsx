@@ -230,6 +230,9 @@ const Index = () => {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className={feature.id === 'upload' ? "max-w-5xl max-h-[80vh] overflow-y-auto" : "max-w-4xl max-h-[80vh] overflow-y-auto"}>
+                        <DialogTitle className="sr-only">
+                          {feature.id === 'upload' ? 'Role Standardization System' : 'AI Chat Assistant'}
+                        </DialogTitle>
                         {feature.id === 'upload' ? <RoleStandardizationSystem /> : <AIChat />}
                       </DialogContent>
                     </Dialog>
@@ -245,7 +248,14 @@ const Index = () => {
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
-                        <DialogTitle className="sr-only">Feature Dialog</DialogTitle>
+                        <DialogTitle className="sr-only">
+                          {feature.id === 'jd-generator' ? 'Job Description Generator' :
+                           feature.id === 'employee-upload' ? 'Employee Upload System' :
+                           feature.id === 'assessment' ? 'Skills Assessment' :
+                           feature.id === 'career-paths' ? 'Employee Career Paths' :
+                           feature.id === 'mobility' ? 'Employee Mobility Planning' :
+                           feature.id === 'development' ? 'Development Pathways' : 'Feature Dialog'}
+                        </DialogTitle>
                         {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
                         {feature.id === 'employee-upload' && <EmployeeUpload />}
                         {feature.id === 'assessment' && <AISkillsAssessmentEnhanced />}
@@ -332,10 +342,7 @@ const Index = () => {
                   </Button>
                 </DialogTrigger>
                       <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
-                        <div className="sr-only">
-                          <h2>Role Upload Dialog</h2>
-                          <p>Upload and standardize role catalogs using AI</p>
-                        </div>
+                        <DialogTitle className="sr-only">Role Upload Dialog</DialogTitle>
                 <RoleStandardizationSystem />
                       </DialogContent>
               </Dialog>
@@ -348,10 +355,7 @@ const Index = () => {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
-                  <div className="sr-only">
-                    <h2>LiteLLM Connection Test</h2>
-                    <p>Test the LiteLLM proxy connection</p>
-                  </div>
+                  <DialogTitle className="sr-only">LiteLLM Connection Test</DialogTitle>
                   <LiteLLMTest />
                 </DialogContent>
               </Dialog>
@@ -362,24 +366,28 @@ const Index = () => {
         {/* Detail Dialogs for Stats */}
         <Dialog open={activeDialog === 'employee-details'} onOpenChange={(open) => setActiveDialog(open ? 'employee-details' : null)}>
           <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <DialogTitle className="sr-only">Employee Details</DialogTitle>
             <EmployeeListDetails />
           </DialogContent>
         </Dialog>
 
         <Dialog open={activeDialog === 'roles-details'} onOpenChange={(open) => setActiveDialog(open ? 'roles-details' : null)}>
           <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <DialogTitle className="sr-only">Standardized Roles Details</DialogTitle>
             <StandardizedRolesDetails />
           </DialogContent>
         </Dialog>
 
         <Dialog open={activeDialog === 'accuracy-details'} onOpenChange={(open) => setActiveDialog(open ? 'accuracy-details' : null)}>
           <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <DialogTitle className="sr-only">Mapping Accuracy Details</DialogTitle>
             <MappingAccuracyDetails />
           </DialogContent>
         </Dialog>
 
         <Dialog open={activeDialog === 'skills-details'} onOpenChange={(open) => setActiveDialog(open ? 'skills-details' : null)}>
           <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+            <DialogTitle className="sr-only">Skills Details</DialogTitle>
             <SkillsListDetails />
           </DialogContent>
         </Dialog>

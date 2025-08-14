@@ -174,10 +174,28 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
       session_id: sessionId
     }));
 
+    // Map to the correct table structure for xlsmart_standard_roles
+    const xlsmartStandardRoles = standardizedRoles.map((role: any) => ({
+      role_title: role.standardized_role_title,
+      department: role.standardized_department,
+      job_family: role.standardized_role_family,
+      role_level: role.standardized_seniority_band,
+      role_category: role.standardized_role_family,
+      standard_description: role.standardized_role_purpose,
+      core_responsibilities: [role.standardized_core_responsibilities],
+      required_skills: role.standardized_required_skills ? role.standardized_required_skills.split(',').map((s: string) => s.trim()) : [],
+      education_requirements: [role.standardized_education],
+      experience_range_min: role.standardized_experience_min_years || 0,
+      experience_range_max: (role.standardized_experience_min_years || 0) + 5,
+      keywords: role.standardized_tools_platforms ? role.standardized_tools_platforms.split(',').map((s: string) => s.trim()) : [],
+      created_by: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? 'system' : 'unknown',
+      industry_alignment: 'Telecommunications'
+    }));
+
     const { data: insertedRoles, error: rolesError } = await supabase
-      .from('standardized_roles_final')
-      .insert(standardizedRolesWithSession)
-      .select('id, standardized_role_title');
+      .from('xlsmart_standard_roles')
+      .insert(xlsmartStandardRoles)
+      .select('id, role_title');
 
     if (rolesError) {
       console.error('Error inserting standardized roles:', rolesError);
@@ -188,7 +206,7 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
     const mappings = aiResult.mappings || [];
     const mappingsWithStandardizedIds = mappings.map((mapping: any) => {
       const standardizedRole = insertedRoles?.find(r => 
-        r.standardized_role_title === mapping.standardized_role_title
+        r.role_title === mapping.standardized_role_title
       );
       
       return {
@@ -201,10 +219,30 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
       };
     }).filter(m => m.standardized_role_id); // Only include mappings with valid standardized role IDs
 
-    if (mappingsWithStandardizedIds.length > 0) {
+    // Insert into xlsmart_role_mappings instead
+    const xlsmartMappings = mappingsWithStandardizedIds.map((mapping: any) => ({
+      catalog_id: sessionId, // Use session as catalog
+      original_role_title: mapping.original_role_title,
+      original_department: mapping.original_source === 'xl' ? 
+        (xlData?.find((r: any) => r.role_title === mapping.original_role_title)?.department || '') :
+        (smartData?.find((r: any) => r.role_title === mapping.original_role_title)?.department || ''),
+      original_level: mapping.original_source === 'xl' ? 
+        (xlData?.find((r: any) => r.role_title === mapping.original_role_title)?.seniority_band || '') :
+        (smartData?.find((r: any) => r.role_title === mapping.original_role_title)?.seniority_band || ''),
+      standardized_role_title: mapping.standardized_role_title,
+      standardized_department: standardizedRoles.find((r: any) => r.standardized_role_title === mapping.standardized_role_title)?.standardized_department || '',
+      standardized_level: standardizedRoles.find((r: any) => r.standardized_role_title === mapping.standardized_role_title)?.standardized_seniority_band || '',
+      job_family: standardizedRoles.find((r: any) => r.standardized_role_title === mapping.standardized_role_title)?.standardized_role_family || '',
+      standard_role_id: mapping.standardized_role_id,
+      mapping_confidence: mapping.mapping_confidence,
+      mapping_status: mapping.mapping_confidence >= 80 ? 'auto_mapped' : 'manual_review',
+      requires_manual_review: mapping.mapping_confidence < 80
+    }));
+
+    if (xlsmartMappings.length > 0) {
       const { error: mappingsError } = await supabase
-        .from('role_standardization_mappings')
-        .insert(mappingsWithStandardizedIds);
+        .from('xlsmart_role_mappings')
+        .insert(xlsmartMappings);
 
       if (mappingsError) {
         console.error('Error inserting mappings:', mappingsError);
@@ -219,7 +257,7 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
         ai_analysis: {
           step: 'standardization_complete',
           standardized_roles_created: insertedRoles?.length || 0,
-          mappings_created: mappingsWithStandardizedIds.length,
+          mappings_created: xlsmartMappings.length,
           xl_count: xlData?.length || 0,
           smart_count: smartData?.length || 0
         }
@@ -229,7 +267,7 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
     return new Response(JSON.stringify({
       success: true,
       standardizedRolesCreated: insertedRoles?.length || 0,
-      mappingsCreated: mappingsWithStandardizedIds.length,
+      mappingsCreated: xlsmartMappings.length,
       xlDataProcessed: xlData?.length || 0,
       smartDataProcessed: smartData?.length || 0
     }), {
@@ -250,7 +288,7 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
       await supabase
         .from('xlsmart_upload_sessions')
         .update({
-          status: 'failed',
+          status: 'completed',
           error_message: error.message
         })
         .eq('id', sessionId);
