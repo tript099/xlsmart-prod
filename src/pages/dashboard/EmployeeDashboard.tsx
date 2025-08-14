@@ -6,36 +6,38 @@ import { AICompensationIntelligence } from "@/components/AICompensationIntellige
 import { AIEmployeeEngagement } from "@/components/AIEmployeeEngagement";
 import { AISuccessionPlanning } from "@/components/AISuccessionPlanning";
 import { AIDiversityInclusion } from "@/components/AIDiversityInclusion";
-import { Users, Upload, BarChart3, TrendingUp, DollarSign, Brain } from "lucide-react";
+import { Users, Upload, BarChart3, TrendingUp, DollarSign, Brain, Loader2 } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
+import { useEmployeeAnalytics } from "@/hooks/useEmployeeAnalytics";
 
 const EmployeeDashboard = () => {
   const aiStats = useAIStats();
+  const employeeAnalytics = useEmployeeAnalytics();
 
   const employeeStats = [
     { 
-      value: aiStats.loading ? "..." : aiStats.employees, 
+      value: employeeAnalytics.loading ? "..." : employeeAnalytics.totalEmployees.toLocaleString(), 
       label: "Total Employees", 
       icon: Users, 
       color: "text-blue-600",
       description: "Active employee records"
     },
     { 
-      value: "85%", 
+      value: employeeAnalytics.loading ? "..." : `${employeeAnalytics.roleAssignmentRate}%`, 
       label: "Role Assignment Rate", 
       icon: TrendingUp, 
       color: "text-green-600",
       description: "Successfully assigned roles"
     },
     { 
-      value: "92%", 
+      value: employeeAnalytics.loading ? "..." : `${employeeAnalytics.dataCompleteness}%`, 
       label: "Data Completeness", 
       icon: BarChart3, 
       color: "text-purple-600",
       description: "Complete employee profiles"
     },
     { 
-      value: "78%", 
+      value: employeeAnalytics.loading ? "..." : `${employeeAnalytics.skillsAssessmentRate}%`, 
       label: "Skills Assessment", 
       icon: Users, 
       color: "text-orange-600",
@@ -76,7 +78,8 @@ const EmployeeDashboard = () => {
                     <stat.icon className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className={`text-2xl font-bold ${stat.color}`}>
+                    <div className={`text-2xl font-bold ${stat.color} flex items-center gap-2`}>
+                      {employeeAnalytics.loading && <Loader2 className="h-4 w-4 animate-spin" />}
                       {stat.value}
                     </div>
                     <p className="text-sm font-medium text-foreground">

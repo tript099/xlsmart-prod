@@ -2,33 +2,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
 import { AILearningDevelopment } from "@/components/AILearningDevelopment";
-import { BookOpen, TrendingUp, Clock, Award, Brain } from "lucide-react";
+import { BookOpen, TrendingUp, Clock, Award, Brain, Loader2 } from "lucide-react";
+import { useDevelopmentAnalytics } from "@/hooks/useDevelopmentAnalytics";
 
 const DevelopmentDashboard = () => {
+  const developmentAnalytics = useDevelopmentAnalytics();
+
   const developmentStats = [
     { 
-      value: "1,234", 
+      value: developmentAnalytics.loading ? "..." : developmentAnalytics.learningPaths.toLocaleString(), 
       label: "Learning Paths", 
       icon: BookOpen, 
       color: "text-blue-600",
       description: "Active development plans"
     },
     { 
-      value: "89%", 
+      value: developmentAnalytics.loading ? "..." : `${developmentAnalytics.completionRate}%`, 
       label: "Completion Rate", 
       icon: TrendingUp, 
       color: "text-green-600",
       description: "Learning objectives met"
     },
     { 
-      value: "24.5", 
+      value: developmentAnalytics.loading ? "..." : developmentAnalytics.avgLearningHours.toString(), 
       label: "Avg Learning Hours", 
       icon: Clock, 
       color: "text-purple-600",
       description: "Per employee/month"
     },
     { 
-      value: "567", 
+      value: developmentAnalytics.loading ? "..." : developmentAnalytics.skillsDeveloped.toString(), 
       label: "Skills Developed", 
       icon: Award, 
       color: "text-orange-600",
@@ -69,7 +72,8 @@ const DevelopmentDashboard = () => {
                     <stat.icon className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className={`text-2xl font-bold ${stat.color}`}>
+                    <div className={`text-2xl font-bold ${stat.color} flex items-center gap-2`}>
+                      {developmentAnalytics.loading && <Loader2 className="h-4 w-4 animate-spin" />}
                       {stat.value}
                     </div>
                     <p className="text-sm font-medium text-foreground">

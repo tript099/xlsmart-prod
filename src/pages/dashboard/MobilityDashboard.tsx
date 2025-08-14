@@ -1,32 +1,35 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlanningAI";
-import { Target, TrendingUp, Users, AlertTriangle } from "lucide-react";
+import { Target, TrendingUp, Users, AlertTriangle, Loader2 } from "lucide-react";
+import { useMobilityAnalytics } from "@/hooks/useMobilityAnalytics";
 
 const MobilityDashboard = () => {
+  const mobilityAnalytics = useMobilityAnalytics();
+
   const mobilityStats = [
     { 
-      value: "23%", 
+      value: mobilityAnalytics.loading ? "..." : `${mobilityAnalytics.mobilityRate}%`, 
       label: "Mobility Rate", 
       icon: Target, 
       color: "text-blue-600",
       description: "Annual internal moves"
     },
     { 
-      value: "87%", 
+      value: mobilityAnalytics.loading ? "..." : `${mobilityAnalytics.retentionRate}%`, 
       label: "Retention Rate", 
       icon: Users, 
       color: "text-green-600",
       description: "Successful transitions"
     },
     { 
-      value: "156", 
+      value: mobilityAnalytics.loading ? "..." : mobilityAnalytics.activePlans.toString(), 
       label: "Active Plans", 
       icon: TrendingUp, 
       color: "text-purple-600",
       description: "Current mobility plans"
     },
     { 
-      value: "42", 
+      value: mobilityAnalytics.loading ? "..." : mobilityAnalytics.atRiskEmployees.toString(), 
       label: "At-Risk Employees", 
       icon: AlertTriangle, 
       color: "text-orange-600",
@@ -67,7 +70,8 @@ const MobilityDashboard = () => {
                     <stat.icon className="h-5 w-5 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className={`text-2xl font-bold ${stat.color}`}>
+                    <div className={`text-2xl font-bold ${stat.color} flex items-center gap-2`}>
+                      {mobilityAnalytics.loading && <Loader2 className="h-4 w-4 animate-spin" />}
                       {stat.value}
                     </div>
                     <p className="text-sm font-medium text-foreground">
