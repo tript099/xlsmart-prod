@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -1936,7 +1936,7 @@ export type Database = {
     }
     Functions: {
       advance_offer_workflow_step: {
-        Args: { workflow_id: string; step_data?: Json }
+        Args: { step_data?: Json; workflow_id: string }
         Returns: Json
       }
       drop_temp_tables: {
