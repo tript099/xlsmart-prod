@@ -20,10 +20,19 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Employee role assignment function started - v5');
     const { sessionId } = await req.json();
+    
+    if (!sessionId) {
+      throw new Error('Session ID is required');
+    }
     
     console.log(`Starting AI role assignment for session: ${sessionId}`);
     console.log(`LiteLLM API key configured: ${liteLLMApiKey ? 'Yes' : 'No'}`);
+    
+    if (!liteLLMApiKey) {
+      throw new Error('LITELLM_API_KEY not configured in environment variables');
+    }
     
     // Get the session details
     const { data: session, error: sessionError } = await supabase
@@ -32,45 +41,30 @@ serve(async (req) => {
       .eq('id', sessionId)
       .single();
 
-    if (sessionError) throw sessionError;
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      throw new Error(`Session not found: ${sessionError.message}`);
+    }
 
-    // Get employees that were uploaded by the same user around the session time
-    // We'll use the session creator and a reasonable time window
-    const sessionCreatedAt = new Date(session.created_at);
-    const sessionStartTime = new Date(sessionCreatedAt.getTime() - (10 * 60 * 1000)); // 10 minutes before
-    const sessionEndTime = new Date(sessionCreatedAt.getTime() + (60 * 60 * 1000)); // 1 hour after
+    console.log('Session found:', session.session_name);
 
+    // Get ALL unassigned employees for this user (not just from this session)
     const { data: employees, error: employeesError } = await supabase
       .from('xlsmart_employees')
       .select('*')
-      .gte('created_at', sessionStartTime.toISOString())
-      .lte('created_at', sessionEndTime.toISOString())
       .eq('uploaded_by', session.created_by)
-      .eq('role_assignment_status', 'pending'); // Only employees pending assignment
+      .is('standard_role_id', null); // Get employees without assigned roles
 
     if (employeesError) {
       console.error('Error fetching employees:', employeesError);
-      throw employeesError;
+      throw new Error(`Failed to fetch employees: ${employeesError.message}`);
     }
 
     if (!employees || employees.length === 0) {
-      console.log(`No unassigned employees found for session ${sessionId}. Checking all employees by user...`);
-      
-      // Fallback: get all pending employees for this user
-      const { data: allEmployees, error: allEmployeesError } = await supabase
-        .from('xlsmart_employees')
-        .select('*')
-        .eq('uploaded_by', session.created_by)
-        .eq('role_assignment_status', 'pending');
-
-      if (allEmployeesError) throw allEmployeesError;
-      
-      if (!allEmployees || allEmployees.length === 0) {
-        throw new Error('No unassigned employees found for this user');
-      }
-      
-      employees = allEmployees;
+      throw new Error('No unassigned employees found for this user');
     }
+
+    console.log(`Found ${employees.length} unassigned employees`);
 
     // Get existing standard roles for AI matching
     const { data: standardRoles, error: rolesError } = await supabase
@@ -78,123 +72,153 @@ serve(async (req) => {
       .select('*')
       .eq('is_active', true);
 
-    if (rolesError) throw rolesError;
+    if (rolesError) {
+      console.error('Roles error:', rolesError);
+      throw new Error(`Failed to fetch standard roles: ${rolesError.message}`);
+    }
 
     if (!standardRoles || standardRoles.length === 0) {
       throw new Error('No standard roles available for assignment');
     }
 
-    console.log(`Found ${employees.length} employees and ${standardRoles.length} standard roles`);
+    console.log(`Found ${standardRoles.length} standard roles`);
 
     // Update session status to indicate role assignment started
     await supabase
       .from('xlsmart_upload_sessions')
-      .update({ status: 'assigning_roles' })
+      .update({ 
+        status: 'assigning_roles',
+        ai_analysis: {
+          processed: 0,
+          assigned: 0,
+          errors: 0,
+          total: employees.length
+        }
+      })
       .eq('id', sessionId);
 
-    // Process employees in batches for role assignment
-    const BATCH_SIZE = 10; // Smaller batches for AI processing
+    // Process employees synchronously for reliability
+    const BATCH_SIZE = 5; // Smaller batches for better reliability
     let processedCount = 0;
     let assignedCount = 0;
     let errorCount = 0;
+    const errors: string[] = [];
 
-    // Background processing with EdgeRuntime.waitUntil
-    const assignRoles = async () => {
-      for (let i = 0; i < employees.length; i += BATCH_SIZE) {
-        const batch = employees.slice(i, i + BATCH_SIZE);
-        
+    for (let i = 0; i < employees.length; i += BATCH_SIZE) {
+      const batch = employees.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(employees.length/BATCH_SIZE)}`);
+      
+      for (const employee of batch) {
         try {
-          // Process each employee in the batch
-          for (const employee of batch) {
-            try {
-              // Use AI to get role suggestion (don't auto-assign)
-              const suggestedRoleId = await assignRoleWithAI(employee, standardRoles);
-              
-              if (suggestedRoleId) {
-                // Store AI suggestion without auto-assigning
-                const { error: updateError } = await supabase
-                  .from('xlsmart_employees')
-                  .update({ 
-                    ai_suggested_role_id: suggestedRoleId,
-                    role_assignment_status: 'ai_suggested'
-                  })
-                  .eq('id', employee.id);
+          console.log(`Processing employee: ${employee.first_name} ${employee.last_name}`);
+          
+          // Use AI to get role suggestion and assign it directly
+          const suggestedRoleId = await assignRoleWithAI(employee, standardRoles);
+          
+          if (suggestedRoleId) {
+            // Directly assign the role (not just suggest)
+            const { error: updateError } = await supabase
+              .from('xlsmart_employees')
+              .update({ 
+                standard_role_id: suggestedRoleId,
+                ai_suggested_role_id: suggestedRoleId,
+                role_assignment_status: 'assigned',
+                assigned_by: session.created_by,
+                assignment_notes: 'Assigned by AI'
+              })
+              .eq('id', employee.id);
 
-                if (updateError) {
-                  console.error('Error storing AI suggestion:', updateError);
-                  errorCount++;
-                } else {
-                  assignedCount++; // Count as processed with suggestion
-                }
-              }
-              
-              processedCount++;
-
-            } catch (employeeError) {
-              console.error('Error processing employee for role assignment:', employeeError);
+            if (updateError) {
+              console.error('Error assigning role to employee:', updateError);
               errorCount++;
-              processedCount++;
+              errors.push(`${employee.first_name} ${employee.last_name}: ${updateError.message}`);
+            } else {
+              assignedCount++;
+              console.log(`Successfully assigned role to ${employee.first_name} ${employee.last_name}`);
             }
+          } else {
+            console.log(`No suitable role found for ${employee.first_name} ${employee.last_name}`);
+            // Update status to indicate AI couldn't find a match
+            await supabase
+              .from('xlsmart_employees')
+              .update({ 
+                role_assignment_status: 'ai_no_match',
+                assignment_notes: 'AI could not find suitable role match'
+              })
+              .eq('id', employee.id);
           }
+          
+          processedCount++;
 
-          // Update progress
-          await supabase
-            .from('xlsmart_upload_sessions')
-            .update({
-              ai_analysis: {
-                processed: processedCount,
-                assigned: assignedCount,
-                errors: errorCount,
-                total: employees.length
-              }
-            })
-            .eq('id', sessionId);
-
-          console.log(`Batch completed: ${processedCount}/${employees.length} processed`);
-
-        } catch (batchError) {
-          console.error('Error processing batch for role assignment:', batchError);
-          errorCount += batch.length;
-          processedCount += batch.length;
+        } catch (employeeError) {
+          console.error('Error processing employee for role assignment:', employeeError);
+          errorCount++;
+          errors.push(`${employee.first_name} ${employee.last_name}: ${employeeError.message}`);
+          processedCount++;
         }
 
-        // Small delay between batches to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Update progress after each employee
+        await supabase
+          .from('xlsmart_upload_sessions')
+          .update({
+            ai_analysis: {
+              processed: processedCount,
+              assigned: assignedCount,
+              errors: errorCount,
+              total: employees.length,
+              error_details: errors.slice(-10) // Keep last 10 errors
+            }
+          })
+          .eq('id', sessionId);
       }
 
-      // Mark session as role assignment completed
-      await supabase
-        .from('xlsmart_upload_sessions')
-        .update({
-          status: 'roles_assigned',
-          ai_analysis: {
-            processed: processedCount,
-            assigned: assignedCount,
-            errors: errorCount,
-            total: employees.length,
-            completion_time: new Date().toISOString()
-          }
-        })
-        .eq('id', sessionId);
+      // Small delay between batches to avoid rate limiting
+      if (i + BATCH_SIZE < employees.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
-      console.log(`Role assignment completed: ${assignedCount} assigned, ${errorCount} errors`);
-    };
+    // Mark session as completed
+    const finalStatus = errorCount === 0 ? 'completed' : 
+                       assignedCount > 0 ? 'completed_with_errors' : 'failed';
+    
+    await supabase
+      .from('xlsmart_upload_sessions')
+      .update({
+        status: finalStatus,
+        ai_analysis: {
+          processed: processedCount,
+          assigned: assignedCount,
+          errors: errorCount,
+          total: employees.length,
+          completion_time: new Date().toISOString(),
+          error_details: errors
+        }
+      })
+      .eq('id', sessionId);
 
-    // Start background processing
-    EdgeRuntime.waitUntil(assignRoles());
+    console.log(`AI role assignment completed: ${assignedCount} assigned, ${errorCount} errors out of ${processedCount} processed`);
 
     return new Response(JSON.stringify({
       success: true,
       sessionId: sessionId,
-      message: `Started AI role analysis for ${employees.length} employees. Please review suggestions in the assignment interface.`
+      processed: processedCount,
+      assigned: assignedCount,
+      errors: errorCount,
+      total: employees.length,
+      message: errorCount === 0 ? 
+        `Successfully assigned roles to ${assignedCount} employees` :
+        `Assigned roles to ${assignedCount} employees with ${errorCount} errors`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in employee-role-assignment function:', error);
+    console.error('Critical error in employee-role-assignment function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message 
+      success: false,
+      error: error.message,
+      details: error.stack
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -205,13 +229,6 @@ serve(async (req) => {
 async function assignRoleWithAI(employee: any, standardRoles: any[]) {
   console.log(`Processing AI role assignment for: ${employee.first_name} ${employee.last_name}`);
   
-  if (!liteLLMApiKey) {
-    console.error('LiteLLM API key not configured in environment variables');
-    return null;
-  }
-
-  console.log('LiteLLM API key is configured, proceeding with AI assignment');
-
   try {
     const employeeSkills = Array.isArray(employee.skills) ? employee.skills.join(', ') : employee.skills || '';
     const employeeCerts = Array.isArray(employee.certifications) ? employee.certifications.join(', ') : employee.certifications || '';
@@ -266,7 +283,7 @@ INSTRUCTIONS:
 
 Return only the UUID:`;
 
-    console.log('Calling LiteLLM API...');
+    console.log('Calling LiteLLM API for role assignment...');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
@@ -307,15 +324,15 @@ Return only the UUID:`;
       // Verify the role ID exists in our standard roles
       const roleExists = standardRoles.find(role => role.id === assignedRoleId);
       if (roleExists) {
-        console.log(`Assigned role "${roleExists.role_title}" (${assignedRoleId}) to employee ${employee.first_name} ${employee.last_name}`);
+        console.log(`AI selected role "${roleExists.role_title}" (${assignedRoleId}) for employee ${employee.first_name} ${employee.last_name}`);
         return assignedRoleId;
       } else {
-        console.log(`Invalid role ID returned: ${assignedRoleId}`);
+        console.log(`Invalid role ID returned by AI: ${assignedRoleId}`);
         return null;
       }
     }
     
-    console.log(`No suitable role found for employee ${employee.first_name} ${employee.last_name}`);
+    console.log(`AI found no suitable role for employee ${employee.first_name} ${employee.last_name}`);
     return null;
   } catch (error) {
     console.error('Error in AI role assignment:', error);
