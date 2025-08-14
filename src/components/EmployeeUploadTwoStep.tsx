@@ -165,6 +165,7 @@ export const EmployeeUploadTwoStep = () => {
 
   const loadAvailableSessions = async () => {
     try {
+      // Load completed employee upload sessions
       const { data, error } = await supabase
         .from('xlsmart_upload_sessions')
         .select('*')
@@ -172,9 +173,20 @@ export const EmployeeUploadTwoStep = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAvailableSessions(data || []);
+      
+      // Filter sessions that contain employee data (sessions with employee uploads)
+      const employeeSessions = data?.filter(session => 
+        session.session_name && session.total_rows > 0
+      ) || [];
+      
+      setAvailableSessions(employeeSessions);
     } catch (error) {
-      console.error('Error loading sessions:', error);
+      console.error('Error loading employee sessions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load employee upload sessions",
+        variant: "destructive",
+      });
     }
   };
 
@@ -387,7 +399,7 @@ export const EmployeeUploadTwoStep = () => {
           <TabsContent value="assign" className="space-y-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Select Upload Session for Role Assignment</Label>
+                <Label>Select Employee Upload Session for Role Assignment</Label>
                 <Button onClick={loadAvailableSessions} variant="outline" size="sm">
                   Refresh Sessions
                 </Button>
