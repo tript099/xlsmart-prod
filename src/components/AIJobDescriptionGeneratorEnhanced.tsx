@@ -2,11 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,19 +12,15 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Loader2, 
-  FileText, 
   Download, 
   Copy, 
   Sparkles, 
-  Building2, 
   Bot, 
   Send, 
-  Edit,
   Zap,
   Users,
   MessageCircle,
-  CheckCircle2,
-  AlertCircle
+  CheckCircle2
 } from 'lucide-react';
 
 interface GeneratedJD {
@@ -66,24 +60,8 @@ interface ChatMessage {
 
 export const AIJobDescriptionGeneratorEnhanced = () => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('single');
+  const [activeTab, setActiveTab] = useState('bulk');
   
-  // Single JD Generation
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedJD, setGeneratedJD] = useState<GeneratedJD | null>(null);
-  const [formData, setFormData] = useState({
-    roleTitle: '',
-    department: '',
-    level: '',
-    employmentType: 'full_time',
-    locationStatus: 'office',
-    salaryRange: '',
-    requirements: '',
-    customInstructions: '',
-    tone: 'professional',
-    language: 'en'
-  });
-
   // Bulk Generation
   const [standardRoles, setStandardRoles] = useState<StandardRole[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
@@ -161,49 +139,6 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
       setExistingJDs(formattedJDs);
     } catch (error) {
       console.error('Error loading existing JDs:', error);
-    }
-  };
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSingleGenerate = async () => {
-    if (!formData.roleTitle.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter a role title",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-job-description-generator', {
-        body: formData
-      });
-
-      if (error) throw error;
-      if (!data.success) throw new Error(data.message);
-
-      setGeneratedJD(data.jobDescription);
-      await loadExistingJDs(); // Refresh the list
-      
-      toast({
-        title: "✅ Job Description Generated!",
-        description: `Successfully created JD for ${formData.roleTitle}`,
-        duration: 5000,
-      });
-    } catch (error) {
-      console.error('Error generating JD:', error);
-      toast({
-        title: "❌ Generation Failed",
-        description: error instanceof Error ? error.message : 'Failed to generate job description',
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
     }
   };
 
@@ -397,17 +332,13 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
             AI-Powered Job Description Generator
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Create individual JDs, generate in bulk for standardized roles, or update existing JDs with AI assistance
+            Generate JDs in bulk for standardized roles or update existing JDs with AI assistance
           </p>
         </CardHeader>
 
         <CardContent className="p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="single" className="flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Single JD
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="bulk" className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
                 Bulk Generation
@@ -417,149 +348,6 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
                 Update with AI
               </TabsTrigger>
             </TabsList>
-
-            {/* Single JD Generation */}
-            <TabsContent value="single" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Form inputs */}
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="roleTitle">Role Title *</Label>
-                    <Select value={formData.roleTitle} onValueChange={(value) => handleInputChange('roleTitle', value)}>
-                      <SelectTrigger className="bg-background border-border">
-                        <SelectValue placeholder="Select a role or type custom role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {standardRoles.map((role) => (
-                          <SelectItem key={role.id} value={role.role_title}>
-                            {role.role_title} - {role.department}
-                          </SelectItem>
-                        ))}
-                        <SelectItem value="custom">Custom Role (type manually)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {formData.roleTitle === 'custom' && (
-                      <Input
-                        className="mt-2 bg-background border-border"
-                        placeholder="Enter custom role title"
-                        onChange={(e) => handleInputChange('roleTitle', e.target.value)}
-                      />
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="department">Department</Label>
-                      <Input
-                        id="department"
-                        value={formData.department}
-                        onChange={(e) => handleInputChange('department', e.target.value)}
-                        placeholder="e.g., Network Operations"
-                        className="bg-background border-border"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="level">Level</Label>
-                      <Select value={formData.level} onValueChange={(value) => handleInputChange('level', value)}>
-                        <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Select level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="junior">Junior</SelectItem>
-                          <SelectItem value="mid">Mid-Level</SelectItem>
-                          <SelectItem value="senior">Senior</SelectItem>
-                          <SelectItem value="lead">Lead</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="director">Director</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="requirements">Key Requirements</Label>
-                    <Textarea
-                      id="requirements"
-                      value={formData.requirements}
-                      onChange={(e) => handleInputChange('requirements', e.target.value)}
-                      placeholder="List key skills, experience, and qualifications..."
-                      className="bg-background border-border h-24"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleSingleGenerate}
-                    disabled={isGenerating || !formData.roleTitle.trim()}
-                    className="w-full xl-button-primary"
-                    size="lg"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating JD...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-4 w-4" />
-                        Generate Job Description
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Generated JD Preview */}
-                <div className="space-y-4">
-                  {generatedJD ? (
-                    <Card className="border-border">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center justify-between">
-                          {generatedJD.title}
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => copyToClipboard(generatedJD.fullDescription)}
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => downloadAsText(generatedJD.fullDescription, `${generatedJD.title}.txt`)}
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div>
-                          <h4 className="font-medium mb-2">Summary</h4>
-                          <p className="text-sm text-muted-foreground">{generatedJD.summary}</p>
-                        </div>
-                        <div>
-                          <h4 className="font-medium mb-2">Key Responsibilities</h4>
-                          <ul className="list-disc list-inside space-y-1">
-                            {generatedJD.responsibilities.map((resp, index) => (
-                              <li key={index} className="text-sm text-muted-foreground">{resp}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ) : (
-                    <Card className="border-border border-dashed">
-                      <CardContent className="flex items-center justify-center h-64">
-                        <div className="text-center text-muted-foreground">
-                          <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                          <p>Generated job description will appear here</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
 
             {/* Bulk Generation */}
             <TabsContent value="bulk" className="space-y-6">
