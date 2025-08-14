@@ -100,17 +100,32 @@ export const EmployeeRoleAssignment = () => {
     try {
       setSaving(employeeId);
       
+      console.log(`Assigning role ${roleId} to employee ${employeeId}`);
+      
+      // Get current user first
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+      
+      console.log('User authenticated:', user.id);
+      
       const { error } = await supabase
         .from('xlsmart_employees')
         .update({
           standard_role_id: roleId,
           role_assignment_status: 'assigned',
-          assigned_by: (await supabase.auth.getUser()).data.user?.id
+          assigned_by: user.id
         })
         .eq('id', employeeId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database update error:', error);
+        throw error;
+      }
 
+      console.log('Role assigned successfully');
+      
       toast({
         title: "Success",
         description: "Role assigned successfully",
@@ -123,7 +138,7 @@ export const EmployeeRoleAssignment = () => {
       console.error('Error assigning role:', error);
       toast({
         title: "Error",
-        description: "Failed to assign role",
+        description: `Failed to assign role: ${error.message}`,
         variant: "destructive",
       });
     } finally {
