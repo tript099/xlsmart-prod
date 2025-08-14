@@ -167,6 +167,21 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
   return data.choices[0].message.content;
 }
 
+function cleanJsonResponse(text: string): string {
+  // Remove markdown code blocks and extra whitespace
+  let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  
+  // Find the first { and last } to extract just the JSON object
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  
+  return cleaned;
+}
+
 async function performPersonalizedLearningAnalysis(
   employees: any[], skillAssessments: any[], employeeSkills: any[], 
   skillsMaster: any[], trainings: any[], standardRoles: any[], employeeId?: string
@@ -255,7 +270,7 @@ Provide personalized learning analysis focusing on:
 4. Customized learning preferences and delivery methods`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  return JSON.parse(cleanJsonResponse(result));
 }
 
 async function performSkillsDevelopmentAnalysis(
@@ -343,7 +358,7 @@ Provide comprehensive skills development analysis focusing on:
 4. Department-specific development needs and strategies`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  return JSON.parse(cleanJsonResponse(result));
 }
 
 async function performTrainingEffectivenessAnalysis(
@@ -415,7 +430,7 @@ Provide comprehensive training effectiveness analysis focusing on:
 4. Strategic optimization recommendations for L&D programs`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  return JSON.parse(cleanJsonResponse(result));
 }
 
 async function performLearningStrategyAnalysis(
@@ -497,5 +512,5 @@ Provide comprehensive learning strategy analysis focusing on:
 4. Implementation roadmap with phased approach and milestones`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  return JSON.parse(cleanJsonResponse(result));
 }
