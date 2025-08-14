@@ -129,7 +129,7 @@ export const RoleStandardizationSystem = () => {
       const { data: session, error: sessionError } = await supabase
         .from('xlsmart_upload_sessions')
         .insert({
-          session_name: `Role Upload: ${allFiles.map(f => f.name).join(', ')}`,
+          session_name: `Role Upload ${new Date().toISOString()}: ${allFiles.map(f => f.name).join(', ')}`,
           file_names: allFiles.map(f => f.name),
           temp_table_names: [],
           total_rows: parsedFiles.reduce((sum, file) => sum + file.rows.length, 0),
