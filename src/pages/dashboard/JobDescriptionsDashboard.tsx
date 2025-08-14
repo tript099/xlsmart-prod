@@ -1,6 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
-import { FileText, Zap, CheckCircle, Clock } from "lucide-react";
+import { AIJobDescriptionsIntelligence } from "@/components/AIJobDescriptionsIntelligence";
+import { FileText, Zap, CheckCircle, Clock, Brain } from "lucide-react";
 
 const JobDescriptionsDashboard = () => {
   const jdStats = [
@@ -84,26 +86,55 @@ const JobDescriptionsDashboard = () => {
         </div>
       </section>
 
-      {/* AI Job Description Generator */}
+      {/* AI Job Description Tools */}
       <section>
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">AI Job Description Generator</h2>
+          <h2 className="text-xl font-semibant text-foreground mb-2">AI Job Description Tools</h2>
           <p className="text-muted-foreground">
-            Create comprehensive job descriptions using AI-powered analysis and industry best practices
+            Generate, analyze, and optimize job descriptions with AI-powered intelligence
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 text-primary" />
-              <span>Generate Job Descriptions</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AIJobDescriptionGeneratorEnhanced />
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="generator" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="generator" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Generator
+            </TabsTrigger>
+            <TabsTrigger value="intelligence" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              Intelligence
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="generator" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span>Generate Job Descriptions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AIJobDescriptionGeneratorEnhanced />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="intelligence" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Brain className="h-5 w-5 text-primary" />
+                  <span>Job Description Intelligence</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AIJobDescriptionsIntelligence />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </section>
 
       {/* JD Management Features */}
