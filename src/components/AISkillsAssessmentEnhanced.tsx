@@ -451,7 +451,7 @@ export const AISkillsAssessmentEnhanced = () => {
                         </TableCell>
                         <TableCell>
                           <Badge 
-                            variant={employee.role_assignment_status === 'assigned' ? 'default' : 'secondary'}
+                            variant={employee.role_assignment_status === 'manually_assigned' || employee.role_assignment_status === 'ai_suggested' ? 'default' : 'secondary'}
                           >
                             {employee.role_assignment_status}
                           </Badge>

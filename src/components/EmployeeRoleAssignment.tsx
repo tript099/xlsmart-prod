@@ -114,7 +114,7 @@ export const EmployeeRoleAssignment = () => {
         .from('xlsmart_employees')
         .update({
           standard_role_id: roleId,
-          role_assignment_status: 'assigned',
+          role_assignment_status: 'manually_assigned',
           assigned_by: user.id
         })
         .eq('id', employeeId);

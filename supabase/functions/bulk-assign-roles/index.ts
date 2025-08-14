@@ -77,7 +77,7 @@ serve(async (req) => {
             .from('xlsmart_employees')
             .update({
               standard_role_id: assignedRoleId,
-              role_assignment_status: 'assigned',
+              role_assignment_status: 'ai_suggested',
               assignment_notes: 'AI bulk assignment'
             })
             .eq('id', employee.id);
@@ -94,7 +94,7 @@ serve(async (req) => {
           const { error: updateError } = await supabaseClient
             .from('xlsmart_employees')
             .update({
-              role_assignment_status: 'no_match',
+              role_assignment_status: 'pending',
               assignment_notes: 'AI could not find suitable role match'
             })
             .eq('id', employee.id);
