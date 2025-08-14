@@ -81,7 +81,7 @@ serve(async (req) => {
               // Normalize employee data according to xlsmart_employees schema
               const normalizedEmployee = {
                 employee_number: String(employee['EmployeeID'] || employee['Employee ID'] || employee['ID'] || `EMP${Date.now()}${Math.random()}`),
-                source_company: String(employee['Telco'] || employee['Company'] || employee['Organization'] || 'Unknown'),
+                source_company: String(employee['Telco'] || employee['Company'] || employee['Organization'] || 'Unknown').toLowerCase(),
                 first_name: String(employee['Name']?.split(' ')[0] || employee['FirstName'] || employee['First Name'] || 'Unknown'),
                 last_name: String(employee['Name']?.split(' ').slice(1).join(' ') || employee['LastName'] || employee['Last Name'] || ''),
                 email: String(employee['Email'] || employee['EmailAddress'] || `${employee['EmployeeID'] || 'unknown'}@company.com`),
