@@ -26,6 +26,10 @@ serve(async (req) => {
 
     const { sessionId } = await req.json();
 
+    if (!sessionId) {
+      throw new Error('Session ID is required');
+    }
+
     console.log('Starting role standardization for session:', sessionId);
 
     // Fetch uploaded XL data
@@ -221,7 +225,7 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
 
     // Insert into xlsmart_role_mappings instead
     const xlsmartMappings = mappingsWithStandardizedIds.map((mapping: any) => ({
-      catalog_id: sessionId, // Use session as catalog
+      catalog_id: null, // Remove catalog dependency for now
       original_role_title: mapping.original_role_title,
       original_department: mapping.original_source === 'xl' ? 
         (xlData?.find((r: any) => r.role_title === mapping.original_role_title)?.department || '') :
