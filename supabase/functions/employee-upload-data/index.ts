@@ -54,8 +54,8 @@ serve(async (req) => {
         file_names: employees.map((emp: any) => emp.sourceFile || 'bulk_upload').filter((name: string, index: number, arr: string[]) => arr.indexOf(name) === index),
         temp_table_names: [],
         total_rows: employees.length,
-        status: 'uploading',
         created_by: user.id
+        // Remove status field to use default 'uploading' value
       })
       .select()
       .single();
