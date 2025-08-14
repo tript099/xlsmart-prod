@@ -76,57 +76,61 @@ serve(async (req) => {
           // Process each employee in the batch
           for (const employee of batch) {
             try {
+              console.log('Processing employee:', employee['EmployeeID'] || employee['Name']);
+              
               // Normalize employee data according to xlsmart_employees schema
-              const normalizedEmployee: any = {
-                employee_number: employee['EmployeeID'] || employee['Employee ID'] || employee['ID'] || `EMP${Date.now()}${Math.random()}`,
-                source_company: employee['Telco'] || employee['Company'] || employee['Organization'] || 'Unknown',
-                first_name: employee['Name']?.split(' ')[0] || employee['FirstName'] || employee['First Name'] || 'Unknown',
-                last_name: employee['Name']?.split(' ').slice(1).join(' ') || employee['LastName'] || employee['Last Name'] || '',
-                email: employee['Email'] || employee['EmailAddress'] || `${employee['EmployeeID'] || 'unknown'}@company.com`,
-                phone: employee['Phone'] || employee['PhoneNumber'] || employee['Mobile'] || '',
-                current_position: employee['CurrentRoleTitle'] || employee['Current Role Title'] || employee['Position'] || employee['Job Title'] || 'Unknown',
-                current_department: employee['Department'] || employee['Division'] || '',
-                current_level: employee['Level'] || employee['Grade'] || employee['Seniority'] || '',
-                years_of_experience: parseInt(employee['YearsExperience'] || employee['Years Experience'] || employee['Experience'] || '0') || 0,
-                salary: parseFloat(employee['Salary'] || employee['Annual Salary'] || '0') || null,
-                currency: employee['Currency'] || 'IDR',
+              const normalizedEmployee = {
+                employee_number: String(employee['EmployeeID'] || employee['Employee ID'] || employee['ID'] || `EMP${Date.now()}${Math.random()}`),
+                source_company: String(employee['Telco'] || employee['Company'] || employee['Organization'] || 'Unknown'),
+                first_name: String(employee['Name']?.split(' ')[0] || employee['FirstName'] || employee['First Name'] || 'Unknown'),
+                last_name: String(employee['Name']?.split(' ').slice(1).join(' ') || employee['LastName'] || employee['Last Name'] || ''),
+                email: String(employee['Email'] || employee['EmailAddress'] || `${employee['EmployeeID'] || 'unknown'}@company.com`),
+                phone: String(employee['Phone'] || employee['PhoneNumber'] || employee['Mobile'] || ''),
+                current_position: String(employee['CurrentRoleTitle'] || employee['Current Role Title'] || employee['Position'] || employee['Job Title'] || 'Unknown'),
+                current_department: String(employee['Department'] || employee['Division'] || ''),
+                current_level: String(employee['Level'] || employee['Grade'] || employee['Seniority'] || ''),
+                years_of_experience: parseInt(String(employee['YearsExperience'] || employee['Years Experience'] || employee['Experience'] || '0')) || 0,
+                salary: employee['Salary'] ? parseFloat(String(employee['Salary'])) : null,
+                currency: String(employee['Currency'] || 'IDR'),
                 uploaded_by: session.created_by,
                 is_active: true,
-                // Store original role information
-                original_role_title: employee['CurrentRoleTitle'] || employee['Current Role Title'] || employee['Position'] || employee['Job Title'] || 'Unknown',
+                original_role_title: String(employee['CurrentRoleTitle'] || employee['Current Role Title'] || employee['Position'] || employee['Job Title'] || 'Unknown'),
                 role_assignment_status: 'pending'
               };
 
               // Handle skills - combine skills with aspirations and location as metadata
-              let skillsArray: string[] = [];
+              const skillsArray: string[] = [];
               if (employee['Skills']) {
                 if (Array.isArray(employee['Skills'])) {
-                  skillsArray = employee['Skills'];
-                } else if (typeof employee['Skills'] === 'string') {
-                  skillsArray = employee['Skills'].split(',').map((s: string) => s.trim());
+                  skillsArray.push(...employee['Skills'].map((s: any) => String(s).trim()));
+                } else if (typeof employee['Skills'] === 'string' && employee['Skills'].trim()) {
+                  skillsArray.push(...employee['Skills'].split(',').map((s: string) => s.trim()).filter(s => s));
                 }
               }
 
               // Add aspirations and location as skill metadata
-              if (employee['Aspirations']) {
-                skillsArray.push(`Aspirations: ${employee['Aspirations']}`);
+              if (employee['Aspirations'] && String(employee['Aspirations']).trim()) {
+                skillsArray.push(`Aspirations: ${String(employee['Aspirations']).trim()}`);
               }
-              if (employee['Location']) {
-                skillsArray.push(`Location: ${employee['Location']}`);
+              if (employee['Location'] && String(employee['Location']).trim()) {
+                skillsArray.push(`Location: ${String(employee['Location']).trim()}`);
               }
 
-              normalizedEmployee.skills = skillsArray;
+              // Set skills as proper JSON array (required for JSONB)
+              (normalizedEmployee as any).skills = skillsArray;
 
               // Handle certifications
-              let certificationsArray: string[] = [];
+              const certificationsArray: string[] = [];
               if (employee['Certifications']) {
                 if (Array.isArray(employee['Certifications'])) {
-                  certificationsArray = employee['Certifications'];
-                } else if (typeof employee['Certifications'] === 'string') {
-                  certificationsArray = employee['Certifications'].split(',').map((c: string) => c.trim());
+                  certificationsArray.push(...employee['Certifications'].map((c: any) => String(c).trim()));
+                } else if (typeof employee['Certifications'] === 'string' && employee['Certifications'].trim()) {
+                  certificationsArray.push(...employee['Certifications'].split(',').map((c: string) => c.trim()).filter(c => c));
                 }
               }
-              normalizedEmployee.certifications = certificationsArray;
+              
+              // Set certifications as proper JSON array (required for JSONB)
+              (normalizedEmployee as any).certifications = certificationsArray;
 
               // Handle performance rating
               if (employee['PerformanceRating'] || employee['Performance Rating']) {
