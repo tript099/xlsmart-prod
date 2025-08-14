@@ -29,7 +29,9 @@ import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails"
 import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
 import { SkillsListDetails } from "@/components/SkillsListDetails";
 import { EmployeeUploadTwoStep } from "@/components/EmployeeUploadTwoStep";
-import { EmployeeCareerPaths } from "@/components/EmployeeCareerPaths";
+import { EmployeeCareerPathsEnhanced } from "@/components/EmployeeCareerPathsEnhanced";
+import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlanningAI";
+import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import BulkRoleAssignment from "@/components/BulkRoleAssignment";
 import ApplicationTester from "@/components/ApplicationTester";
@@ -261,9 +263,9 @@ const Index = () => {
                         {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
                         {feature.id === 'employee-upload' && <EmployeeUploadTwoStep />}
                         {feature.id === 'assessment' && <AISkillsAssessmentEnhanced />}
-                        {feature.id === 'career-paths' && <EmployeeCareerPaths />}
-                        {feature.id === 'mobility' && <EmployeeMobilityPlanningEnhanced />}
-                        {feature.id === 'development' && <DevelopmentPathwaysEnhanced />}
+                        {feature.id === 'career-paths' && <EmployeeCareerPathsEnhanced />}
+                        {feature.id === 'mobility' && <EmployeeMobilityPlanningAI />}
+                        {feature.id === 'development' && <DevelopmentPathwaysAI />}
                       </DialogContent>
                     </Dialog>
                    )}
