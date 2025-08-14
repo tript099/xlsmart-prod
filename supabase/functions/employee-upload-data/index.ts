@@ -1,0 +1,164 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { employees, sessionName } = await req.json();
+    
+    console.log(`Starting employee data upload for ${employees.length} employees`);
+    
+    // Create upload session
+    const { data: session, error: sessionError } = await supabase
+      .from('xlsmart_upload_sessions')
+      .insert({
+        session_name: sessionName,
+        file_names: employees.map((emp: any) => emp.sourceFile || 'bulk_upload').filter((name: string, index: number, arr: string[]) => arr.indexOf(name) === index),
+        temp_table_names: [],
+        total_rows: employees.length,
+        status: 'processing',
+        created_by: '00000000-0000-0000-0000-000000000000' // System user
+      })
+      .select()
+      .single();
+
+    if (sessionError) throw sessionError;
+
+    // Process employees in batches to avoid timeouts
+    const BATCH_SIZE = 100;
+    let processedCount = 0;
+    let errorCount = 0;
+
+    // Background processing with EdgeRuntime.waitUntil
+    const processEmployees = async () => {
+      for (let i = 0; i < employees.length; i += BATCH_SIZE) {
+        const batch = employees.slice(i, i + BATCH_SIZE);
+        
+        try {
+          // Process each employee in the batch
+          for (const employee of batch) {
+            try {
+              // Normalize employee data according to new format
+              const normalizedEmployee = {
+                employee_number: employee['EmployeeID'] || employee['Employee ID'] || employee['ID'] || `EMP${Date.now()}${Math.random()}`,
+                source_company: employee['Telco'] || employee['Company'] || employee['Organization'] || 'Unknown',
+                first_name: employee['Name']?.split(' ')[0] || employee['FirstName'] || employee['First Name'] || 'Unknown',
+                last_name: employee['Name']?.split(' ').slice(1).join(' ') || employee['LastName'] || employee['Last Name'] || '',
+                email: employee['Email'] || employee['EmailAddress'] || `${employee['EmployeeID'] || 'unknown'}@company.com`,
+                phone: employee['Phone'] || employee['PhoneNumber'] || employee['Mobile'] || '',
+                current_position: employee['CurrentRoleTitle'] || employee['Current Role Title'] || employee['Position'] || employee['Job Title'] || 'Unknown',
+                current_department: employee['Department'] || employee['Division'] || '',
+                current_level: employee['Level'] || employee['Grade'] || employee['Seniority'] || '',
+                years_of_experience: parseInt(employee['YearsExperience'] || employee['Years Experience'] || employee['Experience'] || '0') || 0,
+                salary: parseFloat(employee['Salary'] || employee['Annual Salary'] || '0') || null,
+                skills: Array.isArray(employee['Skills']) ? employee['Skills'] : 
+                       typeof employee['Skills'] === 'string' ? employee['Skills'].split(',').map((s: string) => s.trim()) : [],
+                certifications: Array.isArray(employee['Certifications']) ? employee['Certifications'] : 
+                               typeof employee['Certifications'] === 'string' ? employee['Certifications'].split(',').map((c: string) => c.trim()) : [],
+                performance_rating: parseFloat(employee['PerformanceRating'] || employee['Performance Rating'] || '0') || null,
+                currency: employee['Currency'] || 'IDR',
+                uploaded_by: session.created_by,
+                is_active: true,
+                // Additional fields from new format
+                aspirations: employee['Aspirations'] || '',
+                location: employee['Location'] || ''
+              };
+
+              // Add metadata for aspirations and location
+              if (normalizedEmployee.aspirations) {
+                normalizedEmployee.skills = [
+                  ...normalizedEmployee.skills,
+                  `Aspirations: ${normalizedEmployee.aspirations}`
+                ];
+              }
+
+              // Insert employee into xlsmart_employees table
+              const { error: insertError } = await supabase
+                .from('xlsmart_employees')
+                .insert(normalizedEmployee);
+
+              if (insertError) {
+                console.error('Error inserting employee:', insertError);
+                errorCount++;
+              } else {
+                processedCount++;
+              }
+
+            } catch (employeeError) {
+              console.error('Error processing employee:', employeeError);
+              errorCount++;
+            }
+          }
+
+          // Update progress
+          await supabase
+            .from('xlsmart_upload_sessions')
+            .update({
+              ai_analysis: {
+                processed: processedCount,
+                assigned: 0, // No assignments in step 1
+                errors: errorCount,
+                total: employees.length
+              }
+            })
+            .eq('id', session.id);
+
+        } catch (batchError) {
+          console.error('Error processing batch:', batchError);
+          errorCount += batch.length;
+        }
+      }
+
+      // Mark session as completed (data upload only)
+      await supabase
+        .from('xlsmart_upload_sessions')
+        .update({
+          status: 'completed',
+          ai_analysis: {
+            processed: processedCount,
+            assigned: 0, // No assignments yet
+            errors: errorCount,
+            total: employees.length,
+            completion_time: new Date().toISOString()
+          }
+        })
+        .eq('id', session.id);
+
+      console.log(`Employee data upload completed: ${processedCount} processed, ${errorCount} errors`);
+    };
+
+    // Start background processing
+    EdgeRuntime.waitUntil(processEmployees());
+
+    return new Response(JSON.stringify({
+      success: true,
+      sessionId: session.id,
+      message: `Started uploading ${employees.length} employee records`
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('Error in employee-upload-data function:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});

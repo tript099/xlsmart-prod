@@ -28,7 +28,7 @@ import { EmployeeListDetails } from "@/components/EmployeeListDetails";
 import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails";
 import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
 import { SkillsListDetails } from "@/components/SkillsListDetails";
-import { EmployeeUpload } from "@/components/EmployeeUpload";
+import { EmployeeUploadTwoStep } from "@/components/EmployeeUploadTwoStep";
 import { EmployeeCareerPaths } from "@/components/EmployeeCareerPaths";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -257,7 +257,7 @@ const Index = () => {
                            feature.id === 'development' ? 'Development Pathways' : 'Feature Dialog'}
                         </DialogTitle>
                         {feature.id === 'jd-generator' && <AIJobDescriptionGeneratorEnhanced />}
-                        {feature.id === 'employee-upload' && <EmployeeUpload />}
+                        {feature.id === 'employee-upload' && <EmployeeUploadTwoStep />}
                         {feature.id === 'assessment' && <AISkillsAssessmentEnhanced />}
                         {feature.id === 'career-paths' && <EmployeeCareerPaths />}
                         {feature.id === 'mobility' && <EmployeeMobilityPlanningEnhanced />}
