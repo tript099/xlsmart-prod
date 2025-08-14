@@ -42,7 +42,7 @@ export const EmployeeRoleAssignment = () => {
 
   const fetchUnassignedEmployees = async () => {
     try {
-      setLoading(true);
+      console.log('Fetching unassigned employees...');
       const { data, error } = await supabase
         .from('xlsmart_employees')
         .select('*')
@@ -50,6 +50,7 @@ export const EmployeeRoleAssignment = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Fetched employees:', data?.length || 0, data);
       setEmployees(data || []);
     } catch (error: any) {
       console.error('Error fetching unassigned employees:', error);
@@ -63,6 +64,7 @@ export const EmployeeRoleAssignment = () => {
 
   const fetchStandardRoles = async () => {
     try {
+      console.log('Fetching standard roles...');
       const { data, error } = await supabase
         .from('xlsmart_standard_roles')
         .select('id, role_title, job_family, role_level, department, role_category')
@@ -70,6 +72,7 @@ export const EmployeeRoleAssignment = () => {
         .order('role_title');
 
       if (error) throw error;
+      console.log('Fetched standard roles:', data?.length || 0, data);
       setStandardRoles(data || []);
     } catch (error: any) {
       console.error('Error fetching standard roles:', error);
@@ -144,8 +147,23 @@ export const EmployeeRoleAssignment = () => {
   };
 
   useEffect(() => {
-    fetchUnassignedEmployees();
-    fetchStandardRoles();
+    const loadData = async () => {
+      console.log('Starting to load data...');
+      setLoading(true);
+      try {
+        await Promise.all([
+          fetchUnassignedEmployees(),
+          fetchStandardRoles()
+        ]);
+        console.log('Data loading completed');
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
   }, []);
 
   useEffect(() => {
