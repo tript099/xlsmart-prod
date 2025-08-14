@@ -29,6 +29,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Function started, checking auth...');
+    
     // Get auth header to maintain user context
     const authHeader = req.headers.get('authorization');
     const supabase = createSupabaseClient(authHeader);
@@ -52,10 +54,15 @@ serve(async (req) => {
       language = 'en'
     } = await req.json();
 
+    console.log('Request parsed:', { roleTitle, department, level });
+
     const openAIApiKey = Deno.env.get('LITELLM_API_KEY'); // Use LiteLLM key
     if (!openAIApiKey) {
+      console.error('LiteLLM API key not found');
       throw new Error('LiteLLM API key not configured');
     }
+    
+    console.log('API key found, proceeding...');
 
     // Get similar standard roles for context using service client
     const { data: standardRoles, error: rolesError } = await supabaseService
@@ -238,9 +245,16 @@ Respond in JSON format:
 
   } catch (error) {
     console.error('Error in AI job description generator:', error);
+    console.error('Error details:', {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    
     return new Response(JSON.stringify({ 
       success: false,
       error: error.message,
+      errorType: error.name,
       message: 'Failed to generate job description'
     }), {
       status: 500,
