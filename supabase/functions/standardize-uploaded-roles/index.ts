@@ -188,7 +188,7 @@ Create 8-15 standardized roles that best represent both XL and SMART role struct
       experience_range_min: role.standardized_experience_min_years || 0,
       experience_range_max: (role.standardized_experience_min_years || 0) + 5,
       keywords: role.standardized_tools_platforms ? role.standardized_tools_platforms.split(',').map((s: string) => s.trim()) : [],
-      created_by: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? 'system' : 'unknown',
+      created_by: 'd77125e3-bb96-442c-a2d1-80f15baf497d', // Default system user UUID
       industry_alignment: 'Telecommunications'
     }));
 
