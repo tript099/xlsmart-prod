@@ -32,6 +32,7 @@ import { EmployeeUploadTwoStep } from "@/components/EmployeeUploadTwoStep";
 import { EmployeeCareerPaths } from "@/components/EmployeeCareerPaths";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import BulkRoleAssignment from "@/components/BulkRoleAssignment";
+import ApplicationTester from "@/components/ApplicationTester";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -332,7 +333,10 @@ const Index = () => {
               Manage your HR operations efficiently with AI-powered tools
             </p>
           </div>
-          <BulkRoleAssignment />
+          <div className="grid gap-6">
+            <BulkRoleAssignment />
+            <ApplicationTester />
+          </div>
         </section>
 
         {/* CTA Section */}
