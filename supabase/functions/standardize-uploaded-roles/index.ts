@@ -109,6 +109,30 @@ serve(async (req) => {
 
     console.log('Processing roles:', allRoles.length);
 
+    // Create a role catalog entry first
+    const { data: catalogData, error: catalogError } = await supabase
+      .from('xlsmart_role_catalogs')
+      .insert({
+        source_company: 'XL Axiata + Smartfren',
+        file_name: 'Combined Upload',
+        file_format: 'xlsx',
+        upload_status: 'completed',
+        total_roles: allRoles.length,
+        processed_roles: allRoles.length,
+        mapping_accuracy: 100.0,
+        uploaded_by: createdBy
+      })
+      .select()
+      .single();
+
+    if (catalogError) {
+      console.error('Error creating catalog:', catalogError);
+      throw new Error('Failed to create role catalog');
+    }
+
+    const catalogId = catalogData.id;
+    console.log(`Created catalog with ID: ${catalogId}`);
+
     // Create standardized roles and mappings
     const standardizedRoles = [];
     const mappings = [];
@@ -175,7 +199,7 @@ serve(async (req) => {
           mapping_confidence: 0.95,
           mapping_status: 'auto_mapped',
           requires_manual_review: false,
-          catalog_id: null // Set to null to avoid FK issues
+          catalog_id: catalogId
         };
 
         mappings.push(mapping);
