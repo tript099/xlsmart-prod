@@ -57,7 +57,7 @@ const navigationItems = [
     title: "Skill Assessment",
     url: "/dashboard/skills",
     icon: Brain,
-    description: "Skills analysis & recommendations"
+    description: "Skills analysis & inventory"
   },
   {
     title: "Career Paths",
@@ -88,12 +88,6 @@ const navigationItems = [
     url: "/dashboard/workforce-analytics",
     icon: PieChart,
     description: "Advanced workforce insights"
-  },
-  {
-    title: "Skill Inventory",
-    url: "/dashboard/skill-inventory",
-    icon: Package,
-    description: "Organization skill mapping"
   }
 ];
 
