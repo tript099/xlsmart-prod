@@ -31,6 +31,7 @@ import { SkillsListDetails } from "@/components/SkillsListDetails";
 import { EmployeeUploadTwoStep } from "@/components/EmployeeUploadTwoStep";
 import { EmployeeCareerPaths } from "@/components/EmployeeCareerPaths";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import BulkRoleAssignment from "@/components/BulkRoleAssignment";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useToast } from "@/hooks/use-toast";
@@ -321,6 +322,17 @@ const Index = () => {
               </Card>
             ))}
           </div>
+        </section>
+
+        {/* Quick Actions Section */}
+        <section className="space-y-8">
+          <div className="text-center">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+            <p className="text-gray-600 text-lg max-w-3xl mx-auto">
+              Manage your HR operations efficiently with AI-powered tools
+            </p>
+          </div>
+          <BulkRoleAssignment />
         </section>
 
         {/* CTA Section */}
