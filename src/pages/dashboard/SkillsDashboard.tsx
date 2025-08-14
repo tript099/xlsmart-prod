@@ -1,10 +1,17 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
 import { SkillsListDetails } from "@/components/SkillsListDetails";
-import { Brain, TrendingUp, Award, Users } from "lucide-react";
+import { RoleStandardizationSystem } from "@/components/RoleStandardizationSystem";
+import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
+import { Brain, TrendingUp, Award, Users, Target, FileText, Upload, Briefcase } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
 
 const SkillsDashboard = () => {
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const aiStats = useAIStats();
 
   const skillsStats = [
@@ -42,9 +49,9 @@ const SkillsDashboard = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-4">
-        <h1 className="text-3xl font-bold text-foreground">Skills Assessment</h1>
+        <h1 className="text-3xl font-bold text-foreground">Skills & Role Management</h1>
         <p className="text-muted-foreground text-lg">
-          Analyze skills, identify gaps, and provide personalized recommendations
+          Comprehensive skills assessment, role standardization, and job description management
         </p>
       </div>
 
@@ -88,42 +95,91 @@ const SkillsDashboard = () => {
         </div>
       </section>
 
-      {/* AI Skills Assessment */}
+      {/* AI-Powered Management Tools */}
       <section>
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">AI Skills Assessment</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">AI-Powered Management Tools</h2>
           <p className="text-muted-foreground">
-            Conduct comprehensive skills assessments with AI-powered analysis and recommendations
+            Access powerful AI tools for skills assessment, role standardization, and job description generation
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Brain className="h-5 w-5 text-primary" />
-              <span>Skills Assessment Engine</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AISkillsAssessmentEnhanced />
-          </CardContent>
-        </Card>
-      </section>
+        <Tabs defaultValue="skills" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="skills" className="flex items-center space-x-2">
+              <Brain className="h-4 w-4" />
+              <span>Skills Assessment</span>
+            </TabsTrigger>
+            <TabsTrigger value="roles" className="flex items-center space-x-2">
+              <Target className="h-4 w-4" />
+              <span>Role Standardization</span>
+            </TabsTrigger>
+            <TabsTrigger value="jd" className="flex items-center space-x-2">
+              <FileText className="h-4 w-4" />
+              <span>Job Descriptions</span>
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="flex items-center space-x-2">
+              <Award className="h-4 w-4" />
+              <span>Skills Inventory</span>
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Skills Inventory */}
-      <section>
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">Skills Inventory & Analytics</h2>
-          <p className="text-muted-foreground">
-            Detailed view of organizational skills with gap analysis and recommendations
-          </p>
-        </div>
+          <TabsContent value="skills" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Brain className="h-5 w-5 text-primary" />
+                  <span>AI Skills Assessment Engine</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AISkillsAssessmentEnhanced />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        <Card>
-          <CardContent className="p-0">
-            <SkillsListDetails />
-          </CardContent>
-        </Card>
+          <TabsContent value="roles" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <span>Role Standardization System</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RoleStandardizationSystem />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="jd" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span>AI Job Description Generator</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AIJobDescriptionGeneratorEnhanced />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="inventory" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Award className="h-5 w-5 text-primary" />
+                  <span>Skills Inventory & Analytics</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <SkillsListDetails />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </section>
 
       {/* Skills Insights */}

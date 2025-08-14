@@ -30,70 +30,34 @@ import { Button } from "@/components/ui/button";
 
 const navigationItems = [
   {
-    title: "Analytics Dashboard",
-    url: "/dashboard/analytics",
+    title: "Overview",
+    url: "/dashboard/analytics", 
     icon: BarChart3,
-    description: "Platform overview & insights"
+    description: "Platform insights & AI analytics"
   },
   {
-    title: "Employee Management",
+    title: "Workforce",
     url: "/dashboard/employees",
     icon: Users,
-    description: "Employee dashboard & analytics"
+    description: "Employee management & analytics"
   },
   {
-    title: "Role Management",
-    url: "/dashboard/roles",
-    icon: Briefcase,
-    description: "Role standardization & analytics"
-  },
-  {
-    title: "Job Descriptions",
-    url: "/dashboard/job-descriptions",
-    icon: FileText,
-    description: "JD generation & management"
-  },
-  {
-    title: "Skill Assessment",
+    title: "Skills & Roles",
     url: "/dashboard/skills",
     icon: Brain,
-    description: "Skills analysis & recommendations"
+    description: "Skills assessment & role standardization"
   },
   {
-    title: "Career Paths",
+    title: "Career Development",
     url: "/dashboard/career-paths",
     icon: TrendingUp,
-    description: "Career planning & progression"
+    description: "Career paths, mobility & development"
   },
   {
-    title: "Employee Mobility",
-    url: "/dashboard/mobility",
-    icon: Target,
-    description: "Mobility planning & analysis"
-  },
-  {
-    title: "Development Pathways",
-    url: "/dashboard/development",
-    icon: BookOpen,
-    description: "Learning & development paths"
-  },
-  {
-    title: "Certifications",
-    url: "/dashboard/certifications",
-    icon: Award,
-    description: "Certification tracking"
-  },
-  {
-    title: "Workforce Analytics",
+    title: "Analytics",
     url: "/dashboard/workforce-analytics",
     icon: PieChart,
-    description: "Advanced workforce insights"
-  },
-  {
-    title: "Skill Inventory",
-    url: "/dashboard/skill-inventory",
-    icon: Package,
-    description: "Organization skill mapping"
+    description: "Workforce insights & reporting"
   }
 ];
 
