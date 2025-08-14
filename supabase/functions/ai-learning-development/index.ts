@@ -282,7 +282,14 @@ Provide personalized learning analysis focusing on:
 4. Customized learning preferences and delivery methods`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(cleanJsonResponse(result));
+  try {
+    const cleanedResult = cleanJsonResponse(result);
+    return JSON.parse(cleanedResult);
+  } catch (parseError) {
+    console.error('Failed to parse personalized learning analysis result:', parseError);
+    console.error('Raw result:', result);
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
+  }
 }
 
 async function performSkillsDevelopmentAnalysis(
@@ -370,7 +377,14 @@ Provide comprehensive skills development analysis focusing on:
 4. Department-specific development needs and strategies`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(cleanJsonResponse(result));
+  try {
+    const cleanedResult = cleanJsonResponse(result);
+    return JSON.parse(cleanedResult);
+  } catch (parseError) {
+    console.error('Failed to parse skills development analysis result:', parseError);
+    console.error('Raw result:', result);
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
+  }
 }
 
 async function performTrainingEffectivenessAnalysis(
@@ -442,7 +456,14 @@ Provide comprehensive training effectiveness analysis focusing on:
 4. Strategic optimization recommendations for L&D programs`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(cleanJsonResponse(result));
+  try {
+    const cleanedResult = cleanJsonResponse(result);
+    return JSON.parse(cleanedResult);
+  } catch (parseError) {
+    console.error('Failed to parse training effectiveness analysis result:', parseError);
+    console.error('Raw result:', result);
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
+  }
 }
 
 async function performLearningStrategyAnalysis(
@@ -524,5 +545,12 @@ Provide comprehensive learning strategy analysis focusing on:
 4. Implementation roadmap with phased approach and milestones`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(cleanJsonResponse(result));
+  try {
+    const cleanedResult = cleanJsonResponse(result);
+    return JSON.parse(cleanedResult);
+  } catch (parseError) {
+    console.error('Failed to parse learning strategy analysis result:', parseError);
+    console.error('Raw result:', result);
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
+  }
 }
