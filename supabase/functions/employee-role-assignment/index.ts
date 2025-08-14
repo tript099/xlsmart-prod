@@ -266,7 +266,11 @@ INSTRUCTIONS:
 
 Return only the UUID:`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    console.log('Calling LiteLLM API...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch('https://api.litellm.ai/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${liteLLMApiKey}`,
@@ -284,7 +288,11 @@ Return only the UUID:`;
         temperature: 0.1,
         max_tokens: 100
       }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
+    console.log(`LiteLLM API response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
