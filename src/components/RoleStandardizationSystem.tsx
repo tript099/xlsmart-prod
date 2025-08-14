@@ -182,11 +182,19 @@ export const RoleStandardizationSystem = () => {
       setCurrentStep("✅ Upload completed!");
       setUploadComplete(true);
 
-      toast({
-        title: "🎉 Upload Success!",
-        description: `Uploaded ${uploadResult.totalInserted} roles to database`,
-        duration: 5000
-      });
+      if (uploadResult.skipped) {
+        toast({
+          title: "ℹ️ Data Already Exists",
+          description: `${uploadResult.xlCount + uploadResult.smartCount} roles already uploaded for this session`,
+          duration: 5000
+        });
+      } else {
+        toast({
+          title: "🎉 Upload Success!",
+          description: `Uploaded ${uploadResult.totalInserted} new roles to database`,
+          duration: 5000
+        });
+      }
 
     } catch (error) {
       console.error('Upload error details:', error);

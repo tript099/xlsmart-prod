@@ -26,6 +26,31 @@ serve(async (req) => {
       smartDataCount: smartData?.length || 0
     });
 
+    // Check for existing data for this session
+    const { data: existingXL } = await supabase
+      .from('xl_roles_data')
+      .select('id')
+      .eq('session_id', sessionId);
+
+    const { data: existingSmart } = await supabase
+      .from('smart_roles_data')
+      .select('id')
+      .eq('session_id', sessionId);
+
+    if ((existingXL && existingXL.length > 0) || (existingSmart && existingSmart.length > 0)) {
+      console.log('Data already exists for this session, skipping upload');
+      return new Response(JSON.stringify({
+        success: true,
+        totalInserted: 0,
+        xlCount: xlData?.length || 0,
+        smartCount: smartData?.length || 0,
+        skipped: true,
+        message: 'Data already uploaded for this session'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     let totalInserted = 0;
 
     // Insert XL data
