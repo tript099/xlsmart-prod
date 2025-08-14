@@ -418,7 +418,7 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
                   <SelectValue placeholder="All departments" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Departments</SelectItem>
+                  <SelectItem value="all">All Departments</SelectItem>
                   <SelectItem value="Engineering">Engineering</SelectItem>
                   <SelectItem value="Sales">Sales</SelectItem>
                   <SelectItem value="Marketing">Marketing</SelectItem>
@@ -435,7 +435,7 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
                   <SelectValue placeholder="All roles" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Roles</SelectItem>
+                  <SelectItem value="all">All Roles</SelectItem>
                   <SelectItem value="Manager">Manager</SelectItem>
                   <SelectItem value="Senior">Senior</SelectItem>
                   <SelectItem value="Lead">Lead</SelectItem>

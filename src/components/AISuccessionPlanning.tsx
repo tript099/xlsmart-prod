@@ -424,7 +424,7 @@ export const AISuccessionPlanning: React.FC<SuccessionPlanningProps> = ({ onAnal
             <SelectValue placeholder="Filter by department" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Departments</SelectItem>
+            <SelectItem value="all">All Departments</SelectItem>
             <SelectItem value="Engineering">Engineering</SelectItem>
             <SelectItem value="Marketing">Marketing</SelectItem>
             <SelectItem value="Sales">Sales</SelectItem>
@@ -438,7 +438,7 @@ export const AISuccessionPlanning: React.FC<SuccessionPlanningProps> = ({ onAnal
             <SelectValue placeholder="Position level" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Levels</SelectItem>
+            <SelectItem value="all">All Levels</SelectItem>
             <SelectItem value="senior">Senior</SelectItem>
             <SelectItem value="manager">Manager</SelectItem>
             <SelectItem value="director">Director</SelectItem>

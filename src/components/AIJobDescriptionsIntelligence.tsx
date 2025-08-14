@@ -398,7 +398,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
             <SelectValue placeholder="Filter by department" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Departments</SelectItem>
+            <SelectItem value="all">All Departments</SelectItem>
             <SelectItem value="Engineering">Engineering</SelectItem>
             <SelectItem value="Marketing">Marketing</SelectItem>
             <SelectItem value="Sales">Sales</SelectItem>

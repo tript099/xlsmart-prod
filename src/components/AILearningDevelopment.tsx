@@ -386,7 +386,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
                   <SelectValue placeholder="All departments" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Departments</SelectItem>
+                  <SelectItem value="all">All Departments</SelectItem>
                   <SelectItem value="Engineering">Engineering</SelectItem>
                   <SelectItem value="Sales">Sales</SelectItem>
                   <SelectItem value="Marketing">Marketing</SelectItem>
@@ -403,7 +403,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
                   <SelectValue placeholder="All employees" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Employees</SelectItem>
+                  <SelectItem value="all">All Employees</SelectItem>
                 </SelectContent>
               </Select>
             </div>
