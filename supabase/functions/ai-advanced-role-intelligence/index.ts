@@ -87,11 +87,13 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`LiteLLM API error: ${response.statusText}`);
-  }
-
   const data = await response.json();
+  if (!response.ok) {
+    console.error('LiteLLM API error:', data);
+    console.error('Response status:', response.status, response.statusText);
+    throw new Error(`LiteLLM API error: ${data.error?.message || response.statusText}`);
+  }
+  
   return data.choices[0].message.content;
 }
 

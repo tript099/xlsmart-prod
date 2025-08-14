@@ -35,6 +35,14 @@ export function LiteLLMTest() {
         payload = { message: testMessage };
       } else if (functionName === 'ai-chat') {
         payload = { message: testMessage, context: "hr_assistant" };
+      } else if (functionName === 'ai-skills-assessment') {
+        // Skills assessment needs specific employee and role data
+        payload = {
+          employeeId: 'test-employee-id',
+          targetRoleId: 'test-role-id',
+          assessmentType: 'role_fit',
+          additionalSkills: []
+        };
       } else {
         // For intelligence functions, provide basic test parameters
         payload = {

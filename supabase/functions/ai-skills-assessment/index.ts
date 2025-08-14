@@ -24,8 +24,11 @@ serve(async (req) => {
       additionalSkills = []
     } = await req.json();
 
+    console.log('Skills assessment request:', { employeeId, targetRoleId, assessmentType });
+
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      console.error('OpenAI API key not found');
       throw new Error('OpenAI API key not configured');
     }
 
