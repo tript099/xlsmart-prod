@@ -1,9 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeCareerPathsEnhanced } from "@/components/EmployeeCareerPathsEnhanced";
-import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlanningAI";
-import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
-import { TrendingUp, Users, Target, Award, BookOpen, Navigation } from "lucide-react";
+import { TrendingUp, Users, Target, Award } from "lucide-react";
 
 const CareerPathsDashboard = () => {
   const careerStats = [
@@ -41,9 +38,9 @@ const CareerPathsDashboard = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-4">
-        <h1 className="text-3xl font-bold text-foreground">Career Development Hub</h1>
+        <h1 className="text-3xl font-bold text-foreground">Employee Career Paths</h1>
         <p className="text-muted-foreground text-lg">
-          Comprehensive career planning, mobility analysis, and development pathways powered by AI
+          Design career progression paths and track employee development
         </p>
       </div>
 
@@ -87,73 +84,26 @@ const CareerPathsDashboard = () => {
         </div>
       </section>
 
-      {/* Career Development Tools */}
+      {/* AI Career Path Planning */}
       <section>
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">AI-Powered Career Development</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">AI Career Path Planning</h2>
           <p className="text-muted-foreground">
-            Comprehensive suite of tools for career planning, mobility, and development pathways
+            Create personalized career paths with AI-powered analysis and recommendations
           </p>
         </div>
 
-        <Tabs defaultValue="career-paths" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="career-paths" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span>Career Paths</span>
-            </TabsTrigger>
-            <TabsTrigger value="mobility" className="flex items-center space-x-2">
-              <Navigation className="h-4 w-4" />
-              <span>Employee Mobility</span>
-            </TabsTrigger>
-            <TabsTrigger value="development" className="flex items-center space-x-2">
-              <BookOpen className="h-4 w-4" />
-              <span>Development Pathways</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="career-paths" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  <span>Career Path Generator</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <EmployeeCareerPathsEnhanced />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="mobility" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Navigation className="h-5 w-5 text-primary" />
-                  <span>Employee Mobility Planning</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <EmployeeMobilityPlanningAI />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="development" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  <span>Development Pathways</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DevelopmentPathwaysAI />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              <span>Career Path Generator</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EmployeeCareerPathsEnhanced />
+          </CardContent>
+        </Card>
       </section>
 
       {/* Career Insights */}

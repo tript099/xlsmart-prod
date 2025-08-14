@@ -30,34 +30,70 @@ import { Button } from "@/components/ui/button";
 
 const navigationItems = [
   {
-    title: "Overview",
-    url: "/dashboard/analytics", 
+    title: "Analytics Dashboard",
+    url: "/dashboard/analytics",
     icon: BarChart3,
-    description: "Platform insights & AI analytics"
+    description: "Platform overview & insights"
   },
   {
-    title: "Workforce",
+    title: "Employee Management",
     url: "/dashboard/employees",
     icon: Users,
-    description: "Employee management & analytics"
+    description: "Employee dashboard & analytics"
   },
   {
-    title: "Skills & Roles",
+    title: "Role Management",
+    url: "/dashboard/roles",
+    icon: Briefcase,
+    description: "Role standardization & analytics"
+  },
+  {
+    title: "Job Descriptions",
+    url: "/dashboard/job-descriptions",
+    icon: FileText,
+    description: "JD generation & management"
+  },
+  {
+    title: "Skill Assessment",
     url: "/dashboard/skills",
     icon: Brain,
-    description: "Skills assessment & role standardization"
+    description: "Skills analysis & recommendations"
   },
   {
-    title: "Career Development",
+    title: "Career Paths",
     url: "/dashboard/career-paths",
     icon: TrendingUp,
-    description: "Career paths, mobility & development"
+    description: "Career planning & progression"
   },
   {
-    title: "Analytics",
+    title: "Employee Mobility",
+    url: "/dashboard/mobility",
+    icon: Target,
+    description: "Mobility planning & analysis"
+  },
+  {
+    title: "Development Pathways",
+    url: "/dashboard/development",
+    icon: BookOpen,
+    description: "Learning & development paths"
+  },
+  {
+    title: "Certifications",
+    url: "/dashboard/certifications",
+    icon: Award,
+    description: "Certification tracking"
+  },
+  {
+    title: "Workforce Analytics",
     url: "/dashboard/workforce-analytics",
     icon: PieChart,
-    description: "Workforce insights & reporting"
+    description: "Advanced workforce insights"
+  },
+  {
+    title: "Skill Inventory",
+    url: "/dashboard/skill-inventory",
+    icon: Package,
+    description: "Organization skill mapping"
   }
 ];
 
