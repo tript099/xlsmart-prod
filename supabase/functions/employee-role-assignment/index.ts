@@ -23,6 +23,7 @@ serve(async (req) => {
     const { sessionId } = await req.json();
     
     console.log(`Starting AI role assignment for session: ${sessionId}`);
+    console.log(`OpenAI API key configured: ${openAIApiKey ? 'Yes' : 'No'}`);
     
     // Get the session details
     const { data: session, error: sessionError } = await supabase
@@ -202,10 +203,14 @@ serve(async (req) => {
 });
 
 async function assignRoleWithAI(employee: any, standardRoles: any[]) {
+  console.log(`Processing AI role assignment for: ${employee.first_name} ${employee.last_name}`);
+  
   if (!openAIApiKey) {
-    console.log('No OpenAI API key, skipping AI role assignment');
+    console.error('OpenAI API key not configured in environment variables');
     return null;
   }
+
+  console.log('OpenAI API key is configured, proceeding with AI assignment');
 
   try {
     const employeeSkills = Array.isArray(employee.skills) ? employee.skills.join(', ') : employee.skills || '';
@@ -268,7 +273,7 @@ Return only the UUID:`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
