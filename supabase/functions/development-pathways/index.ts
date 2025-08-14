@@ -1,5 +1,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -74,9 +80,29 @@ Please create a comprehensive development pathway plan for this employee.`
 
     console.log('Generated development pathway successfully');
 
+    // Save development pathway to database
+    const { data: savedAnalysis, error: saveError } = await supabase
+      .from('ai_analysis_results')
+      .insert({
+        analysis_type: 'development_pathways',
+        function_name: 'development-pathways',
+        input_parameters: { employeeProfile, careerGoals, currentSkills, industryTrends },
+        analysis_result: { developmentPlan },
+        created_by: 'system', // Will be set by RLS to auth.uid()
+        status: 'completed'
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving development pathway:', saveError);
+    }
+
     return new Response(JSON.stringify({ 
       developmentPlan,
-      success: true 
+      success: true,
+      saved: !saveError,
+      analysisId: savedAnalysis?.id
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

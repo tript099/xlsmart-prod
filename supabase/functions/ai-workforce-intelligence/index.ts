@@ -90,7 +90,29 @@ serve(async (req) => {
         throw new Error('Invalid analysis type');
     }
 
-    return new Response(JSON.stringify(analysisResult), {
+    // Save analysis result to database
+    const { data: savedAnalysis, error: saveError } = await supabase
+      .from('ai_analysis_results')
+      .insert({
+        analysis_type: analysisType,
+        function_name: 'ai-workforce-intelligence',
+        input_parameters: { analysisType, departmentFilter, employeeId },
+        analysis_result: analysisResult,
+        created_by: 'system', // Will be set by RLS to auth.uid()
+        status: 'completed'
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving workforce intelligence analysis:', saveError);
+    }
+
+    return new Response(JSON.stringify({
+      ...analysisResult,
+      saved: !saveError,
+      analysisId: savedAnalysis?.id
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

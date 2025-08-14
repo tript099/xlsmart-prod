@@ -30,9 +30,29 @@ serve(async (req) => {
 
     const careerPath = await generateCareerPath(employeeData);
 
+    // Save career path to database
+    const { data: savedAnalysis, error: saveError } = await supabase
+      .from('ai_analysis_results')
+      .insert({
+        analysis_type: 'employee_career_paths',
+        function_name: 'employee-career-paths',
+        input_parameters: { employeeData },
+        analysis_result: { careerPath },
+        created_by: 'system', // Will be set by RLS to auth.uid()
+        status: 'completed'
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving career path analysis:', saveError);
+    }
+
     return new Response(JSON.stringify({
       success: true,
-      careerPath
+      careerPath,
+      saved: !saveError,
+      analysisId: savedAnalysis?.id
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

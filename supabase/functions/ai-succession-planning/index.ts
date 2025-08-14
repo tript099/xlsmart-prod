@@ -59,7 +59,29 @@ serve(async (req) => {
         throw new Error('Invalid analysis type');
     }
 
-    return new Response(JSON.stringify(result), {
+    // Save analysis result to database
+    const { data: savedAnalysis, error: saveError } = await supabase
+      .from('ai_analysis_results')
+      .insert({
+        analysis_type: analysisType,
+        function_name: 'ai-succession-planning',
+        input_parameters: { analysisType, departmentFilter, positionLevel },
+        analysis_result: result,
+        created_by: 'system', // Will be set by RLS to auth.uid()
+        status: 'completed'
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving succession planning analysis:', saveError);
+    }
+
+    return new Response(JSON.stringify({
+      ...result,
+      saved: !saveError,
+      analysisId: savedAnalysis?.id
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
