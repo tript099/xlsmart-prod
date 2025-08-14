@@ -22,6 +22,30 @@ serve(async (req) => {
     
     console.log(`Starting employee data upload for ${employees.length} employees`);
     
+    // Get the authenticated user from the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header provided');
+    }
+
+    const authClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        auth: {
+          persistSession: false
+        }
+      }
+    );
+
+    const { data: { user }, error: userError } = await authClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      throw new Error('Invalid authentication token');
+    }
+    
     // Create upload session
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
@@ -31,7 +55,7 @@ serve(async (req) => {
         temp_table_names: [],
         total_rows: employees.length,
         status: 'processing',
-        created_by: '00000000-0000-0000-0000-000000000000' // System user
+        created_by: user.id
       })
       .select()
       .single();
