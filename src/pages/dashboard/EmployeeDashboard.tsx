@@ -95,7 +95,7 @@ const EmployeeDashboard = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="management" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-fit">
+        <TabsList className="grid w-full grid-cols-5 lg:w-fit">
           <TabsTrigger value="management" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Management</span>
@@ -103,6 +103,14 @@ const EmployeeDashboard = () => {
           <TabsTrigger value="compensation" className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" />
             <span className="hidden sm:inline">Compensation</span>
+          </TabsTrigger>
+          <TabsTrigger value="engagement" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">Engagement</span>
+          </TabsTrigger>
+          <TabsTrigger value="succession" className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            <span className="hidden sm:inline">Succession</span>
           </TabsTrigger>
           <TabsTrigger value="directory" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -132,6 +140,46 @@ const EmployeeDashboard = () => {
               </CardContent>
             </Card>
           </section>
+        </TabsContent>
+
+        <TabsContent value="engagement" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Brain className="h-5 w-5 text-primary" />
+                <span>Employee Engagement Intelligence</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AIEmployeeEngagement />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="succession" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <span>Succession Planning Intelligence</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AISuccessionPlanning />
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Users className="h-5 w-5 text-primary" />
+                <span>Diversity & Inclusion Intelligence</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AIDiversityInclusion />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="compensation" className="space-y-6 mt-6">
