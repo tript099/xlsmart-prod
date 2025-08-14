@@ -30,12 +30,6 @@ import { Button } from "@/components/ui/button";
 
 const navigationItems = [
   {
-    title: "Analytics Dashboard",
-    url: "/dashboard/analytics",
-    icon: BarChart3,
-    description: "Platform overview & insights"
-  },
-  {
     title: "Role Management",
     url: "/dashboard/roles",
     icon: Briefcase,
