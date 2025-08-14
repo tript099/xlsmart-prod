@@ -5,9 +5,10 @@ import { HRSidebar } from "@/components/HRSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { LiteLLMTest } from "@/components/LiteLLMTest";
+import { ComprehensiveApplicationTester } from "@/components/ComprehensiveApplicationTester";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Zap } from "lucide-react";
+import { Zap, TestTube } from "lucide-react";
 
 
 const HRDashboard = () => {
@@ -15,6 +16,7 @@ const HRDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLiteLLMDialogOpen, setIsLiteLLMDialogOpen] = useState(false);
+  const [isAppTesterDialogOpen, setIsAppTesterDialogOpen] = useState(false);
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -61,6 +63,20 @@ const HRDashboard = () => {
                 <LiteLLMTest />
               </DialogContent>
             </Dialog>
+            
+            <Dialog open={isAppTesterDialogOpen} onOpenChange={setIsAppTesterDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="default" size="sm" className="flex items-center gap-2">
+                  <TestTube className="h-4 w-4" />
+                  <span className="hidden sm:inline">Test Application</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                <DialogTitle className="sr-only">Comprehensive Application Testing</DialogTitle>
+                <ComprehensiveApplicationTester />
+              </DialogContent>
+            </Dialog>
+            
             <LanguageToggle />
           </div>
         </header>
