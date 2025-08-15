@@ -106,7 +106,7 @@ serve(async (req) => {
               const assessment = await runEmployeeAssessment(employee, targetRole);
               
               // Store assessment result
-              await supabase
+              const { error: insertError } = await supabase
                 .from('xlsmart_skill_assessments')
                 .insert({
                   employee_id: employee.id,
@@ -118,6 +118,11 @@ serve(async (req) => {
                   ai_analysis: `Bulk assessment via ${assessmentType}`,
                   assessed_by: session.created_by
                 });
+
+              if (insertError) {
+                console.error(`Database insert error for employee ${employee.id}:`, insertError);
+                throw insertError;
+              }
 
               completedCount++;
               return { success: true, employee: employee.id };

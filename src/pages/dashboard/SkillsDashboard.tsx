@@ -22,56 +22,77 @@ const SkillsDashboard = () => {
     recentAssessments: []
   });
 
+  const fetchSkillAnalytics = async () => {
+    try {
+      // Fetch employee counts
+      const { count: totalEmployees } = await supabase
+        .from('xlsmart_employees')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch skills data
+      const { count: totalSkills } = await supabase
+        .from('skills_master')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch skill assessments
+      const { data: assessments } = await supabase
+        .from('xlsmart_skill_assessments')
+        .select('*');
+
+      // Count unique employees who have been assessed
+      const uniqueAssessedEmployees = new Set(assessments?.map(a => a.employee_id)).size;
+
+      // Calculate analytics
+      const avgSkillLevel = assessments?.length > 0 
+        ? assessments.reduce((sum, a) => sum + (a.overall_match_percentage || 0), 0) / assessments.length 
+        : 0;
+
+      // Count total skill gaps
+      const totalSkillGaps = assessments?.reduce((sum, a) => {
+        if (Array.isArray(a.skill_gaps)) {
+          return sum + a.skill_gaps.length;
+        }
+        return sum;
+      }, 0) || 0;
+
+      setSkillAnalytics({
+        totalEmployees: totalEmployees || 0,
+        assessedEmployees: uniqueAssessedEmployees,
+        totalSkills: totalSkills || 0,
+        skillGaps: totalSkillGaps,
+        avgSkillLevel: Math.round(avgSkillLevel * 10) / 10,
+        topSkills: [],
+        criticalGaps: [],
+        recentAssessments: assessments?.slice(0, 5) || []
+      });
+    } catch (error) {
+      console.error('Error fetching skill analytics:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchSkillAnalytics = async () => {
-      try {
-        // Fetch employee counts
-        const { count: totalEmployees } = await supabase
-          .from('xlsmart_employees')
-          .select('*', { count: 'exact', head: true });
-
-        // Fetch skills data
-        const { count: totalSkills } = await supabase
-          .from('skills_master')
-          .select('*', { count: 'exact', head: true });
-
-        // Fetch skill assessments
-        const { data: assessments } = await supabase
-          .from('xlsmart_skill_assessments')
-          .select('*');
-
-        // Count unique employees who have been assessed
-        const uniqueAssessedEmployees = new Set(assessments?.map(a => a.employee_id)).size;
-
-        // Calculate analytics
-        const avgSkillLevel = assessments?.length > 0 
-          ? assessments.reduce((sum, a) => sum + (a.overall_match_percentage || 0), 0) / assessments.length 
-          : 0;
-
-        // Count total skill gaps
-        const totalSkillGaps = assessments?.reduce((sum, a) => {
-          if (Array.isArray(a.skill_gaps)) {
-            return sum + a.skill_gaps.length;
-          }
-          return sum;
-        }, 0) || 0;
-
-        setSkillAnalytics({
-          totalEmployees: totalEmployees || 0,
-          assessedEmployees: uniqueAssessedEmployees,
-          totalSkills: totalSkills || 0,
-          skillGaps: totalSkillGaps,
-          avgSkillLevel: Math.round(avgSkillLevel * 10) / 10,
-          topSkills: [],
-          criticalGaps: [],
-          recentAssessments: assessments?.slice(0, 5) || []
-        });
-      } catch (error) {
-        console.error('Error fetching skill analytics:', error);
-      }
-    };
-
     fetchSkillAnalytics();
+
+    // Add real-time subscription for skill assessments
+    const channel = supabase
+      .channel('skill-assessments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'xlsmart_skill_assessments'
+        },
+        () => {
+          console.log('Skill assessment data changed, refreshing...');
+          fetchSkillAnalytics();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const skillsStats = [
