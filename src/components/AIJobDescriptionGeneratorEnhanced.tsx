@@ -90,25 +90,49 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
   const loadStandardRoles = async () => {
     try {
       console.log('Loading standard roles...');
-      const { data, error } = await supabase
+      
+      // Get all standard roles
+      const { data: allRoles, error: rolesError } = await supabase
         .from('xlsmart_standard_roles')
         .select('*')
         .eq('is_active', true)
         .order('role_title');
 
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      if (rolesError) {
+        console.error('Supabase error:', rolesError);
+        throw rolesError;
       }
+
+      // Get all existing job descriptions with their standard_role_id
+      const { data: existingJDs, error: jdError } = await supabase
+        .from('xlsmart_job_descriptions')
+        .select('standard_role_id')
+        .not('standard_role_id', 'is', null);
+
+      if (jdError) {
+        console.error('Error fetching existing JDs:', jdError);
+        throw jdError;
+      }
+
+      // Extract role IDs that already have JDs
+      const rolesWithJDs = new Set(
+        (existingJDs || []).map(jd => jd.standard_role_id).filter(Boolean)
+      );
+
+      // Filter out roles that already have JDs created
+      const availableRoles = (allRoles || []).filter(role => !rolesWithJDs.has(role.id));
       
-      console.log('Standard roles loaded:', data?.length || 0);
-      setStandardRoles(data || []);
+      console.log('Standard roles loaded:', allRoles?.length || 0);
+      console.log('Roles with existing JDs:', rolesWithJDs.size);
+      console.log('Available roles for JD creation:', availableRoles.length);
       
-      if (!data || data.length === 0) {
+      setStandardRoles(availableRoles);
+      
+      if (availableRoles.length === 0) {
         toast({
-          title: "No Standard Roles Found",
-          description: "No active standard roles available. Please ensure roles are uploaded and activated.",
-          variant: "destructive",
+          title: "All Roles Have Job Descriptions",
+          description: "All active standard roles already have job descriptions created. No roles available for bulk generation.",
+          variant: "default",
         });
       }
     } catch (error) {
@@ -300,7 +324,10 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
           summary: summary,
           responsibilities: responsibilities.length > 0 ? responsibilities : selectedJDForChat.responsibilities,
           required_qualifications: qualifications.length > 0 ? qualifications : selectedJDForChat.requiredQualifications,
-          updated_at: new Date().toISOString()
+          status: 'draft', // Reset to draft for re-approval
+          updated_at: new Date().toISOString(),
+          reviewed_by: null, // Clear previous review
+          approved_by: null  // Clear previous approval
         })
         .eq('id', selectedJDForChat.id);
 
@@ -309,7 +336,7 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
       await loadExistingJDs(); // Refresh the list
       toast({
         title: "✅ Job Description Updated!",
-        description: "Your changes have been saved successfully",
+        description: "Your changes have been saved and sent for re-approval",
         duration: 5000,
       });
 
