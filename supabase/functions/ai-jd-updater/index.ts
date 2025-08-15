@@ -14,9 +14,9 @@ serve(async (req) => {
   try {
     const { currentContent, updateRequest } = await req.json();
     
-    const openAIApiKey = Deno.env.get('LITELLM_API_KEY');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      throw new Error('LiteLLM API key not configured');
+      throw new Error('OpenAI API key not configured');
     }
 
     const prompt = `You are an expert HR professional. Update the following job description based on this request: "${updateRequest}"
