@@ -381,6 +381,193 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
     );
   };
 
+  const renderCompensationOptimizationResults = () => {
+    const data = analysisResult;
+    
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Current State Analysis</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">
+                  {formatCurrency(data.currentState?.totalCompensationBudget || 0)}
+                </p>
+                <p className="text-sm text-muted-foreground">Total Budget</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">
+                  {data.currentState?.compressionIssues || 0}
+                </p>
+                <p className="text-sm text-muted-foreground">Compression Issues</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-green-600">
+                  {((data.currentState?.budgetUtilization || 0) * 100).toFixed(1)}%
+                </p>
+                <p className="text-sm text-muted-foreground">Budget Utilization</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">
+                  {Object.keys(data.currentState?.avgSalaryByLevel || {}).length}
+                </p>
+                <p className="text-sm text-muted-foreground">Salary Levels</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {data.currentState?.avgSalaryByLevel && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Average Salary by Level</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {Object.entries(data.currentState.avgSalaryByLevel).map(([level, salary]) => (
+                  <div key={level} className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <span className="font-medium capitalize">{level}</span>
+                    <span className="text-primary font-bold">{formatCurrency(salary as number)}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {data.optimizationOpportunities && data.optimizationOpportunities.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Optimization Opportunities</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {data.optimizationOpportunities.map((opportunity: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 className="font-semibold">{opportunity.area}</h4>
+                      <div className="text-right">
+                        <p className="text-green-600 font-bold">
+                          Savings: {formatCurrency(opportunity.savings || 0)}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground mb-3">{opportunity.implementation}</p>
+                    {opportunity.riskFactors && opportunity.riskFactors.length > 0 && (
+                      <div>
+                        <p className="font-medium text-sm mb-1">Risk Factors:</p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside">
+                          {opportunity.riskFactors.map((risk: string, riskIndex: number) => (
+                            <li key={riskIndex}>{risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {data.salaryBandRecommendations && data.salaryBandRecommendations.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Salary Band Recommendations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {data.salaryBandRecommendations.map((rec: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-semibold">{rec.role}</h4>
+                        <p className="text-sm text-muted-foreground">{rec.level}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Affected: {rec.affectedEmployees} employees</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                      <div>
+                        <p className="text-sm font-medium">Current Range</p>
+                        <p className="text-sm">{formatCurrency(rec.currentRange?.min || 0)} - {formatCurrency(rec.currentRange?.max || 0)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Recommended Range</p>
+                        <p className="text-sm text-primary">{formatCurrency(rec.recommendedRange?.min || 0)} - {formatCurrency(rec.recommendedRange?.max || 0)}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{rec.rationale}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {data.strategicRecommendations && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Strategic Recommendations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <h4 className="font-semibold mb-3 text-green-600">Short Term</h4>
+                  <ul className="space-y-2">
+                    {data.strategicRecommendations.shortTerm?.map((rec: string, index: number) => (
+                      <li key={index} className="text-sm flex items-start">
+                        <span className="w-2 h-2 bg-green-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-orange-600">Medium Term</h4>
+                  <ul className="space-y-2">
+                    {data.strategicRecommendations.mediumTerm?.map((rec: string, index: number) => (
+                      <li key={index} className="text-sm flex items-start">
+                        <span className="w-2 h-2 bg-orange-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3 text-blue-600">Long Term</h4>
+                  <ul className="space-y-2">
+                    {data.strategicRecommendations.longTerm?.map((rec: string, index: number) => (
+                      <li key={index} className="text-sm flex items-start">
+                        <span className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+              
+              {data.strategicRecommendations.totalInvestment && (
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total Investment Required:</span>
+                    <span className="text-lg font-bold text-primary">
+                      {formatCurrency(data.strategicRecommendations.totalInvestment)}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -472,22 +659,7 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
           {selectedAnalysis === 'pay_equity' && renderPayEquityResults()}
           {selectedAnalysis === 'market_benchmarking' && renderMarketBenchmarkingResults()}
           {selectedAnalysis === 'promotion_readiness' && renderPromotionReadinessResults()}
-          {selectedAnalysis === 'compensation_optimization' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Compensation Optimization Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">Compensation optimization results will be displayed here</p>
-                  <pre className="text-xs text-left mt-4 bg-muted p-4 rounded overflow-auto max-h-96">
-                    {JSON.stringify(analysisResult, null, 2)}
-                  </pre>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          {selectedAnalysis === 'compensation_optimization' && renderCompensationOptimizationResults()}
         </div>
       )}
     </div>
