@@ -75,6 +75,15 @@ const EmployeeDashboard = () => {
               onClick={() => {
                 if (index === 0) {
                   setActiveDialog('employee-details');
+                } else if (index === 1) {
+                  // Role Assignment Rate - could navigate to role assignment page
+                  console.log('Role Assignment Rate clicked');
+                } else if (index === 2) {
+                  // Data Completeness - could navigate to data quality page
+                  console.log('Data Completeness clicked');
+                } else if (index === 3) {
+                  // Skills Assessment - could navigate to skills page
+                  console.log('Skills Assessment clicked');
                 }
               }}
             >
