@@ -12,7 +12,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -210,11 +210,11 @@ serve(async (req) => {
 });
 
 async function runEmployeeAssessment(employee: any, targetRole: any) {
-  if (!openAIApiKey) {
+  if (!litellmApiKey) {
     return {
       overallMatch: 50,
       skillGaps: [],
-      recommendations: 'AI assessment unavailable - no OpenAI API key configured',
+      recommendations: 'AI assessment unavailable - no LiteLLM API key configured',
       nextRoles: []
     };
   }
@@ -250,14 +250,14 @@ Provide a JSON response with:
 
 Focus on actionable insights and realistic assessments.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${litellmApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1', // Using the model pattern from other functions
         messages: [
           { 
             role: 'system', 
@@ -265,13 +265,28 @@ Focus on actionable insights and realistic assessments.`;
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 1000
+        max_completion_tokens: 1000
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error:', errorText);
+      throw new Error(`LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
     const data = await response.json();
-    const result = JSON.parse(data.choices[0].message.content);
+    console.log('LiteLLM response received successfully');
+    
+    // Clean up any markdown code blocks before JSON parsing
+    const content = data.choices[0].message.content;
+    const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    
+    // Additional cleaning - remove any trailing content after the last }
+    const lastBraceIndex = cleanContent.lastIndexOf('}');
+    const finalContent = lastBraceIndex !== -1 ? cleanContent.substring(0, lastBraceIndex + 1) : cleanContent;
+    
+    const result = JSON.parse(finalContent);
 
     return {
       overallMatch: result.overallMatch || 50,
