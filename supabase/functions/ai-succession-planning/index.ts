@@ -129,8 +129,8 @@ serve(async (req) => {
         function_name: 'ai-succession-planning',
         input_parameters: { analysisType, departmentFilter, positionLevel },
         analysis_result: result,
-        created_by: 'system', // Will be set by RLS to auth.uid()
         status: 'completed'
+        // created_by will be set automatically by RLS trigger
       })
       .select()
       .single();
