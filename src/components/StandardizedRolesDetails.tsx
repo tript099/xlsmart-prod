@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { EditRoleDialog } from "@/components/EditRoleDialog";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { RoleMappingPagination } from "@/components/RoleMappingPagination";
 
 interface StandardizedRole {
   id: string;
@@ -32,7 +33,7 @@ export const StandardizedRolesDetails = () => {
   const [deleteRole, setDeleteRole] = useState<StandardizedRole | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(8);
 
   useEffect(() => {
     fetchStandardizedRoles();
@@ -364,31 +365,17 @@ export const StandardizedRolesDetails = () => {
       />
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {startIndex + 1} to {Math.min(startIndex + pageSize, filteredRoles.length)} of {filteredRoles.length} roles
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <RoleMappingPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={filteredRoles.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(newSize) => {
+          setPageSize(newSize);
+          setCurrentPage(1);
+        }}
+      />
     </div>
   );
 };
