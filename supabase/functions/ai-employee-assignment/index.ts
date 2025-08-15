@@ -149,7 +149,7 @@ async function assignRoleWithAI(employee: any, standardRoles: any[], apiKey: str
     const employeeSkills = Array.isArray(employee.skills) ? employee.skills.join(', ') : employee.skills || '';
     const employeeCerts = Array.isArray(employee.certifications) ? employee.certifications.join(', ') : employee.certifications || '';
     
-    const prompt = `You are an expert HR system that assigns employees to the most appropriate standard roles. Analyze this employee profile and find the BEST MATCHING standard role from the available options.
+    const prompt = `You are an expert HR system that assigns employees to the most appropriate standard roles. 
 
 Employee Profile:
 - Name: ${employee.first_name} ${employee.last_name}
@@ -160,22 +160,16 @@ Employee Profile:
 - Skills: ${employeeSkills}
 - Certifications: ${employeeCerts}
 
-Available Standard Roles (YOU MUST CHOOSE FROM THESE):
-${standardRoles.map(role => `- ID: ${role.id}
-  Title: ${role.role_title}
-  Family: ${role.job_family}
-  Level: ${role.role_level}
-  Category: ${role.role_category}
-  Department: ${role.department}`).join('\n\n')}
+Available Standard Roles:
+${standardRoles.map(role => `${role.id} | ${role.role_title} | ${role.job_family} | ${role.role_level} | ${role.department}`).join('\n')}
 
-INSTRUCTIONS:
-- You MUST select ONE of the provided standard role IDs
-- Choose the role with the highest overall match score
-- Consider skills, experience, and current position
-- Return ONLY the UUID of the selected role
-- If truly no role fits, return "NO_MATCH"
+Find the BEST MATCHING role ID. Consider:
+1. Job title similarity
+2. Required skills match
+3. Experience level compatibility
+4. Department alignment
 
-Return only the UUID:`;
+Respond with ONLY the UUID of the best matching role, or "NO_MATCH" if no suitable role exists.`;
 
     const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
