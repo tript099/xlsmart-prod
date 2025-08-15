@@ -129,8 +129,8 @@ serve(async (req) => {
         function_name: 'ai-succession-planning',
         input_parameters: { analysisType, departmentFilter, positionLevel },
         analysis_result: result,
-        status: 'completed'
-        // created_by will be set automatically by RLS trigger
+        status: 'completed',
+        created_by: null // Explicitly set to null since no auth context in edge function
       })
       .select()
       .single();
@@ -513,7 +513,16 @@ Identify high-potential talent based on performance ratings (3.0+), experience l
     console.log('Response length:', response.length);
     console.log('Response preview:', response.substring(0, 500));
     
-    const parsedResult = JSON.parse(response);
+    // Clean the AI response - remove markdown code blocks if present
+    let cleanResponse = response.trim();
+    if (cleanResponse.startsWith('```json')) {
+      cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleanResponse.startsWith('```')) {
+      cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    console.log('Cleaned response preview:', cleanResponse.substring(0, 200));
+    const parsedResult = JSON.parse(cleanResponse);
     console.log('=== DEBUG: Parsed AI Result ===');
     console.log(JSON.stringify(parsedResult, null, 2));
     
