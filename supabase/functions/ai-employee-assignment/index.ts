@@ -53,7 +53,7 @@ serve(async (req) => {
       });
     }
 
-    // Get standard roles with job descriptions
+    // Get standard roles
     const { data: standardRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
       .select('*')
@@ -62,11 +62,6 @@ serve(async (req) => {
     if (rolesError) {
       throw new Error(`Failed to fetch standard roles: ${rolesError.message}`);
     }
-
-    // Get job descriptions separately if needed
-    const { data: jobDescriptions, error: jdError } = await supabase
-      .from('xlsmart_job_descriptions')
-      .select('*');
 
     if (!standardRoles || standardRoles.length === 0) {
       throw new Error('No standard roles available');
@@ -139,9 +134,15 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in AI employee assignment:', error);
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: error.message,
+      details: `Critical error: ${error.message}`
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
