@@ -21,10 +21,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
-    if (!litellmApiKey) {
-      throw new Error('LiteLLM API key not configured');
-    }
+    // LiteLLM not needed for this function - just doing data standardization
 
     const { sessionId } = await req.json();
 
