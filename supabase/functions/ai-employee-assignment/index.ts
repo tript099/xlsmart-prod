@@ -202,7 +202,10 @@ Return only the UUID:`;
     }
 
     const data = await response.json();
+    console.log('LiteLLM API response:', JSON.stringify(data, null, 2));
     const assignedRoleId = data.choices[0].message.content.trim();
+    
+    console.log(`AI suggested role ID: "${assignedRoleId}" for employee ${employee.first_name} ${employee.last_name}`);
     
     if (assignedRoleId !== "NO_MATCH" && assignedRoleId.length === 36) {
       // Verify the role ID exists
@@ -210,6 +213,8 @@ Return only the UUID:`;
       if (roleExists) {
         console.log(`AI selected role "${roleExists.role_title}" for employee ${employee.first_name} ${employee.last_name}`);
         return assignedRoleId;
+      } else {
+        console.log(`AI suggested invalid role ID: ${assignedRoleId}`);
       }
     }
     
