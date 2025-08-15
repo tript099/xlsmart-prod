@@ -53,10 +53,20 @@ serve(async (req) => {
       });
     }
 
-    // Get standard roles
+    // Get standard roles with job descriptions
     const { data: standardRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
-      .select('*')
+      .select(`
+        *,
+        job_descriptions:xlsmart_job_descriptions(
+          title,
+          summary,
+          responsibilities,
+          required_qualifications,
+          required_skills,
+          experience_level
+        )
+      `)
       .eq('is_active', true);
 
     if (rolesError) {
@@ -149,6 +159,18 @@ async function assignRoleWithAI(employee: any, standardRoles: any[], apiKey: str
     const employeeSkills = Array.isArray(employee.skills) ? employee.skills.join(', ') : employee.skills || '';
     const employeeCerts = Array.isArray(employee.certifications) ? employee.certifications.join(', ') : employee.certifications || '';
     
+    const formatRole = (role: any) => {
+      const jd = role.job_descriptions?.[0];
+      const responsibilities = Array.isArray(jd?.responsibilities) ? jd.responsibilities.slice(0, 3).join('; ') : '';
+      const requiredSkills = Array.isArray(jd?.required_skills) ? jd.required_skills.join(', ') : '';
+      const coreSkills = Array.isArray(role.required_skills) ? role.required_skills.join(', ') : '';
+      
+      return `${role.id} | ${role.role_title} | ${role.job_family} | ${role.role_level} | ${role.department}
+  Experience: ${role.experience_range_min}-${role.experience_range_max} years
+  Key Skills: ${coreSkills || requiredSkills}
+  Main Duties: ${responsibilities || jd?.summary || 'Not specified'}`;
+    };
+
     const prompt = `You are an expert HR system that assigns employees to the most appropriate standard roles. 
 
 Employee Profile:
@@ -160,14 +182,14 @@ Employee Profile:
 - Skills: ${employeeSkills}
 - Certifications: ${employeeCerts}
 
-Available Standard Roles:
-${standardRoles.map(role => `${role.id} | ${role.role_title} | ${role.job_family} | ${role.role_level} | ${role.department}`).join('\n')}
+Available Standard Roles (with job descriptions):
+${standardRoles.map(formatRole).join('\n\n')}
 
-Find the BEST MATCHING role ID. Consider:
-1. Job title similarity
-2. Required skills match
-3. Experience level compatibility
-4. Department alignment
+Find the BEST MATCHING role ID by analyzing:
+1. Skills match (employee skills vs required role skills)
+2. Experience level compatibility (years of experience)
+3. Job responsibilities alignment
+4. Job title and department similarity
 
 Respond with ONLY the UUID of the best matching role, or "NO_MATCH" if no suitable role exists.`;
 
