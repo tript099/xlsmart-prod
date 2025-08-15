@@ -19,6 +19,7 @@ import DevelopmentDashboard from "./pages/dashboard/DevelopmentDashboard";
 import CertificationsDashboard from "./pages/dashboard/CertificationsDashboard";
 import WorkforceAnalyticsDashboard from "./pages/dashboard/WorkforceAnalyticsDashboard";
 import SkillInventoryDashboard from "./pages/dashboard/SkillInventoryDashboard";
+import BulkRoleAssignmentDashboard from "./pages/dashboard/BulkRoleAssignmentDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/dashboard" element={<HRDashboard />}>
               <Route path="analytics" element={<AnalyticsDashboard />} />
               <Route path="employees" element={<EmployeeDashboard />} />
+              <Route path="bulk-role-assignment" element={<BulkRoleAssignmentDashboard />} />
               <Route path="roles" element={<RolesDashboard />} />
               <Route path="job-descriptions" element={<JobDescriptionsDashboard />} />
               <Route path="skills" element={<SkillsDashboard />} />

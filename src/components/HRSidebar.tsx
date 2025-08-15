@@ -40,13 +40,25 @@ const navigationItems = [
     url: "/dashboard/job-descriptions",
     icon: FileText,
     description: "JD generation & management"
-  },
+  }
+];
+
+const employeeManagementItems = [
   {
-    title: "Employee Management",
+    title: "Employee Dashboard",
     url: "/dashboard/employees",
     icon: Users,
-    description: "Employee dashboard & analytics"
+    description: "Employee analytics & overview"
   },
+  {
+    title: "Bulk Role Assignment",
+    url: "/dashboard/bulk-role-assignment",
+    icon: Target,
+    description: "Automatically assign roles using AI"
+  }
+];
+
+const skillsAndDevelopmentItems = [
   {
     title: "Skill Assessment",
     url: "/dashboard/skills",
@@ -76,7 +88,10 @@ const navigationItems = [
     url: "/dashboard/certifications",
     icon: Award,
     description: "Certification tracking"
-  },
+  }
+];
+
+const analyticsItems = [
   {
     title: "Workforce Analytics",
     url: "/dashboard/workforce-analytics",
@@ -124,14 +139,92 @@ export function HRSidebar() {
           </div>
         </div>
 
-        {/* Navigation */}
+        {/* Core Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
-            HR Portal
+            Core Platform
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} className={getNavCls}>
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {!collapsed && (
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-sm font-medium truncate">{item.title}</span>
+                          <span className="block text-xs text-muted-foreground truncate">{item.description}</span>
+                        </div>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Employee Management */}
+        <SidebarGroup>
+          <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+            Employee Management
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {employeeManagementItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} className={getNavCls}>
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {!collapsed && (
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-sm font-medium truncate">{item.title}</span>
+                          <span className="block text-xs text-muted-foreground truncate">{item.description}</span>
+                        </div>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Skills & Development */}
+        <SidebarGroup>
+          <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+            Skills & Development
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {skillsAndDevelopmentItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink to={item.url} className={getNavCls}>
+                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      {!collapsed && (
+                        <div className="flex-1 min-w-0">
+                          <span className="block text-sm font-medium truncate">{item.title}</span>
+                          <span className="block text-xs text-muted-foreground truncate">{item.description}</span>
+                        </div>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Analytics */}
+        <SidebarGroup>
+          <SidebarGroupLabel className={collapsed ? 'sr-only' : ''}>
+            Analytics
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {analyticsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} className={getNavCls}>
