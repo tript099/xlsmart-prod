@@ -73,27 +73,59 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'azure/gpt-4.1',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-    }),
-  });
+  console.log('=== LiteLLM API Call Started ===');
+  console.log('OpenAI API Key exists:', !!openAIApiKey);
+  console.log('System prompt length:', systemPrompt.length);
+  console.log('Prompt length:', prompt.length);
 
-  if (!response.ok) {
-    throw new Error(`LiteLLM API error: ${response.statusText}`);
+  const requestBody = {
+    model: 'azure/gpt-4.1',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    max_completion_tokens: 3000,
+  };
+
+  console.log('Making request to LiteLLM proxy...');
+  
+  try {
+    const startTime = Date.now();
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+    
+    const endTime = Date.now();
+    console.log(`API call took ${endTime - startTime}ms`);
+    console.log('LiteLLM proxy response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Response content length:', data.choices?.[0]?.message?.content?.length || 0);
+    console.log('LiteLLM response received successfully');
+    
+    const content = data.choices[0].message.content;
+    
+    // Clean up any markdown code blocks before JSON parsing
+    const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    
+    console.log('Analysis completed successfully');
+    return cleanContent;
+    
+  } catch (error) {
+    console.error('Error in callLiteLLM:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 async function performSentimentAnalysis(employees: any[], skillAssessments: any[], timeFrame?: string) {
@@ -154,8 +186,20 @@ ${timeFrame ? `Analysis timeframe: ${timeFrame}` : ''}
 
 Analyze sentiment patterns, identify engagement drivers, and provide actionable insights.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performSentimentAnalysis:', error);
+    return {
+      overallSentiment: { score: 0, trend: "stable", primaryDrivers: [] },
+      departmentSentiment: [],
+      sentimentFactors: [],
+      riskSegments: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performEngagementPrediction(employees: any[], trainings: any[]) {
@@ -216,8 +260,20 @@ Training Participation: ${JSON.stringify(trainings.slice(0, 15).map(training => 
 
 Predict engagement patterns and recommend targeted interventions.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performEngagementPrediction:', error);
+    return {
+      engagementForecasting: { currentEngagementRate: 0, predictedEngagementRate: 0, forecastConfidence: 0, keyPredictors: [] },
+      employeeSegments: [],
+      engagementDrivers: [],
+      interventionStrategies: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performRetentionModeling(employees: any[], departmentFilter?: string) {
@@ -275,8 +331,20 @@ ${departmentFilter ? `Focus analysis on department: ${departmentFilter}` : ''}
 
 Identify retention risks and recommend targeted retention strategies.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performRetentionModeling:', error);
+    return {
+      retentionMetrics: { overallRetentionRate: 0, predictedRetentionRate: 0, averageTenure: 0, criticalRetentionRisk: 0 },
+      riskAnalysis: [],
+      departmentRetention: [],
+      retentionStrategies: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performEarlyWarning(employees: any[], skillAssessments: any[]) {
@@ -338,6 +406,18 @@ Skills Assessment Trends: ${JSON.stringify(skillAssessments.slice(0, 15).map(ass
 
 Identify early warning signals and recommend immediate interventions.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performEarlyWarning:', error);
+    return {
+      warningSystem: { totalEmployeesMonitored: employees.length, highRiskEmployees: 0, mediumRiskEmployees: 0, earlyWarningAccuracy: 0 },
+      riskIndicators: [],
+      alertedEmployees: [],
+      preventiveActions: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }

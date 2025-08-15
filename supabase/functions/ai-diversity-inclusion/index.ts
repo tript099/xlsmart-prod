@@ -72,27 +72,59 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'azure/gpt-4.1',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-    }),
-  });
+  console.log('=== LiteLLM API Call Started ===');
+  console.log('OpenAI API Key exists:', !!openAIApiKey);
+  console.log('System prompt length:', systemPrompt.length);
+  console.log('Prompt length:', prompt.length);
 
-  if (!response.ok) {
-    throw new Error(`LiteLLM API error: ${response.statusText}`);
+  const requestBody = {
+    model: 'azure/gpt-4.1',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    max_completion_tokens: 3000,
+  };
+
+  console.log('Making request to LiteLLM proxy...');
+  
+  try {
+    const startTime = Date.now();
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+    
+    const endTime = Date.now();
+    console.log(`API call took ${endTime - startTime}ms`);
+    console.log('LiteLLM proxy response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Response content length:', data.choices?.[0]?.message?.content?.length || 0);
+    console.log('LiteLLM response received successfully');
+    
+    const content = data.choices[0].message.content;
+    
+    // Clean up any markdown code blocks before JSON parsing
+    const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    
+    console.log('Analysis completed successfully');
+    return cleanContent;
+    
+  } catch (error) {
+    console.error('Error in callLiteLLM:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
 }
 
 async function performBiasDetection(employees: any[], standardRoles: any[], jobDescriptions: any[]) {
@@ -170,8 +202,21 @@ Job Description Language: ${JSON.stringify(jobDescriptions.slice(0, 8).map(jd =>
 
 Detect bias patterns and recommend bias mitigation strategies.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performBiasDetection:', error);
+    return {
+      biasDetection: { overallBiasRisk: "low", detectedBiasTypes: [], affectedProcesses: [], confidenceLevel: 0 },
+      hiringBias: [],
+      promotionBias: [],
+      languageBias: [],
+      mitigationStrategies: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performDiversityMetrics(employees: any[], departmentFilter?: string) {
@@ -238,8 +283,21 @@ ${departmentFilter ? `Focus analysis on department: ${departmentFilter}` : ''}
 
 Calculate diversity metrics and identify representation gaps across all organizational levels.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performDiversityMetrics:', error);
+    return {
+      diversityOverview: { diversityIndex: 0, representationScore: 0, leadershipDiversityGap: 0, improvementTrend: "stable" },
+      representationMetrics: [],
+      departmentAnalysis: [],
+      pipelineAnalysis: [],
+      recommendations: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performInclusionSentiment(employees: any[], metricType?: string) {
@@ -304,8 +362,21 @@ ${metricType ? `Focus on metric type: ${metricType}` : ''}
 
 Assess inclusion levels and identify strategies to improve belonging and equity.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performInclusionSentiment:', error);
+    return {
+      inclusionMetrics: { overallInclusionScore: 0, belongingSentiment: 0, psychologicalSafety: 0, equitableOpportunities: 0 },
+      inclusionIndicators: [],
+      groupExperiences: [],
+      barrierAnalysis: [],
+      inclusionStrategies: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performPayEquityAnalysis(employees: any[], departmentFilter?: string) {
@@ -375,6 +446,19 @@ ${departmentFilter ? `Focus analysis on department: ${departmentFilter}` : ''}
 
 Identify pay equity gaps and recommend remediation strategies.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performPayEquityAnalysis:', error);
+    return {
+      equityOverview: { overallEquityScore: 0, significantGaps: 0, adjustmentRecommendations: 0, complianceRisk: "low" },
+      payGapAnalysis: [],
+      roleEquityAnalysis: [],
+      remediationPlan: [],
+      preventionMeasures: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }

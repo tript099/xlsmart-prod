@@ -106,30 +106,59 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'azure/gpt-4.1',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.2,
-      max_tokens: 2000,
-    }),
-  });
+  console.log('=== LiteLLM API Call Started ===');
+  console.log('OpenAI API Key exists:', !!openAIApiKey);
+  console.log('System prompt length:', systemPrompt.length);
+  console.log('Prompt length:', prompt.length);
 
-  const data = await response.json();
-  if (!response.ok) {
-    console.error('LiteLLM API error:', data);
-    throw new Error(`LiteLLM API error: ${data.error?.message || 'Unknown error'}`);
-  }
+  const requestBody = {
+    model: 'azure/gpt-4.1',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    max_completion_tokens: 3000,
+  };
+
+  console.log('Making request to LiteLLM proxy...');
   
-  return data.choices[0].message.content;
+  try {
+    const startTime = Date.now();
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+    
+    const endTime = Date.now();
+    console.log(`API call took ${endTime - startTime}ms`);
+    console.log('LiteLLM proxy response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Response content length:', data.choices?.[0]?.message?.content?.length || 0);
+    console.log('LiteLLM response received successfully');
+    
+    const content = data.choices[0].message.content;
+    
+    // Clean up any markdown code blocks before JSON parsing
+    const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    
+    console.log('Analysis completed successfully');
+    return cleanContent;
+    
+  } catch (error) {
+    console.error('Error in callLiteLLM:', error);
+    throw error;
+  }
 }
 
 async function performPayEquityAnalysis(employees: any[], standardRoles: any[], departmentFilter?: string, roleFilter?: string) {
@@ -221,8 +250,21 @@ Provide comprehensive pay equity analysis focusing on:
 3. Department and level-based equity assessment
 4. Actionable recommendations for addressing inequities`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  try {
+    const result = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(result);
+  } catch (error) {
+    console.error('Error in performPayEquityAnalysis:', error);
+    return {
+      payEquityMetrics: { overallEquityScore: 0, totalEmployeesAnalyzed: filteredEmployees.length, potentialIssuesFound: 0, avgSalaryVariance: 0 },
+      genderPayAnalysis: [],
+      experiencePayAnalysis: [],
+      departmentPayAnalysis: [],
+      actionPlan: { immediateActions: [], mediumTermActions: [], budgetImpact: 0, timeline: "TBD" },
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performMarketBenchmarking(employees: any[], standardRoles: any[], jobDescriptions: any[], departmentFilter?: string) {
@@ -295,8 +337,20 @@ Provide comprehensive market benchmarking analysis focusing on:
 
 Note: Use Indonesian market standards for telecommunications industry. Assume market data based on role complexity, requirements, and industry standards.`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  try {
+    const result = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(result);
+  } catch (error) {
+    console.error('Error in performMarketBenchmarking:', error);
+    return {
+      marketPositioning: { overallMarketPosition: "Unknown", competitivenessScore: 0, retentionRisk: "Medium", attractionCapability: "Moderate" },
+      roleBenchmarking: [],
+      departmentBenchmarking: [],
+      budgetRecommendations: { totalAdjustmentNeeded: 0, priorityAdjustments: [], phasedApproach: [] },
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performPromotionReadinessAnalysis(employees: any[], standardRoles: any[], departmentFilter?: string) {
@@ -365,8 +419,20 @@ Provide comprehensive promotion readiness analysis focusing on:
 3. Organizational budget impact and ROI analysis
 4. Succession planning opportunities and internal mobility`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  try {
+    const result = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(result);
+  } catch (error) {
+    console.error('Error in performPromotionReadinessAnalysis:', error);
+    return {
+      promotionReadiness: [],
+      salaryAdjustmentCandidates: [],
+      organizationalImpact: { totalPromotionBudget: 0, totalAdjustmentBudget: 0, talentRetentionImprovement: 0, expectedROI: "TBD", implementationTimeline: "TBD" },
+      successionOpportunities: [],
+      saved: false,
+      error: error.message
+    };
+  }
 }
 
 async function performCompensationOptimization(employees: any[], standardRoles: any[], jobDescriptions: any[]) {
@@ -426,6 +492,18 @@ Provide comprehensive compensation optimization analysis focusing on:
 3. Salary band restructuring recommendations
 4. Strategic roadmap for compensation excellence`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(result);
+  try {
+    const result = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(result);
+  } catch (error) {
+    console.error('Error in performCompensationOptimization:', error);
+    return {
+      currentState: { totalCompensationBudget: 0, avgSalaryByLevel: {}, compressionIssues: 0, budgetUtilization: 0 },
+      optimizationOpportunities: [],
+      salaryBandRecommendations: [],
+      strategicRecommendations: { shortTerm: [], mediumTerm: [], longTerm: [], totalInvestment: 0, expectedOutcomes: [] },
+      saved: false,
+      error: error.message
+    };
+  }
 }
