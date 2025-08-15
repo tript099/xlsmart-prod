@@ -62,11 +62,29 @@ serve(async (req) => {
       throw new Error(`No employees found for ${assessmentType}: ${identifier}`);
     }
 
-    // Create assessment session
+    // Check for existing session and delete if found
+    const existingSessionName = `Bulk Skills Assessment - ${assessmentType.toUpperCase()}: ${identifier}`;
+    const { data: existingSessions } = await supabase
+      .from('xlsmart_upload_sessions')
+      .select('id')
+      .eq('session_name', existingSessionName)
+      .eq('created_by', '00000000-0000-0000-0000-000000000000');
+    
+    // Delete existing sessions to avoid unique constraint violation
+    if (existingSessions && existingSessions.length > 0) {
+      await supabase
+        .from('xlsmart_upload_sessions')
+        .delete()
+        .eq('session_name', existingSessionName)
+        .eq('created_by', '00000000-0000-0000-0000-000000000000');
+    }
+
+    // Create assessment session with unique timestamp
+    const sessionName = `Bulk Skills Assessment - ${assessmentType.toUpperCase()}: ${identifier} - ${new Date().toISOString()}`;
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .insert({
-        session_name: `Bulk Skills Assessment - ${assessmentType.toUpperCase()}: ${identifier}`,
+        session_name: sessionName,
         file_names: [`bulk_assessment_${assessmentType}`],
         temp_table_names: [],
         total_rows: employees.length,
