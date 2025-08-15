@@ -36,9 +36,10 @@ export const useEmployeeAnalytics = (): EmployeeAnalytics => {
         const assignedRoles = employees?.filter(emp => emp.standard_role_id || emp.ai_suggested_role_id).length || 0;
         const roleAssignmentRate = totalEmployees ? Math.round((assignedRoles / totalEmployees) * 100) : 0;
 
-        // Calculate data completeness
+        // Calculate data completeness - more flexible requirements
         const completeProfiles = employees?.filter(emp => 
-          emp.first_name && emp.last_name && emp.email && emp.current_position && emp.current_department
+          emp.first_name && emp.last_name && emp.email && emp.current_position &&
+          (emp.current_department || emp.current_position) // Allow department to be empty if position is filled
         ).length || 0;
         const dataCompleteness = totalEmployees ? Math.round((completeProfiles / totalEmployees) * 100) : 0;
 

@@ -76,14 +76,14 @@ const EmployeeDashboard = () => {
                 if (index === 0) {
                   setActiveDialog('employee-details');
                 } else if (index === 1) {
-                  // Role Assignment Rate - could navigate to role assignment page
-                  console.log('Role Assignment Rate clicked');
+                  // Role Assignment Rate - navigate to role management
+                  window.location.href = '/dashboard/roles';
                 } else if (index === 2) {
-                  // Data Completeness - could navigate to data quality page
-                  console.log('Data Completeness clicked');
+                  // Data Completeness - show employee directory for data review
+                  setActiveDialog('employee-details');
                 } else if (index === 3) {
-                  // Skills Assessment - could navigate to skills page
-                  console.log('Skills Assessment clicked');
+                  // Skills Assessment - navigate to skills dashboard
+                  window.location.href = '/dashboard/skills';
                 }
               }}
             >
