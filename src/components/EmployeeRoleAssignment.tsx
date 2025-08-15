@@ -297,63 +297,112 @@ export const EmployeeRoleAssignment = () => {
         description: `Analyzing ${employeesToProcess.length} employees for role suggestions...`,
       });
 
-      // Get current user
+      // Create a session for this AI assignment
+      const sessionName = `AI Assignment - ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+      
+      // Get current user for created_by field
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
-
-      // Process employees in batches for better performance
-      const batchSize = 5;
-      let processed = 0;
       
-      for (let i = 0; i < employeesToProcess.length; i += batchSize) {
-        const batch = employeesToProcess.slice(i, i + batchSize);
-        
-        // Call the employee role assignment function for each employee
-        for (const employee of batch) {
-          try {
-            const { data, error } = await supabase.functions.invoke('employee-role-assignment', {
-              body: { 
-                employeeId: employee.id,
-                assignImmediately: true // Flag to assign immediately instead of just suggesting
-              }
-            });
+      console.log('Creating session for AI assignment...');
+      const { data: sessionData, error: sessionError } = await supabase
+        .from('xlsmart_upload_sessions')
+        .insert({
+          session_name: sessionName,
+          file_names: ['AI Role Assignment'],
+          temp_table_names: [],
+          total_rows: employeesToProcess.length,
+          created_by: user.id,
+          status: 'assigning_roles'
+        })
+        .select()
+        .single();
 
-            if (error) {
-              console.error(`Error assigning role to employee ${employee.id}:`, error);
-            } else {
-              console.log(`Successfully processed employee ${employee.id}:`, data);
-            }
-            
-            processed++;
-            setAiProgress({ processed, total: employeesToProcess.length });
-          } catch (error) {
-            console.error(`Error processing employee ${employee.id}:`, error);
-            processed++;
-            setAiProgress({ processed, total: employeesToProcess.length });
-          }
-        }
+      if (sessionError) {
+        console.error('Session creation error:', sessionError);
+        throw new Error(`Failed to create session: ${sessionError.message}`);
       }
 
-      // Refresh the employee list
-      await fetchUnassignedEmployees();
-      setSelectedEmployees(new Set());
-      setSelectAll(false);
-      
-      toast({
-        title: "AI Assignment Completed",
-        description: `Processed ${processed} employees`,
+      console.log('Session created:', sessionData.id);
+
+      // Call the AI role assignment function with the correct sessionId
+      console.log('Calling employee-role-assignment function...');
+      const { data, error } = await supabase.functions.invoke('employee-role-assignment', {
+        body: { sessionId: sessionData.id }
       });
+
+      console.log('Function response:', { data, error });
+
+      if (error) {
+        console.error('Function error:', error);
+        throw new Error(`AI assignment failed: ${error.message}`);
+      }
+
+      // Poll for progress
+      const pollProgress = async () => {
+        console.log('Polling for progress...');
+        const { data: session } = await supabase
+          .from('xlsmart_upload_sessions')
+          .select('ai_analysis, status')
+          .eq('id', sessionData.id)
+          .single();
+
+        console.log('Session status:', session?.status, 'Analysis:', session?.ai_analysis);
+
+        if (session?.ai_analysis) {
+          const progress = session.ai_analysis as any;
+          setAiProgress({
+            processed: progress.processed || 0,
+            total: progress.total || employeesToProcess.length
+          });
+
+          if (session.status === 'completed' || session.status === 'completed_with_errors' || session.status === 'failed') {
+            setAiAssigning(false);
+            setAiProgress(null);
+            
+            // Refresh the employee list to show updated assignments
+            await fetchUnassignedEmployees();
+            setSelectedEmployees(new Set());
+            setSelectAll(false);
+            
+            const message = session.status === 'completed' 
+              ? `Successfully assigned roles to ${progress.assigned || 0} employees`
+              : session.status === 'completed_with_errors'
+              ? `Assigned roles to ${progress.assigned || 0} employees with ${progress.errors || 0} errors`
+              : 'AI assignment failed - please try again';
+            
+            toast({
+              title: "AI Assignment Completed",
+              description: message,
+              variant: session.status === 'failed' ? 'destructive' : 'default'
+            });
+            return;
+          }
+        }
+
+        // Continue polling if still in progress
+        if (session?.status === 'assigning_roles') {
+          setTimeout(pollProgress, 2000);
+        } else {
+          // Stop polling if status is unexpected
+          console.log('Stopping poll due to unexpected status:', session?.status);
+          setAiAssigning(false);
+          setAiProgress(null);
+        }
+      };
+
+      // Start polling after a short delay
+      setTimeout(pollProgress, 1000);
 
     } catch (error: any) {
       console.error('Error in AI assignment:', error);
+      setAiAssigning(false);
+      setAiProgress(null);
       toast({
         title: "AI Assignment Failed",
         description: error.message || "Failed to assign roles with AI",
         variant: "destructive",
       });
-    } finally {
-      setAiAssigning(false);
-      setAiProgress(null);
     }
   };
 
