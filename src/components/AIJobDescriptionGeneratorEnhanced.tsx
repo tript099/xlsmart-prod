@@ -88,19 +88,33 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
 
   const loadStandardRoles = async () => {
     try {
+      console.log('Loading standard roles...');
       const { data, error } = await supabase
         .from('xlsmart_standard_roles')
         .select('*')
         .eq('is_active', true)
         .order('role_title');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Standard roles loaded:', data?.length || 0);
       setStandardRoles(data || []);
+      
+      if (!data || data.length === 0) {
+        toast({
+          title: "No Standard Roles Found",
+          description: "No active standard roles available. Please ensure roles are uploaded and activated.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error loading standard roles:', error);
       toast({
-        title: "Error",
-        description: "Failed to load standard roles",
+        title: "Error Loading Roles",
+        description: error instanceof Error ? error.message : "Failed to load standard roles. Please check your permissions.",
         variant: "destructive",
       });
     }
