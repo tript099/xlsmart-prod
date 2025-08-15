@@ -20,6 +20,8 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
   const [fixingJobs, setFixingJobs] = useState<Set<string>>(new Set());
+  const [pastResults, setPastResults] = useState<any[]>([]);
+  const [selectedResultId, setSelectedResultId] = useState<string>('');
 
   const analysisTypes = [
     { value: 'jd_optimization', label: 'JD Optimization', icon: Target },
@@ -28,7 +30,40 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
     { value: 'compliance_analysis', label: 'Compliance Analysis', icon: Shield }
   ];
 
+  React.useEffect(() => {
+    fetchPastResults();
+  }, []);
+
+  const fetchPastResults = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ai_analysis_results')
+        .select('*')
+        .eq('function_name', 'ai-job-descriptions-intelligence')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setPastResults(data || []);
+    } catch (error) {
+      console.error('Error fetching past results:', error);
+    }
+  };
+
   const handleAnalysis = async () => {
+    // Check if we have recent results for this analysis type
+    const recentResult = pastResults.find(
+      result => result.analysis_type === selectedAnalysis && 
+      new Date(result.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000) // Within 24 hours
+    );
+
+    if (recentResult && !selectedResultId) {
+      setResults(recentResult.analysis_result);
+      setSelectedResultId(recentResult.id);
+      toast.success('Loaded recent analysis results');
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-job-descriptions-intelligence', {
@@ -44,13 +79,27 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
       if (error) throw error;
       
       setResults(data);
+      setSelectedResultId(''); // Clear selected result ID for new analysis
       onAnalysisComplete?.(data);
       toast.success('Job descriptions analysis completed!');
+      
+      // Refresh past results to include the new one
+      await fetchPastResults();
     } catch (error) {
       console.error('Analysis error:', error);
       toast.error('Failed to complete analysis');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLoadPastResult = (resultId: string) => {
+    const result = pastResults.find(r => r.id === resultId);
+    if (result) {
+      setResults(result.analysis_result);
+      setSelectedResultId(resultId);
+      setSelectedAnalysis(result.analysis_type);
+      toast.success('Loaded past analysis result');
     }
   };
 
@@ -436,6 +485,27 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
           </SelectContent>
         </Select>
 
+        <Select value={selectedResultId} onValueChange={handleLoadPastResult}>
+          <SelectTrigger className="w-full sm:w-64">
+            <SelectValue placeholder="Load past analysis" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">New Analysis</SelectItem>
+            {pastResults.map((result) => (
+              <SelectItem key={result.id} value={result.id}>
+                <div className="flex flex-col">
+                  <span className="font-medium">
+                    {analysisTypes.find(t => t.value === result.analysis_type)?.label}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(result.created_at).toLocaleDateString()} {new Date(result.created_at).toLocaleTimeString()}
+                  </span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled>
           <SelectTrigger className="w-full sm:w-48 opacity-50">
             <SelectValue placeholder="All Departments (Filtering Coming Soon)" />
@@ -455,18 +525,29 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
           disabled={isLoading}
           className="w-full sm:w-auto"
         >
-          {isLoading ? 'Analyzing...' : 'Run Analysis'}
-          <FileText className="ml-2 h-4 w-4" />
+          <FileText className="h-4 w-4 mr-2" />
+          {isLoading ? 'Analyzing...' : selectedResultId ? 'Run New Analysis' : 'Analyze Job Descriptions'}
         </Button>
       </div>
 
+      {selectedResultId && (
+        <div className="bg-muted/50 border border-border rounded-lg p-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            Viewing cached result from {new Date(pastResults.find(r => r.id === selectedResultId)?.created_at || '').toLocaleString()}
+          </div>
+        </div>
+      )}
+
       {results && (
-        <Tabs value={selectedAnalysis} className="w-full">
+        <Tabs value={selectedAnalysis} onValueChange={setSelectedAnalysis}>
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="jd_optimization">Optimization</TabsTrigger>
-            <TabsTrigger value="market_alignment">Market</TabsTrigger>
-            <TabsTrigger value="skills_mapping">Skills</TabsTrigger>
-            <TabsTrigger value="compliance_analysis">Compliance</TabsTrigger>
+            {analysisTypes.map((type) => (
+              <TabsTrigger key={type.value} value={type.value} className="flex items-center gap-2">
+                <type.icon className="h-4 w-4" />
+                <span className="hidden sm:inline">{type.label}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="jd_optimization" className="mt-6">

@@ -87,6 +87,26 @@ serve(async (req) => {
       throw new Error(`AI analysis failed: ${aiError.message}`);
     }
 
+    // Save results to database
+    const { data: savedResult, error: saveError } = await supabase
+      .from('ai_analysis_results')
+      .insert({
+        analysis_type: analysisType,
+        function_name: 'ai-job-descriptions-intelligence',
+        input_parameters: { analysisType, departmentFilter, roleFilter },
+        analysis_result: result,
+        status: 'completed'
+      })
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Error saving analysis result:', saveError);
+      // Continue even if save fails - return the result
+    } else {
+      console.log('Analysis result saved to database:', savedResult.id);
+    }
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
