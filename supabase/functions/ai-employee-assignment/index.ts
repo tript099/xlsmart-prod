@@ -53,7 +53,7 @@ serve(async (req) => {
       });
     }
 
-    // Get standard roles
+    // Get standard roles with job descriptions
     const { data: standardRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
       .select('*')
@@ -67,6 +67,26 @@ serve(async (req) => {
       throw new Error('No standard roles available');
     }
 
+    // Get job descriptions for additional context
+    const { data: jobDescriptions, error: jdError } = await supabase
+      .from('xlsmart_job_descriptions')
+      .select('*')
+      .eq('status', 'approved');
+
+    if (jdError) {
+      console.warn('Failed to fetch job descriptions:', jdError.message);
+    }
+
+    // Create a map of role IDs to job descriptions
+    const jdMap = new Map();
+    if (jobDescriptions) {
+      jobDescriptions.forEach(jd => {
+        if (jd.standard_role_id) {
+          jdMap.set(jd.standard_role_id, jd);
+        }
+      });
+    }
+
     console.log(`Processing ${employees.length} employees with ${standardRoles.length} standard roles`);
 
     let assigned = 0;
@@ -78,7 +98,7 @@ serve(async (req) => {
       try {
         console.log(`Processing employee: ${employee.first_name} ${employee.last_name}`);
         
-        const suggestedRoleId = await assignRoleWithAI(employee, standardRoles, liteLLMApiKey);
+        const suggestedRoleId = await assignRoleWithAI(employee, standardRoles, jdMap, liteLLMApiKey);
         
         if (suggestedRoleId && assignImmediately) {
           const { error: updateError } = await supabase
@@ -150,7 +170,7 @@ serve(async (req) => {
   }
 });
 
-async function assignRoleWithAI(employee: any, standardRoles: any[], apiKey: string) {
+async function assignRoleWithAI(employee: any, standardRoles: any[], jdMap: Map<string, any>, apiKey: string) {
   try {
     const employeeSkills = Array.isArray(employee.skills) ? employee.skills.join(', ') : employee.skills || '';
     const employeeCerts = Array.isArray(employee.certifications) ? employee.certifications.join(', ') : employee.certifications || '';
@@ -159,10 +179,17 @@ async function assignRoleWithAI(employee: any, standardRoles: any[], apiKey: str
       const coreSkills = Array.isArray(role.required_skills) ? role.required_skills.join(', ') : '';
       const responsibilities = Array.isArray(role.core_responsibilities) ? role.core_responsibilities.slice(0, 3).join('; ') : '';
       
+      // Get job description if available
+      const jobDesc = jdMap.get(role.id);
+      const jdInfo = jobDesc ? `
+  JD Summary: ${jobDesc.summary || 'Not specified'}
+  Required Skills: ${Array.isArray(jobDesc.required_skills) ? jobDesc.required_skills.join(', ') : ''}
+  Responsibilities: ${Array.isArray(jobDesc.responsibilities) ? jobDesc.responsibilities.slice(0, 3).join('; ') : ''}` : '';
+      
       return `${role.id} | ${role.role_title} | ${role.job_family} | ${role.role_level} | ${role.department}
   Experience: ${role.experience_range_min}-${role.experience_range_max} years
   Key Skills: ${coreSkills}
-  Responsibilities: ${responsibilities || role.standard_description || 'Not specified'}`;
+  Standard Responsibilities: ${responsibilities || role.standard_description || 'Not specified'}${jdInfo}`;
     };
 
     const prompt = `You are an expert HR system that assigns employees to the most appropriate standard roles. 
