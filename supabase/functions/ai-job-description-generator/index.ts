@@ -59,10 +59,10 @@ serve(async (req) => {
       throw new Error('Role title is required');
     }
 
-    const openAIApiKey = Deno.env.get('LITELLM_API_KEY');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      console.error('LITELLM_API_KEY not found in environment');
-      throw new Error('LiteLLM API key not configured');
+      console.error('OPENAI_API_KEY not found in environment');
+      throw new Error('OpenAI API key not configured');
     }
     
     console.log('API key found, proceeding with AI generation...');
