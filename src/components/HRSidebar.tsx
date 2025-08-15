@@ -109,7 +109,24 @@ export function HRSidebar() {
       {/* Trigger is in the header, not here */}
 
       <SidebarContent>
-        {/* Header */}
+        {/* Logo Header */}
+        <div className={`p-4 border-b ${collapsed ? 'px-2' : ''}`}>
+          <div className={`flex items-center ${collapsed ? 'justify-center' : 'space-x-3'}`}>
+            <img 
+              src="/xlsmart-logo.svg" 
+              alt="XLSMART" 
+              className={collapsed ? "h-8 w-auto" : "h-10 w-auto"}
+            />
+            {!collapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-lg font-bold text-primary">XLSMART</p>
+                <p className="text-xs text-muted-foreground">HR Platform</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* User Info */}
         <div className={`p-4 border-b ${collapsed ? 'px-2' : ''}`}>
           <div className="flex items-center space-x-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
