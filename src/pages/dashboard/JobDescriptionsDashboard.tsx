@@ -9,7 +9,7 @@ import { FileText, Zap, CheckCircle, Clock, Brain, Loader2 } from "lucide-react"
 
 const JobDescriptionsDashboard = () => {
   const navigate = useNavigate();
-  const { totalJDs, activeJDs, draftJDs, approvedJDs, loading } = useJobDescriptionStats();
+  const { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading } = useJobDescriptionStats();
   const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
 
   const handleCardClick = (cardType: string) => {
@@ -42,7 +42,7 @@ const JobDescriptionsDashboard = () => {
       status: "approved"
     },
     { 
-      value: loading ? "Loading..." : `${draftJDs}`, 
+      value: loading ? "Loading..." : `${pendingJDs}`, 
       label: "Pending Review", 
       icon: Clock, 
       color: "text-purple-600",
