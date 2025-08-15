@@ -120,18 +120,27 @@ serve(async (req) => {
               console.log(`Assessment completed for ${employee.id}:`, JSON.stringify(assessment, null, 2));
 
               // Store assessment result
+              console.log('Inserting assessment into database...');
+              
+              // Handle the NOT NULL constraint for job_description_id
+              // Use a default UUID if no target role is specified
+              const defaultJobDescriptionId = '00000000-0000-0000-0000-000000000001';
+              
+              const insertData = {
+                employee_id: employee.id,
+                job_description_id: targetRoleId || defaultJobDescriptionId,
+                overall_match_percentage: assessment.overallMatch || 0,
+                skill_gaps: assessment.skillGaps || [],
+                recommendations: assessment.recommendations || 'No recommendations available',
+                next_role_recommendations: assessment.nextRoles || [],
+                ai_analysis: `Bulk assessment via ${assessmentType}`,
+                assessed_by: session.created_by
+              };
+              console.log('Insert data:', JSON.stringify(insertData, null, 2));
+              
               const { error: insertError } = await supabase
                 .from('xlsmart_skill_assessments')
-                .insert({
-                  employee_id: employee.id,
-                  job_description_id: targetRoleId,
-                  overall_match_percentage: assessment.overallMatch || 0,
-                  skill_gaps: assessment.skillGaps || [],
-                  recommendations: assessment.recommendations || 'No recommendations available',
-                  next_role_recommendations: assessment.nextRoles || [],
-                  ai_analysis: `Bulk assessment via ${assessmentType}`,
-                  assessed_by: session.created_by
-                });
+                .insert(insertData);
 
               if (insertError) {
                 console.error(`Database insert error for employee ${employee.id}:`, insertError);
