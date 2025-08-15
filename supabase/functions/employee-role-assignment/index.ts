@@ -66,10 +66,20 @@ serve(async (req) => {
 
     console.log(`Found ${employees.length} unassigned employees`);
 
-    // Get existing standard roles for AI matching
+    // Get existing standard roles with job descriptions for AI matching
     const { data: standardRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
-      .select('*')
+      .select(`
+        *,
+        job_descriptions:xlsmart_job_descriptions(
+          title,
+          summary,
+          responsibilities,
+          required_qualifications,
+          required_skills,
+          experience_level
+        )
+      `)
       .eq('is_active', true);
 
     if (rolesError) {
@@ -243,6 +253,23 @@ async function assignRoleWithAI(employee: any, standardRoles: any[]) {
       if (locationSkill) location = locationSkill.replace('Location:', '').trim();
     }
 
+    const formatRole = (role: any) => {
+      const jd = role.job_descriptions?.[0];
+      const responsibilities = Array.isArray(jd?.responsibilities) ? jd.responsibilities.slice(0, 3).join('; ') : '';
+      const requiredSkills = Array.isArray(jd?.required_skills) ? jd.required_skills.join(', ') : '';
+      const coreSkills = Array.isArray(role.required_skills) ? role.required_skills.join(', ') : '';
+      
+      return `- ID: ${role.id}
+  Title: ${role.role_title}
+  Family: ${role.job_family}
+  Level: ${role.role_level}
+  Category: ${role.role_category}
+  Department: ${role.department}
+  Experience Range: ${role.experience_range_min}-${role.experience_range_max} years
+  Key Skills: ${coreSkills || requiredSkills}
+  Main Duties: ${responsibilities || jd?.summary || role.standard_description || 'Not specified'}`;
+    };
+
     const prompt = `You are an expert HR system that assigns employees to the most appropriate standard roles. Analyze this employee profile and find the BEST MATCHING standard role from the available options.
 
 Employee Profile:
@@ -258,19 +285,13 @@ Employee Profile:
 - Aspirations: ${aspirations || 'N/A'}
 - Location: ${location || 'N/A'}
 
-Available Standard Roles (YOU MUST CHOOSE FROM THESE):
-${standardRoles.map(role => `- ID: ${role.id}
-  Title: ${role.role_title}
-  Family: ${role.job_family}
-  Level: ${role.role_level}
-  Category: ${role.role_category}
-  Department: ${role.department}
-  Description: ${role.standard_description || 'N/A'}`).join('\n\n')}
+Available Standard Roles (with job descriptions):
+${standardRoles.map(formatRole).join('\n\n')}
 
 ANALYSIS CRITERIA:
-1. **Skills Match**: Compare employee skills with role requirements
+1. **Skills Match**: Compare employee skills with role requirements and job description skills
 2. **Experience Level**: Match years of experience with role level expectations
-3. **Current Position**: Consider similarity to existing role title
+3. **Responsibilities Alignment**: Compare current position with role duties
 4. **Department Alignment**: Prefer roles in same/similar departments
 5. **Career Progression**: Consider employee aspirations and growth path
 

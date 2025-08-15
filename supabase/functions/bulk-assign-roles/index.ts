@@ -46,10 +46,20 @@ serve(async (req) => {
 
     console.log(`Found ${employees?.length || 0} unassigned employees`);
 
-    console.log('Fetching standard roles...');
+    console.log('Fetching standard roles with job descriptions...');
     const { data: standardRoles, error: rolesError } = await supabaseClient
       .from('xlsmart_standard_roles')
-      .select('id, role_title, department, role_level')
+      .select(`
+        *,
+        job_descriptions:xlsmart_job_descriptions(
+          title,
+          summary,
+          responsibilities,
+          required_qualifications,
+          required_skills,
+          experience_level
+        )
+      `)
       .eq('is_active', true);
 
     if (rolesError) {
@@ -79,22 +89,74 @@ serve(async (req) => {
     const employee = employees[0];
     console.log(`Testing with employee: ${employee.first_name} ${employee.last_name}`);
 
-    // Simple role matching without AI for now
+    // Enhanced role matching with job descriptions
     let assignedRoleId = null;
     
-    // Find a role that matches the position name
-    const matchingRole = standardRoles.find(role => 
-      role.role_title.toLowerCase().includes(employee.current_position.toLowerCase()) ||
-      employee.current_position.toLowerCase().includes(role.role_title.toLowerCase())
-    );
-
+    console.log(`Analyzing employee: ${employee.current_position} with skills: ${employee.skills}`);
+    
+    // Enhanced matching considering job descriptions
+    const findBestMatch = (employee: any, roles: any[]) => {
+      let bestMatch = null;
+      let bestScore = 0;
+      
+      for (const role of roles) {
+        let score = 0;
+        const jd = role.job_descriptions?.[0];
+        
+        // Job title similarity (30%)
+        if (role.role_title.toLowerCase().includes(employee.current_position.toLowerCase()) ||
+            employee.current_position.toLowerCase().includes(role.role_title.toLowerCase())) {
+          score += 0.3;
+        }
+        
+        // Skills match with job description (40%)
+        const roleSkills = [
+          ...(Array.isArray(role.required_skills) ? role.required_skills : []),
+          ...(Array.isArray(jd?.required_skills) ? jd.required_skills : [])
+        ];
+        const employeeSkills = Array.isArray(employee.skills) ? employee.skills : [];
+        
+        const skillMatches = employeeSkills.filter(skill => 
+          roleSkills.some(roleSkill => 
+            skill.toLowerCase().includes(roleSkill.toLowerCase()) ||
+            roleSkill.toLowerCase().includes(skill.toLowerCase())
+          )
+        ).length;
+        
+        if (roleSkills.length > 0) {
+          score += (skillMatches / roleSkills.length) * 0.4;
+        }
+        
+        // Department match (20%)
+        if (role.department && employee.current_department && 
+            role.department.toLowerCase() === employee.current_department.toLowerCase()) {
+          score += 0.2;
+        }
+        
+        // Experience level match (10%)
+        const empExp = employee.years_of_experience || 0;
+        if (empExp >= (role.experience_range_min || 0) && empExp <= (role.experience_range_max || 50)) {
+          score += 0.1;
+        }
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = role;
+        }
+      }
+      
+      return bestMatch;
+    };
+    
+    const matchingRole = findBestMatch(employee, standardRoles);
+    
     if (matchingRole) {
       assignedRoleId = matchingRole.id;
-      console.log(`Found matching role: ${matchingRole.role_title}`);
+      console.log(`Found matching role: ${matchingRole.role_title} (score: calculated)`);
     } else {
-      // Assign the first available role for testing
+      // Assign the first available role as fallback
       assignedRoleId = standardRoles[0].id;
-      console.log(`No exact match, assigning first role: ${standardRoles[0].role_title}`);
+      console.log(`No match found, assigning first role: ${standardRoles[0].role_title}`);
     }
 
     console.log(`Updating employee with role ID: ${assignedRoleId}`);
@@ -123,7 +185,8 @@ serve(async (req) => {
       total: 1,
       details: {
         employee: `${employee.first_name} ${employee.last_name}`,
-        assigned_role: matchingRole?.role_title || standardRoles[0].role_title
+        assigned_role: matchingRole?.role_title || standardRoles[0].role_title,
+        matching_used: 'Enhanced job description matching'
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
