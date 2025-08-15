@@ -36,20 +36,31 @@ const SkillsDashboard = () => {
           .select('*', { count: 'exact', head: true });
 
         // Fetch skill assessments
-        const { data: assessments, count: assessedEmployees } = await supabase
+        const { data: assessments } = await supabase
           .from('xlsmart_skill_assessments')
-          .select('*', { count: 'exact' });
+          .select('*');
+
+        // Count unique employees who have been assessed
+        const uniqueAssessedEmployees = new Set(assessments?.map(a => a.employee_id)).size;
 
         // Calculate analytics
         const avgSkillLevel = assessments?.length > 0 
           ? assessments.reduce((sum, a) => sum + (a.overall_match_percentage || 0), 0) / assessments.length 
           : 0;
 
+        // Count total skill gaps
+        const totalSkillGaps = assessments?.reduce((sum, a) => {
+          if (Array.isArray(a.skill_gaps)) {
+            return sum + a.skill_gaps.length;
+          }
+          return sum;
+        }, 0) || 0;
+
         setSkillAnalytics({
           totalEmployees: totalEmployees || 0,
-          assessedEmployees: assessedEmployees || 0,
+          assessedEmployees: uniqueAssessedEmployees,
           totalSkills: totalSkills || 0,
-          skillGaps: assessments?.reduce((sum, a) => sum + (Array.isArray(a.skill_gaps) ? a.skill_gaps.length : 0), 0) || 0,
+          skillGaps: totalSkillGaps,
           avgSkillLevel: Math.round(avgSkillLevel * 10) / 10,
           topSkills: [],
           criticalGaps: [],
