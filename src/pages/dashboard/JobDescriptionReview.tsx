@@ -50,7 +50,8 @@ const JobDescriptionReview = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-  const statusFilter = searchParams.get('status') || 'all';
+  const statusFilters = searchParams.getAll('status');
+  const statusFilter = statusFilters.length > 0 ? statusFilters : ['all'];
   
   const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +71,12 @@ const JobDescriptionReview = () => {
         .order('created_at', { ascending: false });
 
       // Apply status filter
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      if (!statusFilter.includes('all')) {
+        if (statusFilter.length === 1) {
+          query = query.eq('status', statusFilter[0]);
+        } else {
+          query = query.in('status', statusFilter);
+        }
       }
 
       const { data, error } = await query;
@@ -261,12 +266,20 @@ Salary Range: ${jd.currency} ${jd.salary_range_min?.toLocaleString() || 'N/A'} -
   };
 
   const getFilterTitle = () => {
-    switch (statusFilter) {
+    if (statusFilter.includes('all')) return 'All Job Descriptions';
+    if (statusFilter.length > 1) {
+      if (statusFilter.includes('draft') && statusFilter.includes('review')) {
+        return 'Pending Review Job Descriptions';
+      }
+      return `${statusFilter.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' & ')} Job Descriptions`;
+    }
+    const status = statusFilter[0];
+    switch (status) {
       case 'draft': return 'Draft Job Descriptions';
       case 'approved': return 'Approved Job Descriptions';
       case 'published': return 'Published Job Descriptions';
       case 'review': return 'Job Descriptions Under Review';
-      default: return 'All Job Descriptions';
+      default: return 'Job Descriptions';
     }
   };
 
@@ -383,7 +396,7 @@ Salary Range: ${jd.currency} ${jd.salary_range_min?.toLocaleString() || 'N/A'} -
                   
                   {/* Action Buttons */}
                   <div className="flex items-center gap-2 pt-4">
-                    {selectedJD.status === 'draft' && (
+                    {(selectedJD.status === 'draft' || selectedJD.status === 'review') && (
                       <>
                         <Button
                           onClick={() => handleApprove(selectedJD.id)}
@@ -397,14 +410,16 @@ Salary Range: ${jd.currency} ${jd.salary_range_min?.toLocaleString() || 'N/A'} -
                           )}
                           Approve
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => handleReject(selectedJD.id)}
-                          disabled={actionLoading === selectedJD.id}
-                        >
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Request Review
-                        </Button>
+                        {selectedJD.status === 'draft' && (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleReject(selectedJD.id)}
+                            disabled={actionLoading === selectedJD.id}
+                          >
+                            <XCircle className="h-4 w-4 mr-2" />
+                            Request Review
+                          </Button>
+                        )}
                       </>
                     )}
                     {selectedJD.status === 'approved' && (

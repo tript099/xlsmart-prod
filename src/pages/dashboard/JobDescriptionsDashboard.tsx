@@ -14,7 +14,13 @@ const JobDescriptionsDashboard = () => {
 
   const handleCardClick = (cardType: string) => {
     const params = new URLSearchParams();
-    params.set('status', cardType);
+    if (cardType.includes(',')) {
+      // Handle multiple statuses
+      const statuses = cardType.split(',');
+      statuses.forEach(status => params.append('status', status));
+    } else {
+      params.set('status', cardType);
+    }
     navigate(`/dashboard/job-descriptions/review?${params.toString()}`);
   };
 
@@ -37,11 +43,11 @@ const JobDescriptionsDashboard = () => {
     },
     { 
       value: loading ? "Loading..." : `${draftJDs}`, 
-      label: "Draft JDs", 
+      label: "Pending Review", 
       icon: Clock, 
       color: "text-purple-600",
-      description: "Job descriptions in draft",
-      status: "draft"
+      description: "Need approval or review",
+      status: "draft,review"
     },
     { 
       value: loading ? "Loading..." : `${activeJDs}`, 
