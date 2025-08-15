@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const CareerPathsDashboard = () => {
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const [careerAnalytics, setCareerAnalytics] = useState({
     totalEmployees: 0,
     activeCareerPlans: 0,

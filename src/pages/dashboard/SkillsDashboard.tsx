@@ -6,9 +6,11 @@ import { Brain, TrendingUp, Award, Users, Target, Zap, BarChart3, CheckCircle, A
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const SkillsDashboard = () => {
   const aiStats = useAIStats();
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const [skillAnalytics, setSkillAnalytics] = useState({
     totalEmployees: 0,
     assessedEmployees: 0,
@@ -115,7 +117,15 @@ const SkillsDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {skillsStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-lg transition-all duration-300 border-0 shadow-sm bg-background/50 backdrop-blur-sm">
+            <Card 
+              key={index} 
+              className="hover:shadow-lg transition-all duration-300 border-0 shadow-sm bg-background/50 backdrop-blur-sm cursor-pointer"
+              onClick={() => {
+                if (index === 0) {
+                  setActiveDialog('skills-details');
+                }
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20">
@@ -385,6 +395,14 @@ const SkillsDashboard = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Detail Dialogs */}
+      <Dialog open={activeDialog === 'skills-details'} onOpenChange={(open) => setActiveDialog(open ? 'skills-details' : null)}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Skills Details</DialogTitle>
+          <SkillsListDetails />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

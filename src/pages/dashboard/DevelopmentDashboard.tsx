@@ -4,9 +4,11 @@ import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
 import { AILearningDevelopment } from "@/components/AILearningDevelopment";
 import { BookOpen, TrendingUp, Clock, Award, Brain, Loader2 } from "lucide-react";
 import { useDevelopmentAnalytics } from "@/hooks/useDevelopmentAnalytics";
+import { useState } from "react";
 
 const DevelopmentDashboard = () => {
   const developmentAnalytics = useDevelopmentAnalytics();
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const developmentStats = [
     { 
@@ -60,7 +62,7 @@ const DevelopmentDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {developmentStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-md transition-all duration-200">
+            <Card key={index} className="hover:shadow-md transition-all duration-200 cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${

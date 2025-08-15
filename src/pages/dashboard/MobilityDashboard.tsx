@@ -2,9 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlanningAI";
 import { Target, TrendingUp, Users, AlertTriangle, Loader2 } from "lucide-react";
 import { useMobilityAnalytics } from "@/hooks/useMobilityAnalytics";
+import { useState } from "react";
 
 const MobilityDashboard = () => {
   const mobilityAnalytics = useMobilityAnalytics();
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const mobilityStats = [
     { 
@@ -58,7 +60,7 @@ const MobilityDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {mobilityStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-md transition-all duration-200">
+            <Card key={index} className="hover:shadow-md transition-all duration-200 cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${

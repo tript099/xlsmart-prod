@@ -4,13 +4,17 @@ import { StandardizedRolesDetails } from "@/components/StandardizedRolesDetails"
 import { RoleStandardizationSystem } from "@/components/RoleStandardizationSystem";
 import { AIAdvancedRoleIntelligence } from "@/components/AIAdvancedRoleIntelligence";
 import BulkRoleAssignment from "@/components/BulkRoleAssignment";
+import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
 import { Briefcase, Upload, Target, BarChart3, Brain, Loader2 } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useRoleAnalytics } from "@/hooks/useRoleAnalytics";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const RolesDashboard = () => {
   const aiStats = useAIStats();
   const roleAnalytics = useRoleAnalytics();
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const roleStats = [
     { 
@@ -64,7 +68,17 @@ const RolesDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {roleStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-md transition-all duration-200">
+            <Card 
+              key={index} 
+              className="hover:shadow-md transition-all duration-200 cursor-pointer"
+              onClick={() => {
+                if (index === 0) {
+                  setActiveDialog('roles-details');
+                } else if (index === 1) {
+                  setActiveDialog('accuracy-details');
+                }
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${
@@ -185,6 +199,21 @@ const RolesDashboard = () => {
           </section>
         </TabsContent>
       </Tabs>
+
+      {/* Detail Dialogs */}
+      <Dialog open={activeDialog === 'roles-details'} onOpenChange={(open) => setActiveDialog(open ? 'roles-details' : null)}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Standardized Roles Details</DialogTitle>
+          <StandardizedRolesDetails />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'accuracy-details'} onOpenChange={(open) => setActiveDialog(open ? 'accuracy-details' : null)}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Mapping Accuracy Details</DialogTitle>
+          <MappingAccuracyDetails />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -109,7 +109,7 @@ const SkillInventoryDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {inventoryStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-md transition-all duration-200">
+            <Card key={index} className="hover:shadow-md transition-all duration-200 cursor-pointer">
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${

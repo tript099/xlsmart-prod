@@ -9,10 +9,13 @@ import { AIDiversityInclusion } from "@/components/AIDiversityInclusion";
 import { Users, Upload, BarChart3, TrendingUp, DollarSign, Brain, Loader2 } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useEmployeeAnalytics } from "@/hooks/useEmployeeAnalytics";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const EmployeeDashboard = () => {
   const aiStats = useAIStats();
   const employeeAnalytics = useEmployeeAnalytics();
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const employeeStats = [
     { 
@@ -66,7 +69,15 @@ const EmployeeDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {employeeStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-md transition-all duration-200">
+            <Card 
+              key={index} 
+              className="hover:shadow-md transition-all duration-200 cursor-pointer"
+              onClick={() => {
+                if (index === 0) {
+                  setActiveDialog('employee-details');
+                }
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${
@@ -207,6 +218,14 @@ const EmployeeDashboard = () => {
           </section>
         </TabsContent>
       </Tabs>
+
+      {/* Detail Dialogs */}
+      <Dialog open={activeDialog === 'employee-details'} onOpenChange={(open) => setActiveDialog(open ? 'employee-details' : null)}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Employee Details</DialogTitle>
+          <EmployeeListDetails />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
