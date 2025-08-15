@@ -12,7 +12,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -28,10 +28,10 @@ serve(async (req) => {
     }
     
     console.log(`Starting AI role assignment for session: ${sessionId}`);
-    console.log(`LiteLLM API key configured: ${liteLLMApiKey ? 'Yes' : 'No'}`);
+    console.log(`OpenAI API key configured: ${openAIApiKey ? 'Yes' : 'No'}`);
     
-    if (!liteLLMApiKey) {
-      throw new Error('LITELLM_API_KEY not configured in environment variables');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not configured in environment variables');
     }
     
     // Get the session details
@@ -132,7 +132,7 @@ serve(async (req) => {
               .update({ 
                 standard_role_id: suggestedRoleId,
                 ai_suggested_role_id: suggestedRoleId,
-                role_assignment_status: 'assigned',
+                role_assignment_status: 'ai_suggested',
                 assigned_by: session.created_by,
                 assignment_notes: 'Assigned by AI'
               })
@@ -152,7 +152,7 @@ serve(async (req) => {
             await supabase
               .from('xlsmart_employees')
               .update({ 
-                role_assignment_status: 'ai_no_match',
+                role_assignment_status: 'pending',
                 assignment_notes: 'AI could not find suitable role match'
               })
               .eq('id', employee.id);
@@ -304,18 +304,18 @@ INSTRUCTIONS:
 
 Return only the UUID:`;
 
-    console.log('Calling LiteLLM API for role assignment...');
+    console.log('Calling LiteLLM proxy for role assignment...');
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
-    const response = await fetch('https://api.litellm.ai/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${liteLLMApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           { 
             role: 'system', 
@@ -323,19 +323,19 @@ Return only the UUID:`;
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.1,
-        max_tokens: 100
+        temperature: 0.7,
+        max_tokens: 150
       }),
       signal: controller.signal
     });
 
     clearTimeout(timeoutId);
-    console.log(`LiteLLM API response status: ${response.status}`);
+    console.log(`LiteLLM proxy response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`LiteLLM API error: ${response.statusText} - ${errorText}`);
-      throw new Error(`LiteLLM API error: ${response.statusText}`);
+      console.error(`LiteLLM proxy error: ${response.statusText} - ${errorText}`);
+      throw new Error(`LiteLLM proxy error: ${response.statusText}`);
     }
 
     const data = await response.json();
