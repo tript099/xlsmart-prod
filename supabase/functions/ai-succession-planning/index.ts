@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const litellmApiKey = Deno.env.get('LITELLM_API_KEY')!
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -94,10 +94,12 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
+  console.log('Calling LiteLLM proxy for succession planning analysis...');
+  
   const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
+      'Authorization': `Bearer ${litellmApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -106,14 +108,21 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
+      temperature: 0.7,
+      max_tokens: 3000,
     }),
   });
 
+  console.log(`LiteLLM proxy response status: ${response.status}`);
+
   if (!response.ok) {
-    throw new Error(`LiteLLM API error: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('LiteLLM API error:', errorText);
+    throw new Error(`LiteLLM API error: ${response.statusText} - ${errorText}`);
   }
 
   const data = await response.json();
+  console.log('LiteLLM response received successfully');
   return data.choices[0].message.content;
 }
 
