@@ -17,18 +17,48 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== AI Succession Planning Function Started ===');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { analysisType, departmentFilter, positionLevel } = await req.json();
+    
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Request body parsed successfully:', JSON.stringify(requestBody));
+    } catch (error) {
+      console.error('Failed to parse request body:', error);
+      throw new Error('Invalid request body');
+    }
 
+    const { analysisType, departmentFilter, positionLevel } = requestBody;
     console.log(`Starting succession planning analysis: ${analysisType}`);
+    console.log(`Filters - Department: ${departmentFilter || 'none'}, Position Level: ${positionLevel || 'none'}`);
 
-    // Fetch data
+    // Test database connection first
+    console.log('Testing database connection...');
+    try {
+      const { count: employeeCount, error: testError } = await supabase
+        .from('xlsmart_employees')
+        .select('*', { count: 'exact', head: true });
+      
+      if (testError) {
+        console.error('Database connection test failed:', testError);
+        throw new Error(`Database connection failed: ${testError.message}`);
+      }
+      console.log(`Database connection successful. Employee count: ${employeeCount}`);
+    } catch (error) {
+      console.error('Database test error:', error);
+      throw error;
+    }
+
+    // Fetch employees with detailed logging
+    console.log('Fetching employees...');
     let employeesQuery = supabase
       .from('xlsmart_employees')
       .select('*')
       .eq('is_active', true);
 
     if (departmentFilter) {
+      console.log(`Applying department filter: ${departmentFilter}`);
       employeesQuery = employeesQuery.eq('current_department', departmentFilter);
     }
 
@@ -37,7 +67,10 @@ serve(async (req) => {
       console.error('Error fetching employees:', employeesError);
       throw new Error(`Failed to fetch employees: ${employeesError.message}`);
     }
+    console.log(`Fetched ${employees?.length || 0} employees successfully`);
 
+    // Fetch standard roles with detailed logging
+    console.log('Fetching standard roles...');
     const { data: standardRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
       .select('*')
@@ -47,7 +80,10 @@ serve(async (req) => {
       console.error('Error fetching standard roles:', rolesError);
       throw new Error(`Failed to fetch standard roles: ${rolesError.message}`);
     }
+    console.log(`Fetched ${standardRoles?.length || 0} standard roles successfully`);
 
+    // Fetch skill assessments with detailed logging
+    console.log('Fetching skill assessments...');
     const { data: skillAssessments, error: skillsError } = await supabase
       .from('xlsmart_skill_assessments')
       .select('*');
@@ -56,26 +92,36 @@ serve(async (req) => {
       console.error('Error fetching skill assessments:', skillsError);
       throw new Error(`Failed to fetch skill assessments: ${skillsError.message}`);
     }
+    console.log(`Fetched ${skillAssessments?.length || 0} skill assessments successfully`);
 
+    // Perform analysis based on type
+    console.log(`Performing analysis type: ${analysisType}`);
     let result;
     switch (analysisType) {
       case 'leadership_pipeline':
+        console.log('Calling performLeadershipPipeline...');
         result = await performLeadershipPipeline(employees || [], standardRoles || [], positionLevel);
         break;
       case 'succession_readiness':
+        console.log('Calling performSuccessionReadiness...');
         result = await performSuccessionReadiness(employees || [], skillAssessments || []);
         break;
       case 'high_potential_identification':
+        console.log('Calling performHighPotentialIdentification...');
         result = await performHighPotentialIdentification(employees || [], skillAssessments || []);
         break;
       case 'leadership_gap_analysis':
+        console.log('Calling performLeadershipGapAnalysis...');
         result = await performLeadershipGapAnalysis(employees || [], standardRoles || [], departmentFilter);
         break;
       default:
+        console.error(`Invalid analysis type: ${analysisType}`);
         throw new Error('Invalid analysis type');
     }
+    console.log('Analysis completed successfully');
 
     // Save analysis result to database
+    console.log('Saving analysis result to database...');
     const { data: savedAnalysis, error: saveError } = await supabase
       .from('ai_analysis_results')
       .insert({
@@ -91,8 +137,12 @@ serve(async (req) => {
 
     if (saveError) {
       console.error('Error saving succession planning analysis:', saveError);
+      // Don't throw here, just log the error
+    } else {
+      console.log('Analysis saved successfully with ID:', savedAnalysis?.id);
     }
 
+    console.log('=== AI Succession Planning Function Completed Successfully ===');
     return new Response(JSON.stringify({
       ...result,
       saved: !saveError,
@@ -101,8 +151,14 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in ai-succession-planning function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('=== AI Succession Planning Function ERROR ===');
+    console.error('Error details:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: 'Check function logs for more information'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -110,36 +166,47 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  console.log('Calling LiteLLM proxy for succession planning analysis...');
+  console.log('=== LiteLLM API Call Started ===');
+  console.log('Prompt length:', prompt.length);
+  console.log('System prompt length:', systemPrompt.length);
   
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'azure/gpt-4.1',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 3000,
-    }),
-  });
+  try {
+    console.log('Making request to LiteLLM proxy...');
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'azure/gpt-4.1',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 3000,
+      }),
+    });
 
-  console.log(`LiteLLM proxy response status: ${response.status}`);
+    console.log(`LiteLLM proxy response status: ${response.status}`);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('LiteLLM API error:', errorText);
-    throw new Error(`LiteLLM API error: ${response.statusText} - ${errorText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error: ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('LiteLLM response received successfully');
+    console.log('Response content length:', data.choices?.[0]?.message?.content?.length || 0);
+    
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('=== LiteLLM API Call Failed ===');
+    console.error('Error details:', error);
+    throw error;
   }
-
-  const data = await response.json();
-  console.log('LiteLLM response received successfully');
-  return data.choices[0].message.content;
 }
 
 async function performLeadershipPipeline(employees: any[], standardRoles: any[], positionLevel?: string) {
