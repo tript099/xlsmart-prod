@@ -73,14 +73,37 @@ export const EmployeeRoleAssignmentReview = ({ sessionId }: EmployeeRoleAssignme
       const sessionStartTime = new Date(sessionCreatedAt.getTime() - (10 * 60 * 1000));
       const sessionEndTime = new Date(sessionCreatedAt.getTime() + (60 * 60 * 1000));
 
-      const { data: employeesData, error: employeesError } = await supabase
+      // First, get employees that were successfully uploaded in this session
+      const { data: newEmployeesData, error: newEmployeesError } = await supabase
         .from('xlsmart_employees')
         .select('*')
         .gte('created_at', sessionStartTime.toISOString())
         .lte('created_at', sessionEndTime.toISOString())
         .eq('uploaded_by', session.created_by);
 
-      if (employeesError) throw employeesError;
+      if (newEmployeesError) throw newEmployeesError;
+
+      // Also get existing employees that might need role assignments
+      // (those that failed to upload due to duplicates but don't have role assignments)
+      const { data: existingEmployeesData, error: existingEmployeesError } = await supabase
+        .from('xlsmart_employees')
+        .select('*')
+        .eq('uploaded_by', session.created_by)
+        .is('standard_role_id', null)
+        .eq('is_active', true);
+
+      if (existingEmployeesError) throw existingEmployeesError;
+
+      // Combine and deduplicate employees, marking their status
+      const allEmployees = [...(newEmployeesData || [])].map(emp => ({ ...emp, uploadStatus: 'newly_uploaded' }));
+      const newEmployeeIds = new Set(newEmployeesData?.map(emp => emp.id) || []);
+      
+      // Add existing employees that aren't already in the new employees list
+      existingEmployeesData?.forEach(emp => {
+        if (!newEmployeeIds.has(emp.id)) {
+          allEmployees.push({ ...emp, uploadStatus: 'existing_no_role' });
+        }
+      });
 
       // Get all standard roles
       const { data: rolesData, error: rolesError } = await supabase
@@ -91,12 +114,12 @@ export const EmployeeRoleAssignmentReview = ({ sessionId }: EmployeeRoleAssignme
 
       if (rolesError) throw rolesError;
 
-      setEmployees(employeesData || []);
+      setEmployees(allEmployees || []);
       setStandardRoles(rolesData || []);
 
       // Create lookup for AI suggested roles
       const aiRolesLookup: Record<string, StandardRole> = {};
-      employeesData?.forEach(emp => {
+      allEmployees?.forEach(emp => {
         if (emp.ai_suggested_role_id) {
           const suggestedRole = rolesData?.find(role => role.id === emp.ai_suggested_role_id);
           if (suggestedRole) {
@@ -222,9 +245,11 @@ export const EmployeeRoleAssignmentReview = ({ sessionId }: EmployeeRoleAssignme
           <User className="h-5 w-5" />
           Employee Role Assignment Review
         </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Review and assign roles to uploaded employees. You can choose from original role, AI suggestion, or manually select a different role.
-        </p>
+         <p className="text-sm text-muted-foreground">
+           Review and assign roles to uploaded employees. You can choose from original role, AI suggestion, or manually select a different role.
+           <br />
+           <span className="text-xs">Note: "Existing" employees were already in the system but need role assignments.</span>
+         </p>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
@@ -243,16 +268,21 @@ export const EmployeeRoleAssignmentReview = ({ sessionId }: EmployeeRoleAssignme
             <TableBody>
               {employees.map((employee) => (
                 <TableRow key={employee.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">
-                        {employee.first_name} {employee.last_name}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        {employee.employee_number}
-                      </div>
-                    </div>
-                  </TableCell>
+                   <TableCell>
+                     <div>
+                       <div className="font-medium">
+                         {employee.first_name} {employee.last_name}
+                         {(employee as any).uploadStatus === 'existing_no_role' && (
+                           <Badge variant="outline" className="ml-2 text-xs">
+                             Existing
+                           </Badge>
+                         )}
+                       </div>
+                       <div className="text-sm text-muted-foreground">
+                         {employee.employee_number}
+                       </div>
+                     </div>
+                   </TableCell>
                   <TableCell>
                     <div>
                       <div className="font-medium">{employee.current_position}</div>
