@@ -87,15 +87,20 @@ serve(async (req) => {
     }
 
     // Get session creator for proper user assignment
-    const { data: session } = await supabase
+    const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .select('created_by')
       .eq('id', sessionId)
-      .single();
+      .maybeSingle();
+
+    if (sessionError) {
+      console.error('Error fetching session:', sessionError);
+      throw new Error(`Failed to fetch session: ${sessionError.message}`);
+    }
 
     const createdBy = session?.created_by;
     if (!createdBy) {
-      throw new Error('Session creator not found');
+      throw new Error('Session creator not found - session may not exist or user not authenticated');
     }
 
     // Combine all roles for processing
