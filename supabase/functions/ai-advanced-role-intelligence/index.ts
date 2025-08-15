@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 serve(async (req) => {
@@ -17,12 +17,12 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
     const { analysisType, departmentFilter, timeHorizon } = await req.json();
 
     console.log(`Starting advanced role intelligence analysis: ${analysisType}`);
 
-    // Fetch data
+    // Fetch data with error handling
     let rolesQuery = supabase
       .from('xlsmart_standard_roles')
       .select('*');
@@ -31,15 +31,27 @@ serve(async (req) => {
       rolesQuery = rolesQuery.eq('department', departmentFilter);
     }
 
-    const { data: standardRoles } = await rolesQuery;
+    const { data: standardRoles, error: rolesError } = await rolesQuery;
+    if (rolesError) {
+      console.error('Error fetching standard roles:', rolesError);
+    }
+    console.log(`Fetched ${standardRoles?.length || 0} standard roles`);
 
-    const { data: employees } = await supabase
+    const { data: employees, error: employeesError } = await supabase
       .from('xlsmart_employees')
       .select('*');
+    if (employeesError) {
+      console.error('Error fetching employees:', employeesError);
+    }
+    console.log(`Fetched ${employees?.length || 0} employees`);
 
-    const { data: jobDescriptions } = await supabase
+    const { data: jobDescriptions, error: jdError } = await supabase
       .from('xlsmart_job_descriptions')
       .select('*');
+    if (jdError) {
+      console.error('Error fetching job descriptions:', jdError);
+    }
+    console.log(`Fetched ${jobDescriptions?.length || 0} job descriptions`);
 
     let result;
     switch (analysisType) {
