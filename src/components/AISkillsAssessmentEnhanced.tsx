@@ -131,31 +131,62 @@ export const AISkillsAssessmentEnhanced = () => {
         description: `Analyzing ${employees.length} employees for skills, role fit, and risk factors...`,
       });
 
-      // Simulate AI assessment process for demo
-      const simulateProgress = () => {
-        let processed = 0;
-        const interval = setInterval(() => {
-          processed += Math.floor(Math.random() * 3) + 1;
-          if (processed >= employees.length) {
-            processed = employees.length;
-            clearInterval(interval);
+      // Call the bulk skills assessment function
+      const { data, error } = await supabase.functions.invoke('ai-skills-assessment-bulk', {
+        body: {
+          assessmentType: 'all',
+          identifier: 'all',
+          employees: employees
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.sessionId) {
+        // Poll for progress
+        const pollInterval = setInterval(async () => {
+          const { data: progressData } = await supabase.functions.invoke('ai-skills-assessment-progress', {
+            body: { sessionId: data.sessionId }
+          });
+
+          if (progressData?.progress) {
+            setProgress({
+              processed: progressData.progress.processed,
+              total: progressData.progress.total
+            });
+
+            if (progressData.status === 'completed') {
+              clearInterval(pollInterval);
+              setAnalyzing(false);
+              setProgress(null);
+              
+              // Reload assessments
+              await loadData();
+              
+              toast({
+                title: "AI Assessment Completed",
+                description: `Successfully analyzed ${employees.length} employees`,
+              });
+            } else if (progressData.status === 'error') {
+              clearInterval(pollInterval);
+              setAnalyzing(false);
+              setProgress(null);
+              throw new Error(progressData.error || 'Assessment failed');
+            }
+          }
+        }, 2000);
+
+        // Cleanup interval after 5 minutes
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          if (analyzing) {
             setAnalyzing(false);
             setProgress(null);
-            
-            // Generate mock assessments for demonstration
-            generateMockAssessments();
-            
-            toast({
-              title: "AI Assessment Completed",
-              description: `Successfully analyzed ${employees.length} employees`,
-            });
-          } else {
-            setProgress({ processed, total: employees.length });
           }
-        }, 1000);
-      };
-
-      simulateProgress();
+        }, 300000);
+      }
 
     } catch (error: any) {
       console.error('Error in AI assessment:', error);

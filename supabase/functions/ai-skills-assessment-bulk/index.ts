@@ -20,32 +20,43 @@ serve(async (req) => {
   }
 
   try {
-    const { assessmentType, identifier, targetRoleId } = await req.json();
+    const { assessmentType, identifier, targetRoleId, employees: providedEmployees } = await req.json();
     
     console.log(`Starting bulk skills assessment: ${assessmentType} - ${identifier}`);
     
-    // Get employees based on assessment type
-    let employeesQuery = supabase
-      .from('xlsmart_employees')
-      .select('*')
-      .eq('is_active', true);
+    let employees;
+    
+    // Check if employees array is provided directly
+    if (providedEmployees && Array.isArray(providedEmployees)) {
+      employees = providedEmployees;
+    } else {
+      // Get employees based on assessment type
+      let employeesQuery = supabase
+        .from('xlsmart_employees')
+        .select('*')
+        .eq('is_active', true);
 
-    switch (assessmentType) {
-      case 'company':
-        employeesQuery = employeesQuery.eq('source_company', identifier);
-        break;
-      case 'department':
-        employeesQuery = employeesQuery.eq('current_department', identifier);
-        break;
-      case 'role':
-        employeesQuery = employeesQuery.eq('current_position', identifier);
-        break;
-      default:
-        throw new Error('Invalid assessment type');
+      switch (assessmentType) {
+        case 'company':
+          employeesQuery = employeesQuery.eq('source_company', identifier);
+          break;
+        case 'department':
+          employeesQuery = employeesQuery.eq('current_department', identifier);
+          break;
+        case 'role':
+          employeesQuery = employeesQuery.eq('current_position', identifier);
+          break;
+        case 'all':
+          // No additional filter needed for 'all'
+          break;
+        default:
+          throw new Error('Invalid assessment type');
+      }
+
+      const { data: employeesData, error: employeesError } = await employeesQuery;
+      if (employeesError) throw employeesError;
+      employees = employeesData;
     }
-
-    const { data: employees, error: employeesError } = await employeesQuery;
-    if (employeesError) throw employeesError;
 
     if (!employees || employees.length === 0) {
       throw new Error(`No employees found for ${assessmentType}: ${identifier}`);
