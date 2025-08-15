@@ -12,6 +12,7 @@ import AnalyticsDashboard from "./pages/dashboard/AnalyticsDashboard";
 import EmployeeDashboard from "./pages/dashboard/EmployeeDashboard";
 import RolesDashboard from "./pages/dashboard/RolesDashboard";
 import JobDescriptionsDashboard from "./pages/dashboard/JobDescriptionsDashboard";
+import JobDescriptionReview from "./pages/dashboard/JobDescriptionReview";
 import SkillsDashboard from "./pages/dashboard/SkillsDashboard";
 import CareerPathsDashboard from "./pages/dashboard/CareerPathsDashboard";
 import MobilityDashboard from "./pages/dashboard/MobilityDashboard";
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="bulk-role-assignment" element={<BulkRoleAssignmentDashboard />} />
               <Route path="roles" element={<RolesDashboard />} />
               <Route path="job-descriptions" element={<JobDescriptionsDashboard />} />
+              <Route path="job-descriptions/review" element={<JobDescriptionReview />} />
               <Route path="skills" element={<SkillsDashboard />} />
               <Route path="career-paths" element={<CareerPathsDashboard />} />
               <Route path="mobility" element={<MobilityDashboard />} />

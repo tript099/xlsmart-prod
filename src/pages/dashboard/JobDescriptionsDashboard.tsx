@@ -4,11 +4,19 @@ import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescription
 import { AIJobDescriptionsIntelligence } from "@/components/AIJobDescriptionsIntelligence";
 import { useJobDescriptionStats } from "@/hooks/useJobDescriptionStats";
 import { useRecentJobDescriptions } from "@/hooks/useRecentJobDescriptions";
+import { useNavigate } from "react-router-dom";
 import { FileText, Zap, CheckCircle, Clock, Brain, Loader2 } from "lucide-react";
 
 const JobDescriptionsDashboard = () => {
+  const navigate = useNavigate();
   const { totalJDs, activeJDs, draftJDs, approvedJDs, loading } = useJobDescriptionStats();
   const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
+
+  const handleCardClick = (cardType: string) => {
+    const params = new URLSearchParams();
+    params.set('status', cardType);
+    navigate(`/dashboard/job-descriptions/review?${params.toString()}`);
+  };
 
   const jdStats = [
     { 
@@ -16,28 +24,32 @@ const JobDescriptionsDashboard = () => {
       label: "Generated JDs", 
       icon: FileText, 
       color: "text-blue-600",
-      description: "Total job descriptions"
+      description: "Total job descriptions",
+      status: "all"
     },
     { 
       value: loading ? "Loading..." : `${approvedJDs}`, 
       label: "Approved JDs", 
       icon: CheckCircle, 
       color: "text-green-600",
-      description: "Approved job descriptions"
+      description: "Approved job descriptions",
+      status: "approved"
     },
     { 
       value: loading ? "Loading..." : `${draftJDs}`, 
       label: "Draft JDs", 
       icon: Clock, 
       color: "text-purple-600",
-      description: "Job descriptions in draft"
+      description: "Job descriptions in draft",
+      status: "draft"
     },
     { 
       value: loading ? "Loading..." : `${activeJDs}`, 
       label: "Active JDs", 
       icon: Zap, 
       color: "text-orange-600",
-      description: "Currently in use"
+      description: "Currently in use",
+      status: "published"
     }
   ];
 
@@ -62,7 +74,11 @@ const JobDescriptionsDashboard = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {jdStats.map((stat, index) => (
-            <Card key={index} className="hover:shadow-md transition-all duration-200 cursor-pointer">
+            <Card 
+              key={index} 
+              className="hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-105"
+              onClick={() => handleCardClick(stat.status)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${
