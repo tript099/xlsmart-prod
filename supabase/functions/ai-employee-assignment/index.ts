@@ -56,22 +56,17 @@ serve(async (req) => {
     // Get standard roles with job descriptions
     const { data: standardRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
-      .select(`
-        *,
-        job_descriptions:xlsmart_job_descriptions(
-          title,
-          summary,
-          responsibilities,
-          required_qualifications,
-          required_skills,
-          experience_level
-        )
-      `)
+      .select('*')
       .eq('is_active', true);
 
     if (rolesError) {
       throw new Error(`Failed to fetch standard roles: ${rolesError.message}`);
     }
+
+    // Get job descriptions separately if needed
+    const { data: jobDescriptions, error: jdError } = await supabase
+      .from('xlsmart_job_descriptions')
+      .select('*');
 
     if (!standardRoles || standardRoles.length === 0) {
       throw new Error('No standard roles available');
@@ -160,15 +155,13 @@ async function assignRoleWithAI(employee: any, standardRoles: any[], apiKey: str
     const employeeCerts = Array.isArray(employee.certifications) ? employee.certifications.join(', ') : employee.certifications || '';
     
     const formatRole = (role: any) => {
-      const jd = role.job_descriptions?.[0];
-      const responsibilities = Array.isArray(jd?.responsibilities) ? jd.responsibilities.slice(0, 3).join('; ') : '';
-      const requiredSkills = Array.isArray(jd?.required_skills) ? jd.required_skills.join(', ') : '';
       const coreSkills = Array.isArray(role.required_skills) ? role.required_skills.join(', ') : '';
+      const responsibilities = Array.isArray(role.core_responsibilities) ? role.core_responsibilities.slice(0, 3).join('; ') : '';
       
       return `${role.id} | ${role.role_title} | ${role.job_family} | ${role.role_level} | ${role.department}
   Experience: ${role.experience_range_min}-${role.experience_range_max} years
-  Key Skills: ${coreSkills || requiredSkills}
-  Main Duties: ${responsibilities || jd?.summary || 'Not specified'}`;
+  Key Skills: ${coreSkills}
+  Responsibilities: ${responsibilities || role.standard_description || 'Not specified'}`;
     };
 
     const prompt = `You are an expert HR system that assigns employees to the most appropriate standard roles. 
@@ -182,7 +175,7 @@ Employee Profile:
 - Skills: ${employeeSkills}
 - Certifications: ${employeeCerts}
 
-Available Standard Roles (with job descriptions):
+Available Standard Roles (with detailed info):
 ${standardRoles.map(formatRole).join('\n\n')}
 
 Find the BEST MATCHING role ID by analyzing:
