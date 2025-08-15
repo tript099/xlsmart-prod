@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CheckCircle, Clock, UserCheck, Brain, Save, RefreshCw, Zap } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckCircle, Clock, UserCheck, Brain, Save, RefreshCw, Zap, Users, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,6 +41,8 @@ export const EmployeeRoleAssignment = () => {
   const [aiAssigning, setAiAssigning] = useState(false);
   const [aiProgress, setAiProgress] = useState<{ processed: number; total: number } | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
+  const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
   const { toast } = useToast();
 
   const fetchUnassignedEmployees = async () => {
@@ -163,6 +166,104 @@ export const EmployeeRoleAssignment = () => {
     await assignRole(employeeId, selectedRoleId);
   };
 
+  const handleSelectEmployee = (employeeId: string, checked: boolean) => {
+    setSelectedEmployees(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(employeeId);
+      } else {
+        newSet.delete(employeeId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedEmployees(new Set(employees.map(emp => emp.id)));
+    } else {
+      setSelectedEmployees(new Set());
+    }
+  };
+
+  const assignSelectedEmployees = async () => {
+    const selectedEmployeeIds = Array.from(selectedEmployees);
+    if (selectedEmployeeIds.length === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select employees to assign roles",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if all selected employees have roles assigned
+    const missingRoles = selectedEmployeeIds.filter(id => !selectedRoles[id]);
+    if (missingRoles.length > 0) {
+      toast({
+        title: "Missing Role Assignments",
+        description: `Please assign roles to all selected employees (${missingRoles.length} missing)`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSaving('bulk');
+      
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Batch update all selected employees
+      const updates = selectedEmployeeIds.map(employeeId => ({
+        id: employeeId,
+        standard_role_id: selectedRoles[employeeId],
+        role_assignment_status: 'manually_assigned',
+        assigned_by: user.id
+      }));
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('xlsmart_employees')
+          .update({
+            standard_role_id: update.standard_role_id,
+            role_assignment_status: update.role_assignment_status,
+            assigned_by: update.assigned_by
+          })
+          .eq('id', update.id);
+
+        if (error) {
+          console.error(`Error updating employee ${update.id}:`, error);
+          throw error;
+        }
+      }
+
+      toast({
+        title: "Bulk Assignment Successful",
+        description: `Successfully assigned roles to ${selectedEmployeeIds.length} employees`,
+      });
+
+      // Refresh the employee list
+      await fetchUnassignedEmployees();
+      setSelectedEmployees(new Set());
+      setSelectAll(false);
+      
+    } catch (error: any) {
+      console.error('Error in bulk assignment:', error);
+      toast({
+        title: "Bulk Assignment Failed",
+        description: error.message || "Failed to assign roles to selected employees",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const handleAIAssignAll = async () => {
     if (employees.length === 0) {
       toast({
@@ -173,92 +274,86 @@ export const EmployeeRoleAssignment = () => {
       return;
     }
 
+    // Use selected employees if any are selected, otherwise use all
+    const employeesToProcess = selectedEmployees.size > 0 
+      ? employees.filter(emp => selectedEmployees.has(emp.id))
+      : employees;
+
+    if (employeesToProcess.length === 0) {
+      toast({
+        title: "No Selection",
+        description: "Please select employees for AI assignment or use 'Assign All'",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setAiAssigning(true);
-      setAiProgress({ processed: 0, total: employees.length });
+      setAiProgress({ processed: 0, total: employeesToProcess.length });
 
       toast({
         title: "AI Assignment Started",
-        description: `Analyzing ${employees.length} employees for role suggestions...`,
+        description: `Analyzing ${employeesToProcess.length} employees for role suggestions...`,
       });
 
-      // Create a session for this AI assignment
-      const sessionName = `AI Assignment - ${new Date().toISOString()}`;
-      
-      // Get current user for created_by field
+      // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
+
+      // Process employees in batches for better performance
+      const batchSize = 5;
+      let processed = 0;
       
-      const { data: sessionData, error: sessionError } = await supabase
-        .from('xlsmart_upload_sessions')
-        .insert({
-          session_name: sessionName,
-          file_names: ['AI Assignment'],
-          temp_table_names: [],
-          total_rows: employees.length,
-          created_by: user.id,
-          status: 'assigning_roles'
-        })
-        .select()
-        .single();
-
-      if (sessionError) throw sessionError;
-
-      // Call the AI role assignment function
-      const { data, error } = await supabase.functions.invoke('employee-role-assignment', {
-        body: { sessionId: sessionData.id }
-      });
-
-      if (error) throw error;
-
-      // Poll for progress
-      const pollProgress = async () => {
-        const { data: session } = await supabase
-          .from('xlsmart_upload_sessions')
-          .select('ai_analysis, status')
-          .eq('id', sessionData.id)
-          .single();
-
-        if (session?.ai_analysis) {
-          const progress = session.ai_analysis as any;
-          setAiProgress({
-            processed: progress.assigned || progress.processed || 0,
-            total: progress.total || employees.length
-          });
-
-          if (session.status === 'completed' || session.status === 'completed_with_errors') {
-            setAiAssigning(false);
-            setAiProgress(null);
-            
-            // Refresh the employee list to show updated assignments
-            await fetchUnassignedEmployees();
-            
-            toast({
-              title: "AI Assignment Completed",
-              description: `Assigned roles to ${progress.assigned || 0} employees`,
+      for (let i = 0; i < employeesToProcess.length; i += batchSize) {
+        const batch = employeesToProcess.slice(i, i + batchSize);
+        
+        // Call the employee role assignment function for each employee
+        for (const employee of batch) {
+          try {
+            const { data, error } = await supabase.functions.invoke('employee-role-assignment', {
+              body: { 
+                employeeId: employee.id,
+                assignImmediately: true // Flag to assign immediately instead of just suggesting
+              }
             });
-            return;
+
+            if (error) {
+              console.error(`Error assigning role to employee ${employee.id}:`, error);
+            } else {
+              console.log(`Successfully processed employee ${employee.id}:`, data);
+            }
+            
+            processed++;
+            setAiProgress({ processed, total: employeesToProcess.length });
+          } catch (error) {
+            console.error(`Error processing employee ${employee.id}:`, error);
+            processed++;
+            setAiProgress({ processed, total: employeesToProcess.length });
           }
         }
+      }
 
-        // Continue polling if still in progress
-        if (session?.status === 'assigning_roles') {
-          setTimeout(pollProgress, 2000);
-        }
-      };
-
-      // Start polling after a short delay
-      setTimeout(pollProgress, 1000);
+      // Refresh the employee list
+      await fetchUnassignedEmployees();
+      setSelectedEmployees(new Set());
+      setSelectAll(false);
+      
+      toast({
+        title: "AI Assignment Completed",
+        description: `Processed ${processed} employees`,
+      });
 
     } catch (error: any) {
       console.error('Error in AI assignment:', error);
-      setAiAssigning(false);
-      setAiProgress(null);
       toast({
         title: "AI Assignment Failed",
         description: error.message || "Failed to assign roles with AI",
         variant: "destructive",
       });
+    } finally {
+      setAiAssigning(false);
+      setAiProgress(null);
     }
   };
 
@@ -308,30 +403,81 @@ export const EmployeeRoleAssignment = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5" />
-              Employees Pending Role Assignment
-              <Badge variant="secondary">{employees.length} unassigned</Badge>
-            </CardTitle>
-            {employees.length > 0 && (
-              <Button
-                onClick={handleAIAssignAll}
-                disabled={aiAssigning || loading}
-                className="ml-auto"
-              >
-                {aiAssigning ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                    AI Assigning...
-                  </>
-                ) : (
-                  <>
-                    <Zap className="h-4 w-4 mr-2" />
-                    Assign All with AI
-                  </>
-                )}
-              </Button>
-            )}
+            <div className="flex items-center gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5" />
+                Employees Pending Role Assignment
+                <Badge variant="secondary">{employees.length} unassigned</Badge>
+              </CardTitle>
+              
+              {selectedEmployees.size > 0 && (
+                <Badge variant="outline">
+                  {selectedEmployees.size} selected
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {selectedEmployees.size > 0 && (
+                <>
+                  <Button
+                    onClick={assignSelectedEmployees}
+                    disabled={saving === 'bulk' || loading}
+                    variant="outline"
+                  >
+                    {saving === 'bulk' ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                        Assigning...
+                      </>
+                    ) : (
+                      <>
+                        <Target className="h-4 w-4 mr-2" />
+                        Assign Selected ({selectedEmployees.size})
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handleAIAssignAll}
+                    disabled={aiAssigning || loading}
+                    variant="outline"
+                  >
+                    {aiAssigning ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                        AI Assigning...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="h-4 w-4 mr-2" />
+                        AI Assign Selected ({selectedEmployees.size})
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+              
+              {employees.length > 0 && (
+                <Button
+                  onClick={handleAIAssignAll}
+                  disabled={aiAssigning || loading}
+                  className="ml-auto"
+                >
+                  {aiAssigning ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      AI Assigning...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Assign All with AI
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
           {aiProgress && (
             <div className="mt-2">
@@ -361,6 +507,13 @@ export const EmployeeRoleAssignment = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectAll}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all employees"
+                    />
+                  </TableHead>
                   <TableHead>Employee</TableHead>
                   <TableHead>Original Role</TableHead>
                   <TableHead>Company</TableHead>
@@ -377,6 +530,13 @@ export const EmployeeRoleAssignment = () => {
                   
                   return (
                     <TableRow key={employee.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedEmployees.has(employee.id)}
+                          onCheckedChange={(checked) => handleSelectEmployee(employee.id, checked as boolean)}
+                          aria-label={`Select ${employee.first_name} ${employee.last_name}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <div className="font-medium">
