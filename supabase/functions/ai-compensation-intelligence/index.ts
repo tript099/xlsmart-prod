@@ -72,6 +72,17 @@ serve(async (req) => {
     }) || [];
 
     console.log(`Fetched ${employeesWithSalary.length} employees for compensation analysis`);
+    console.log('Sample employee with estimated salary:', employeesWithSalary[0]);
+    
+    if (employeesWithSalary.length === 0) {
+      console.log('No employees found - returning early');
+      return new Response(JSON.stringify({
+        error: 'No employee data available for analysis',
+        totalEmployees: 0
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Fetch standard roles with salary info
     const { data: standardRoles, error: rolesError } = await supabase
@@ -177,8 +188,13 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
     // Clean up any markdown code blocks before JSON parsing
     const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
     
+    // Additional cleaning - remove any trailing content after the last }
+    const lastBraceIndex = cleanContent.lastIndexOf('}');
+    const finalContent = lastBraceIndex !== -1 ? cleanContent.substring(0, lastBraceIndex + 1) : cleanContent;
+    
+    console.log('Cleaned content preview (first 200 chars):', finalContent.substring(0, 200));
     console.log('Analysis completed successfully');
-    return cleanContent;
+    return finalContent;
     
   } catch (error) {
     console.error('Error in callLiteLLM:', error);
