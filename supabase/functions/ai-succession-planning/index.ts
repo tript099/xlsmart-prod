@@ -250,27 +250,49 @@ Return a JSON object with this structure:
   ]
 }`;
 
-  const prompt = `Analyze leadership pipeline and succession planning:
+  console.log('=== Starting Leadership Pipeline Analysis ===');
+  console.log(`Input: ${employees.length} employees, ${standardRoles.length} roles`);
 
-Employee Data: ${JSON.stringify(employees.slice(0, 25).map(emp => ({
+  // Clean and prepare employee data for AI analysis
+  const cleanEmployees = employees.map(emp => ({
     id: emp.id,
     name: `${emp.first_name} ${emp.last_name}`,
-    department: emp.department,
-    role: emp.current_role,
-    performance: emp.performance_rating,
-    experience: emp.years_experience,
-    skills: emp.skills
-  })))}
+    current_position: emp.current_position,
+    current_department: emp.current_department || 'Unknown',
+    current_level: emp.current_level || 'Unknown',
+    experience_years: emp.years_of_experience || 0,
+    performance_rating: emp.performance_rating || 0,
+    skills: Array.isArray(emp.skills) ? emp.skills : (typeof emp.skills === 'string' ? [emp.skills] : []),
+    certifications: Array.isArray(emp.certifications) ? emp.certifications : (typeof emp.certifications === 'string' ? [emp.certifications] : [])
+  }));
 
-Leadership Roles: ${JSON.stringify(standardRoles.filter(role => 
+  // Filter leadership roles
+  const leadershipRoles = standardRoles.filter(role => 
     role.role_title?.toLowerCase().includes('manager') || 
     role.role_title?.toLowerCase().includes('director') || 
-    role.role_title?.toLowerCase().includes('lead')
-  ).slice(0, 10))}
+    role.role_title?.toLowerCase().includes('lead') ||
+    role.role_title?.toLowerCase().includes('head') ||
+    role.role_title?.toLowerCase().includes('chief')
+  );
 
-${positionLevel ? `Focus on position level: ${positionLevel}` : ''}
+  console.log(`Prepared: ${cleanEmployees.length} clean employees, ${leadershipRoles.length} leadership roles`);
 
-Analyze succession readiness and create development pathways.`;
+  const prompt = `Analyze leadership pipeline and succession planning for this organization:
+
+EMPLOYEE DATA (${cleanEmployees.length} employees):
+${JSON.stringify(cleanEmployees.slice(0, 20), null, 2)}
+
+LEADERSHIP ROLES AVAILABLE (${leadershipRoles.length} roles):
+${JSON.stringify(leadershipRoles.slice(0, 10).map(role => ({
+  role_title: role.role_title,
+  job_family: role.job_family,
+  role_level: role.role_level,
+  department: role.department
+})), null, 2)}
+
+${positionLevel ? `Focus analysis on position level: ${positionLevel}` : ''}
+
+Please provide a comprehensive leadership pipeline analysis based on the actual data provided.`;
 
   try {
     const response = await callLiteLLM(prompt, systemPrompt);
@@ -328,25 +350,30 @@ Return a JSON object with this structure:
   ]
 }`;
 
-  const prompt = `Assess succession readiness across the organization:
+  console.log('=== Starting Succession Readiness Analysis ===');
+  console.log(`Input: ${employees.length} employees, ${skillAssessments.length} assessments`);
 
-Employee Performance Data: ${JSON.stringify(employees.slice(0, 20).map(emp => ({
+  // Clean and prepare employee data
+  const cleanEmployees = employees.map(emp => ({
     id: emp.id,
     name: `${emp.first_name} ${emp.last_name}`,
-    role: emp.current_role,
-    performance: emp.performance_rating,
-    experience: emp.years_experience,
-    department: emp.department
-  })))}
+    current_position: emp.current_position,
+    current_department: emp.current_department || 'Unknown',
+    current_level: emp.current_level || 'Unknown',
+    experience_years: emp.years_of_experience || 0,
+    performance_rating: emp.performance_rating || 0,
+    skills: Array.isArray(emp.skills) ? emp.skills : (typeof emp.skills === 'string' ? [emp.skills] : [])
+  }));
 
-Skills Assessment Results: ${JSON.stringify(skillAssessments.slice(0, 15).map(assessment => ({
-    employeeId: assessment.employee_id,
-    overallScore: assessment.overall_score,
-    skillsEvaluated: assessment.skills_assessed,
-    assessmentDate: assessment.assessment_date
-  })))}
+  const prompt = `Assess succession readiness across the organization:
 
-Evaluate readiness for advancement and create succession strategies.`;
+EMPLOYEE PERFORMANCE DATA (${cleanEmployees.length} employees):
+${JSON.stringify(cleanEmployees.slice(0, 15), null, 2)}
+
+SKILLS ASSESSMENT RESULTS (${skillAssessments.length} assessments):
+${JSON.stringify(skillAssessments.slice(0, 10), null, 2)}
+
+Evaluate readiness for advancement and create succession strategies based on the actual employee data provided.`;
 
   try {
     const response = await callLiteLLM(prompt, systemPrompt);
@@ -404,27 +431,31 @@ Return a JSON object with this structure:
   ]
 }`;
 
-  const prompt = `Identify high-potential employees and create development strategies:
+  console.log('=== Starting High Potential Identification Analysis ===');
+  console.log(`Input: ${employees.length} employees, ${skillAssessments.length} assessments`);
 
-Employee Profiles: ${JSON.stringify(employees.slice(0, 25).map(emp => ({
+  // Clean and prepare employee data  
+  const cleanEmployees = employees.map(emp => ({
     id: emp.id,
     name: `${emp.first_name} ${emp.last_name}`,
-    role: emp.current_role,
-    performance: emp.performance_rating,
-    experience: emp.years_experience,
-    department: emp.department,
-    hireDate: emp.hire_date,
-    lastPromotion: emp.last_promotion_date
-  })))}
+    current_position: emp.current_position,
+    current_department: emp.current_department || 'Unknown',
+    current_level: emp.current_level || 'Unknown',
+    experience_years: emp.years_of_experience || 0,
+    performance_rating: emp.performance_rating || 0,
+    hire_date: emp.hire_date,
+    skills: Array.isArray(emp.skills) ? emp.skills : (typeof emp.skills === 'string' ? [emp.skills] : [])
+  }));
 
-Skills and Performance Data: ${JSON.stringify(skillAssessments.slice(0, 15).map(assessment => ({
-    employeeId: assessment.employee_id,
-    overallScore: assessment.overall_score,
-    assessmentDate: assessment.assessment_date,
-    improvementTrend: assessment.progress_notes
-  })))}
+  const prompt = `Identify high-potential employees and create development strategies:
 
-Identify high-potential talent and create targeted development plans.`;
+EMPLOYEE PROFILES (${cleanEmployees.length} employees):
+${JSON.stringify(cleanEmployees.slice(0, 20), null, 2)}
+
+SKILLS AND PERFORMANCE DATA (${skillAssessments.length} assessments):
+${JSON.stringify(skillAssessments.slice(0, 10), null, 2)}
+
+Identify high-potential talent and create targeted development plans based on the actual employee data provided.`;
 
   try {
     const response = await callLiteLLM(prompt, systemPrompt);
