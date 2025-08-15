@@ -23,6 +23,8 @@ export const useJobDescriptionStats = (): JobDescriptionStats => {
   });
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchStats = async () => {
       try {
         console.log('Fetching JD stats...');
@@ -34,6 +36,7 @@ export const useJobDescriptionStats = (): JobDescriptionStats => {
 
         if (totalError) {
           console.error('Error fetching total count:', totalError);
+          return;
         }
 
         // Get counts by status
@@ -78,23 +81,33 @@ export const useJobDescriptionStats = (): JobDescriptionStats => {
           pending: pendingCount
         });
 
-        setStats({
-          totalJDs: totalCount || 0,
-          activeJDs: activeCount,
-          draftJDs: draftCount || 0,
-          approvedJDs: approvedCount || 0,
-          reviewJDs: reviewCount || 0,
-          pendingJDs: pendingCount,
-          loading: false
-        });
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setStats({
+            totalJDs: totalCount || 0,
+            activeJDs: activeCount,
+            draftJDs: draftCount || 0,
+            approvedJDs: approvedCount || 0,
+            reviewJDs: reviewCount || 0,
+            pendingJDs: pendingCount,
+            loading: false
+          });
+        }
       } catch (error) {
         console.error('Error fetching job description stats:', error);
-        setStats(prev => ({ ...prev, loading: false }));
+        if (isMounted) {
+          setStats(prev => ({ ...prev, loading: false }));
+        }
       }
     };
 
     fetchStats();
-  }, []);
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array to run only once
 
   return stats;
 };

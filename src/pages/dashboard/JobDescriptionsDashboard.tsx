@@ -1,3 +1,4 @@
+import React, { useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
@@ -12,7 +13,7 @@ const JobDescriptionsDashboard = () => {
   const { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading } = useJobDescriptionStats();
   const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
 
-  const handleCardClick = (cardType: string) => {
+  const handleCardClick = useCallback((cardType: string) => {
     const params = new URLSearchParams();
     if (cardType.includes(',')) {
       // Handle multiple statuses
@@ -22,7 +23,7 @@ const JobDescriptionsDashboard = () => {
       params.set('status', cardType);
     }
     navigate(`/dashboard/job-descriptions/review?${params.toString()}`);
-  };
+  }, [navigate]);
 
   const jdStats = [
     { 
