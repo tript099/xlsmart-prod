@@ -107,7 +107,7 @@ serve(async (req) => {
             .update({
               standard_role_id: suggestedRoleId,
               ai_suggested_role_id: suggestedRoleId,
-              role_assignment_status: 'manually_assigned',
+              role_assignment_status: 'ai_suggested',
               assigned_by: employee.uploaded_by,
               assignment_notes: 'Assigned by AI'
             })
