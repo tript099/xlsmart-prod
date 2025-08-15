@@ -40,10 +40,15 @@ const HRDashboard = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         {/* Global Header */}
-        <header className="fixed top-0 left-0 right-0 h-16 z-50 xlsmart-gradient-bg border-b flex items-center px-4 gap-4">
+        <header className="fixed top-0 left-0 right-0 h-20 z-50 xlsmart-gradient-bg border-b flex items-center px-4 gap-4">
           <SidebarTrigger className="text-white hover:bg-white/20" />
-          <div className="flex items-center">
-            <p className="text-white/90 text-lg font-medium">AI-Powered HR Platform by SimplifyAI</p>
+          <div className="flex flex-col items-center space-y-1">
+            <img 
+              src="/xlsmart-logo.svg" 
+              alt="XLSMART" 
+              className="h-10 w-auto"
+            />
+            <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by SimplifyAI</p>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <Dialog open={isLiteLLMDialogOpen} onOpenChange={setIsLiteLLMDialogOpen}>
@@ -79,7 +84,7 @@ const HRDashboard = () => {
         <HRSidebar />
 
         {/* Main Content Area */}
-        <main className="flex-1 pt-16">
+        <main className="flex-1 pt-20">
           <div className="p-6 h-full">
             <Outlet />
           </div>
