@@ -43,7 +43,7 @@ export const useRoleAnalytics = (): RoleAnalytics => {
           .from('xlsmart_role_mappings')
           .select('mapping_confidence', { count: 'exact' });
 
-        // Calculate average mapping accuracy
+        // Calculate average mapping accuracy (values are already percentages 0-100)
         const avgAccuracy = mappings?.length > 0 
           ? mappings.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / mappings.length 
           : 0;
@@ -61,7 +61,7 @@ export const useRoleAnalytics = (): RoleAnalytics => {
 
         setAnalytics({
           totalRoles: totalRoles || 0,
-          mappingAccuracy: Math.round(avgAccuracy * 100), // Convert to percentage
+          mappingAccuracy: Math.round(avgAccuracy), // Already percentage, just round
           standardizationRate,
           roleCategories: uniqueJobFamilies,
           totalMappings: totalMappings || 0,

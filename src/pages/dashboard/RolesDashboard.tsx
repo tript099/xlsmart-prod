@@ -5,6 +5,8 @@ import { RoleStandardizationSystem } from "@/components/RoleStandardizationSyste
 import { AIAdvancedRoleIntelligence } from "@/components/AIAdvancedRoleIntelligence";
 import BulkRoleAssignment from "@/components/BulkRoleAssignment";
 import { MappingAccuracyDetails } from "@/components/MappingAccuracyDetails";
+import { RoleCategoriesDetails } from "@/components/RoleCategoriesDetails";
+import { StandardizationRateDetails } from "@/components/StandardizationRateDetails";
 import { Briefcase, Upload, Target, BarChart3, Brain, Loader2 } from "lucide-react";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useRoleAnalytics } from "@/hooks/useRoleAnalytics";
@@ -76,6 +78,10 @@ const RolesDashboard = () => {
                   setActiveDialog('roles-details');
                 } else if (index === 1) {
                   setActiveDialog('accuracy-details');
+                } else if (index === 2) {
+                  setActiveDialog('standardization-details');
+                } else if (index === 3) {
+                  setActiveDialog('categories-details');
                 }
               }}
             >
@@ -212,6 +218,20 @@ const RolesDashboard = () => {
         <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
           <DialogTitle className="sr-only">Mapping Accuracy Details</DialogTitle>
           <MappingAccuracyDetails />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'standardization-details'} onOpenChange={(open) => setActiveDialog(open ? 'standardization-details' : null)}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Standardization Rate Details</DialogTitle>
+          <StandardizationRateDetails />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'categories-details'} onOpenChange={(open) => setActiveDialog(open ? 'categories-details' : null)}>
+        <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Role Categories Details</DialogTitle>
+          <RoleCategoriesDetails />
         </DialogContent>
       </Dialog>
     </div>
