@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.role-upload-direct]
 verify_jwt = false
+
+[functions.ai-job-descriptions-intelligence]
+verify_jwt = false

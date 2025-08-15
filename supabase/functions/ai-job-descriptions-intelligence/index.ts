@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -77,6 +77,10 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
+  if (!openAIApiKey) {
+    throw new Error('OpenAI API key not configured');
+  }
+
   const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
     headers: {
