@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY')!;
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -26,8 +26,8 @@ serve(async (req) => {
       throw new Error('Employee IDs array is required');
     }
 
-    if (!liteLLMApiKey) {
-      throw new Error('LITELLM_API_KEY not configured');
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY not configured');
     }
 
     // Get employees
@@ -78,7 +78,7 @@ serve(async (req) => {
       try {
         console.log(`Processing employee: ${employee.first_name} ${employee.last_name}`);
         
-        const suggestedRoleId = await assignRoleWithAI(employee, standardRoles, liteLLMApiKey);
+        const suggestedRoleId = await assignRoleWithAI(employee, standardRoles, openAIApiKey);
         
         if (suggestedRoleId && assignImmediately) {
           const { error: updateError } = await supabase
@@ -177,7 +177,7 @@ INSTRUCTIONS:
 
 Return only the UUID:`;
 
-    const response = await fetch('https://api.litellm.ai/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
