@@ -106,7 +106,17 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
     throw new Error(`LiteLLM API error: ${data.error?.message || response.statusText}`);
   }
   
-  return data.choices[0].message.content;
+  const content = data.choices[0].message.content;
+  
+  // Clean up the response - remove markdown code blocks if present
+  const cleanedContent = content
+    .replace(/```json\s*/g, '')
+    .replace(/```\s*/g, '')
+    .trim();
+  
+  console.log('AI Response content length:', cleanedContent.length);
+  
+  return cleanedContent;
 }
 
 async function performRoleEvolution(standardRoles: any[], employees: any[], timeHorizon?: string) {
@@ -173,7 +183,13 @@ ${timeHorizon ? `Analysis time horizon: ${timeHorizon}` : 'Default 3-year horizo
 Analyze role evolution trends and predict future role requirements.`;
 
   const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error parsing role evolution response:', error);
+    console.error('Raw response:', response);
+    throw new Error('Failed to parse AI response for role evolution analysis');
+  }
 }
 
 async function performRedundancyAnalysis(standardRoles: any[], employees: any[]) {
@@ -245,7 +261,13 @@ Current Employee Roles: ${JSON.stringify((employees || []).map(emp => ({
 Identify redundant roles and recommend optimization strategies.`;
 
   const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error parsing redundancy analysis response:', error);
+    console.error('Raw response:', response);
+    throw new Error('Failed to parse AI response for redundancy analysis');
+  }
 }
 
 async function performFuturePrediction(standardRoles: any[], jobDescriptions: any[], timeHorizon?: string) {
@@ -318,7 +340,13 @@ ${timeHorizon ? `Prediction timeframe: ${timeHorizon}` : 'Default 5-year predict
 Predict future role evolution and organizational needs.`;
 
   const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error parsing future prediction response:', error);
+    console.error('Raw response:', response);
+    throw new Error('Failed to parse AI response for future prediction analysis');
+  }
 }
 
 async function performCompetitivenessScoring(standardRoles: any[], employees: any[], departmentFilter?: string) {
@@ -393,5 +421,11 @@ ${departmentFilter ? `Focus analysis on department: ${departmentFilter}` : ''}
 Assess role competitiveness and recommend talent attraction strategies.`;
 
   const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error parsing competitiveness scoring response:', error);
+    console.error('Raw response:', response);
+    throw new Error('Failed to parse AI response for competitiveness scoring');
+  }
 }
