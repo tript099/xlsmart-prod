@@ -113,8 +113,12 @@ serve(async (req) => {
           // Process batch in parallel but with controlled concurrency
           const batchPromises = batch.map(async (employee) => {
             try {
+              console.log(`Starting assessment for employee ${employee.id}: ${employee.first_name} ${employee.last_name}`);
+              
               const assessment = await runEmployeeAssessment(employee, targetRole);
               
+              console.log(`Assessment completed for ${employee.id}:`, JSON.stringify(assessment, null, 2));
+
               // Store assessment result
               const { error: insertError } = await supabase
                 .from('xlsmart_skill_assessments')
@@ -134,6 +138,7 @@ serve(async (req) => {
                 throw insertError;
               }
 
+              console.log(`Successfully saved assessment for employee ${employee.id}`);
               completedCount++;
               return { success: true, employee: employee.id };
             } catch (error) {
@@ -222,6 +227,8 @@ serve(async (req) => {
 });
 
 async function runEmployeeAssessment(employee: any, targetRole: any) {
+  console.log(`Starting AI assessment for employee: ${employee.first_name} ${employee.last_name}`);
+  
   if (!openAIApiKey) {
     return {
       overallMatch: 50,
@@ -231,6 +238,8 @@ async function runEmployeeAssessment(employee: any, targetRole: any) {
     };
   }
 
+  console.log('OpenAI API key found, proceeding with assessment');
+  
   try {
     const employeeProfile = `
 Employee: ${employee.first_name} ${employee.last_name}
@@ -262,6 +271,9 @@ Provide a JSON response with:
 
 Focus on actionable insights and realistic assessments.`;
 
+    console.log(`Making API call to LiteLLM for employee ${employee.id}`);
+    console.log('Prompt length:', prompt.length);
+    
     const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -281,6 +293,8 @@ Focus on actionable insights and realistic assessments.`;
       }),
     });
 
+    console.log('LiteLLM API response status:', response.status);
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('LiteLLM API error:', errorText);
