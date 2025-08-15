@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
@@ -9,9 +9,12 @@ import { useNavigate } from "react-router-dom";
 import { FileText, Zap, CheckCircle, Clock, Brain, Loader2 } from "lucide-react";
 
 const JobDescriptionsDashboard = () => {
+  console.log('🔄 JobDescriptionsDashboard rendered');
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("generator");
   const { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading } = useJobDescriptionStats();
   const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
+  console.log('📊 Dashboard stats:', { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading });
 
   const handleCardClick = useCallback((cardType: string) => {
     const params = new URLSearchParams();
@@ -25,7 +28,8 @@ const JobDescriptionsDashboard = () => {
     navigate(`/dashboard/job-descriptions/review?${params.toString()}`);
   }, [navigate]);
 
-  const jdStats = [
+  // Memoize the stats array to prevent re-renders
+  const jdStats = useMemo(() => [
     { 
       value: loading ? "Loading..." : totalJDs.toLocaleString(), 
       label: "Generated JDs", 
@@ -58,7 +62,7 @@ const JobDescriptionsDashboard = () => {
       description: "Currently in use",
       status: "published"
     }
-  ];
+  ], [loading, totalJDs, approvedJDs, pendingJDs, activeJDs]);
 
   return (
     <div className="space-y-8">
@@ -82,7 +86,7 @@ const JobDescriptionsDashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {jdStats.map((stat, index) => (
             <Card 
-              key={index} 
+              key={`${stat.label}-${stat.value}`}
               className="hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-105"
               onClick={() => handleCardClick(stat.status)}
             >
@@ -118,13 +122,13 @@ const JobDescriptionsDashboard = () => {
       {/* AI Job Description Tools */}
       <section>
         <div className="mb-6">
-          <h2 className="text-xl font-semibant text-foreground mb-2">AI Job Description Tools</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">AI Job Description Tools</h2>
           <p className="text-muted-foreground">
             Generate, analyze, and optimize job descriptions with AI-powered intelligence
           </p>
         </div>
 
-        <Tabs defaultValue="generator" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="generator" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -136,33 +140,38 @@ const JobDescriptionsDashboard = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="generator" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <span>Generate Job Descriptions</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AIJobDescriptionGeneratorEnhanced />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Only render the active tab content */}
+          {activeTab === "generator" && (
+            <TabsContent value="generator" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                    <span>Generate Job Descriptions</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AIJobDescriptionGeneratorEnhanced />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
-          <TabsContent value="intelligence" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Brain className="h-5 w-5 text-primary" />
-                  <span>Job Description Intelligence</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AIJobDescriptionsIntelligence />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {activeTab === "intelligence" && (
+            <TabsContent value="intelligence" className="mt-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Brain className="h-5 w-5 text-primary" />
+                    <span>Job Description Intelligence</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AIJobDescriptionsIntelligence />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </section>
 

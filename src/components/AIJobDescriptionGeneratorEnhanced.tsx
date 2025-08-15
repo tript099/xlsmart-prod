@@ -82,6 +82,7 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
 
   // Load standard roles and existing JDs on component mount
   useEffect(() => {
+    console.log('🔄 AIJobDescriptionGeneratorEnhanced mounted, loading data...');
     loadStandardRoles();
     loadExistingJDs();
   }, []);

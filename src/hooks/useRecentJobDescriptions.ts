@@ -13,6 +13,7 @@ export const useRecentJobDescriptions = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('🔄 useRecentJobDescriptions effect triggered');
     const fetchRecentJDs = async () => {
       try {
         const { data, error } = await supabase

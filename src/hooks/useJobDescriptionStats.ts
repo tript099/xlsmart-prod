@@ -23,6 +23,7 @@ export const useJobDescriptionStats = (): JobDescriptionStats => {
   });
 
   useEffect(() => {
+    console.log('🔄 useJobDescriptionStats effect triggered');
     let isMounted = true;
     
     const fetchStats = async () => {
