@@ -12,7 +12,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const litellmApiKey = Deno.env.get('LITELLM_API_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -210,11 +210,11 @@ serve(async (req) => {
 });
 
 async function runEmployeeAssessment(employee: any, targetRole: any) {
-  if (!litellmApiKey) {
+  if (!openAIApiKey) {
     return {
       overallMatch: 50,
       skillGaps: [],
-      recommendations: 'AI assessment unavailable - no LiteLLM API key configured',
+      recommendations: 'AI assessment unavailable - no OpenAI API key configured',
       nextRoles: []
     };
   }
@@ -253,7 +253,7 @@ Focus on actionable insights and realistic assessments.`;
     const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${litellmApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
