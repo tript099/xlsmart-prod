@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.ai-job-descriptions-intelligence]
 verify_jwt = false
+
+[functions.test-litellm-direct]
+verify_jwt = false
