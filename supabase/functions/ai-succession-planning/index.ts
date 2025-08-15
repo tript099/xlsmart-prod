@@ -253,12 +253,25 @@ Return a JSON object with this structure:
   console.log('=== Starting Leadership Pipeline Analysis ===');
   console.log(`Input: ${employees.length} employees, ${standardRoles.length} roles`);
 
+  // Map positions to departments for better analysis
+  const departmentMapping = (position: string) => {
+    const pos = position.toLowerCase();
+    if (pos.includes('devops') || pos.includes('engineer') || pos.includes('architect')) return 'Engineering';
+    if (pos.includes('product') || pos.includes('owner')) return 'Product Management';
+    if (pos.includes('analyst') || pos.includes('analytics')) return 'Analytics';
+    if (pos.includes('5g') || pos.includes('radio') || pos.includes('network')) return 'Network Operations';
+    if (pos.includes('acquisition') || pos.includes('site')) return 'Network Deployment';
+    if (pos.includes('ai') || pos.includes('conversational')) return 'AI/ML';
+    if (pos.includes('specialist')) return 'Technical Specialist';
+    return 'Technology';
+  };
+
   // Clean and prepare employee data for AI analysis
   const cleanEmployees = employees.map(emp => ({
     id: emp.id,
     name: `${emp.first_name} ${emp.last_name}`,
     current_position: emp.current_position,
-    current_department: emp.current_department || 'Unknown',
+    current_department: emp.current_department || departmentMapping(emp.current_position || ''),
     current_level: emp.current_level || 'Unknown',
     experience_years: emp.years_of_experience || 0,
     performance_rating: emp.performance_rating || 0,
