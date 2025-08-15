@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, TrendingUp, Target, Shield, Brain, AlertTriangle, CheckCircle, Star } from "lucide-react";
+import { FileText, TrendingUp, Target, Shield, Brain, AlertTriangle, CheckCircle, Star, Wrench } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<any>(null);
+  const [fixingJobs, setFixingJobs] = useState<Set<string>>(new Set());
 
   const analysisTypes = [
     { value: 'jd_optimization', label: 'JD Optimization', icon: Target },
@@ -50,6 +51,36 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
       toast.error('Failed to complete analysis');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleFixJobDescription = async (jobId: string, recommendations: string[]) => {
+    setFixingJobs(prev => new Set([...prev, jobId]));
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-job-description-fix', {
+        body: {
+          jobDescriptionId: jobId,
+          recommendations
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success(`Job description improved! ${data.improvementsMade?.length || 0} improvements applied.`);
+      
+      // Refresh the analysis results
+      await handleAnalysis();
+      
+    } catch (error) {
+      console.error('Fix error:', error);
+      toast.error('Failed to fix job description');
+    } finally {
+      setFixingJobs(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(jobId);
+        return newSet;
+      });
     }
   };
 
@@ -97,6 +128,16 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
                     <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'}>
                       {rec.priority}
                     </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleFixJobDescription(rec.jobId || `job-${index}`, rec.recommendations)}
+                      disabled={fixingJobs.has(rec.jobId || `job-${index}`) || isLoading}
+                      className="ml-2"
+                    >
+                      <Wrench className="h-3 w-3 mr-1" />
+                      {fixingJobs.has(rec.jobId || `job-${index}`) ? 'Fixing...' : 'Fix'}
+                    </Button>
                   </div>
                 </div>
                 <div className="space-y-2">
