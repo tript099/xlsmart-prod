@@ -447,12 +447,25 @@ Return a JSON object with this structure:
   console.log('=== Starting High Potential Identification Analysis ===');
   console.log(`Input: ${employees.length} employees, ${skillAssessments.length} assessments`);
 
+  // Map positions to departments for better analysis
+  const departmentMapping = (position: string) => {
+    const pos = position.toLowerCase();
+    if (pos.includes('devops') || pos.includes('engineer') || pos.includes('architect')) return 'Engineering';
+    if (pos.includes('product') || pos.includes('owner')) return 'Product Management';
+    if (pos.includes('analyst') || pos.includes('analytics')) return 'Analytics';
+    if (pos.includes('5g') || pos.includes('radio') || pos.includes('network')) return 'Network Operations';
+    if (pos.includes('acquisition') || pos.includes('site')) return 'Network Deployment';
+    if (pos.includes('ai') || pos.includes('conversational')) return 'AI/ML';
+    if (pos.includes('specialist')) return 'Technical Specialist';
+    return 'Technology';
+  };
+
   // Clean and prepare employee data  
   const cleanEmployees = employees.map(emp => ({
     id: emp.id,
     name: `${emp.first_name} ${emp.last_name}`,
     current_position: emp.current_position,
-    current_department: emp.current_department || 'Unknown',
+    current_department: emp.current_department || departmentMapping(emp.current_position || ''),
     current_level: emp.current_level || 'Unknown',
     experience_years: emp.years_of_experience || 0,
     performance_rating: emp.performance_rating || 0,
@@ -460,6 +473,9 @@ Return a JSON object with this structure:
     skills: Array.isArray(emp.skills) ? emp.skills : (typeof emp.skills === 'string' ? [emp.skills] : [])
   }));
 
+  console.log('=== DEBUG: Prepared Employee Data Sample ===');
+  console.log(JSON.stringify(cleanEmployees.slice(0, 3), null, 2));
+  
   const prompt = `Identify high-potential employees and create development strategies:
 
 EMPLOYEE PROFILES (${cleanEmployees.length} employees):
@@ -468,19 +484,37 @@ ${JSON.stringify(cleanEmployees.slice(0, 20), null, 2)}
 SKILLS AND PERFORMANCE DATA (${skillAssessments.length} assessments):
 ${JSON.stringify(skillAssessments.slice(0, 10), null, 2)}
 
-Identify high-potential talent and create targeted development plans based on the actual employee data provided.`;
+Identify high-potential talent based on performance ratings (3.0+), experience levels, and skills. Create realistic numbers based on the actual employee data provided. Look for employees with strong performance ratings and growth potential.`;
+
+  console.log('=== DEBUG: Prompt being sent to AI ===');
+  console.log(`Prompt length: ${prompt.length}`);
+  console.log('First 500 chars of prompt:', prompt.substring(0, 500));
 
   try {
+    console.log('=== Making AI call for High Potential Identification ===');
     const response = await callLiteLLM(prompt, systemPrompt);
-    return JSON.parse(response);
+    console.log('=== DEBUG: Raw AI Response ===');
+    console.log('Response length:', response.length);
+    console.log('Response preview:', response.substring(0, 500));
+    
+    const parsedResult = JSON.parse(response);
+    console.log('=== DEBUG: Parsed AI Result ===');
+    console.log(JSON.stringify(parsedResult, null, 2));
+    
+    return parsedResult;
   } catch (error) {
     console.error('Error in performHighPotentialIdentification:', error);
-    return {
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    // Return a fallback structure if AI parsing fails
+    const fallback = {
       hipoIdentification: { totalHiposCandidates: 0, confirmedHipos: 0, emergingTalent: 0, hipoRetentionRate: 0 },
       hipoProfiles: [],
       talentSegmentation: [],
       developmentTracking: []
     };
+    console.log('=== Returning fallback result ===');
+    return fallback;
   }
 }
 
