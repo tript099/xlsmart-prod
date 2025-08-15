@@ -24,14 +24,15 @@ serve(async (req) => {
     console.log(`Filters - Department: ${departmentFilter}, Role: ${roleFilter}`);
 
     // Fetch job descriptions data - get all active JDs for now
-    // Note: xlsmart_job_descriptions doesn't have department column, 
-    // so we'll filter post-query if needed
+    console.log('About to query xlsmart_job_descriptions with service role');
     const { data: jobDescriptions, error: jdError } = await supabase
       .from('xlsmart_job_descriptions')
       .select('*');
 
-    // If we need department filtering, we'll need to join with standard_roles
-    // or add department info to job descriptions table later
+    console.log('Query completed');
+    console.log('Error:', jdError);
+    console.log('Data length:', jobDescriptions?.length);
+    console.log('Data preview:', jobDescriptions?.slice(0, 2));
     
     if (jdError) {
       console.error('Error fetching job descriptions:', jdError);
