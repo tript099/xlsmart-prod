@@ -201,14 +201,31 @@ Respond with ONLY the UUID of the best matching role, or "NO_MATCH" if no suitab
     
     console.log(`AI suggested role ID: "${assignedRoleId}" for employee ${employee.first_name} ${employee.last_name}`);
     
-    if (assignedRoleId !== "NO_MATCH" && assignedRoleId.length === 36) {
-      // Verify the role ID exists
-      const roleExists = standardRoles.find(role => role.id === assignedRoleId);
-      if (roleExists) {
-        console.log(`AI selected role "${roleExists.role_title}" for employee ${employee.first_name} ${employee.last_name}`);
-        return assignedRoleId;
-      } else {
-        console.log(`AI suggested invalid role ID: ${assignedRoleId}`);
+    if (assignedRoleId === "NO_MATCH") {
+      console.log(`AI explicitly said NO_MATCH for employee ${employee.first_name} ${employee.last_name}`);
+      return null;
+    }
+    
+    // Try to find the role ID in our list (be more flexible with matching)
+    const roleExists = standardRoles.find(role => 
+      role.id === assignedRoleId || 
+      role.id.includes(assignedRoleId.trim()) ||
+      assignedRoleId.includes(role.id)
+    );
+    
+    if (roleExists) {
+      console.log(`AI selected role "${roleExists.role_title}" for employee ${employee.first_name} ${employee.last_name}`);
+      return roleExists.id;
+    } else {
+      console.log(`AI suggested invalid role ID: "${assignedRoleId}". Available role IDs: ${standardRoles.map(r => r.id).join(', ')}`);
+      // Fallback: assign the first role that matches the employee's general area
+      const fallbackRole = standardRoles.find(role => 
+        role.role_title.toLowerCase().includes(employee.current_position.toLowerCase().split(' ')[0]) ||
+        employee.current_position.toLowerCase().includes(role.role_title.toLowerCase().split(' ')[0])
+      );
+      if (fallbackRole) {
+        console.log(`Fallback assignment: "${fallbackRole.role_title}" for employee ${employee.first_name} ${employee.last_name}`);
+        return fallbackRole.id;
       }
     }
     
