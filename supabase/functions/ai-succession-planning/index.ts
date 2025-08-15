@@ -129,8 +129,7 @@ serve(async (req) => {
         function_name: 'ai-succession-planning',
         input_parameters: { analysisType, departmentFilter, positionLevel },
         analysis_result: result,
-        status: 'completed',
-        created_by: null // Explicitly set to null since no auth context in edge function
+        status: 'completed'
       })
       .select()
       .single();
