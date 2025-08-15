@@ -62,39 +62,31 @@ serve(async (req) => {
       throw new Error(`No employees found for ${assessmentType}: ${identifier}`);
     }
 
-    // Check for existing session and delete if found
-    const existingSessionName = `Bulk Skills Assessment - ${assessmentType.toUpperCase()}: ${identifier}`;
-    const { data: existingSessions } = await supabase
-      .from('xlsmart_upload_sessions')
-      .select('id')
-      .eq('session_name', existingSessionName)
-      .eq('created_by', '00000000-0000-0000-0000-000000000000');
+    // Create assessment session with unique identifier to avoid constraint violations
+    const timestamp = Date.now();
+    const sessionName = `Skills Assessment ${assessmentType}-${identifier}-${timestamp}`;
     
-    // Delete existing sessions to avoid unique constraint violation
-    if (existingSessions && existingSessions.length > 0) {
-      await supabase
-        .from('xlsmart_upload_sessions')
-        .delete()
-        .eq('session_name', existingSessionName)
-        .eq('created_by', '00000000-0000-0000-0000-000000000000');
-    }
-
-    // Create assessment session with unique timestamp
-    const sessionName = `Bulk Skills Assessment - ${assessmentType.toUpperCase()}: ${identifier} - ${new Date().toISOString()}`;
+    console.log(`Creating session: ${sessionName}`);
+    
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .insert({
         session_name: sessionName,
-        file_names: [`bulk_assessment_${assessmentType}`],
+        file_names: [`bulk_assessment_${assessmentType}_${timestamp}`],
         temp_table_names: [],
         total_rows: employees.length,
         status: 'processing',
-        created_by: '00000000-0000-0000-0000-000000000000' // System user
+        created_by: '00000000-0000-0000-0000-000000000000'
       })
       .select()
       .single();
 
-    if (sessionError) throw sessionError;
+    if (sessionError) {
+      console.error('Session creation error:', sessionError);
+      throw sessionError;
+    }
+
+    console.log(`Session created successfully: ${session.id}`);
 
     // Get target role if specified
     let targetRole = null;
@@ -164,7 +156,8 @@ serve(async (req) => {
                 errors: errorCount,
                 total: employees.length,
                 assessmentType,
-                identifier
+                identifier,
+                sessionName
               }
             })
             .eq('id', session.id);
@@ -185,6 +178,7 @@ serve(async (req) => {
               total: employees.length,
               assessmentType,
               identifier,
+              sessionName,
               completion_time: new Date().toISOString()
             }
           })
