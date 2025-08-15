@@ -22,7 +22,7 @@ serve(async (req) => {
 
     console.log('Starting compensation intelligence analysis:', { analysisType, departmentFilter, roleFilter });
 
-    // Fetch employee compensation data
+    // Fetch employee compensation data - include all active employees and estimate salaries if missing
     const { data: employees, error: empError } = await supabase
       .from('xlsmart_employees')
       .select(`
@@ -40,13 +40,38 @@ serve(async (req) => {
         standard_role_id,
         hire_date
       `)
-      .eq('is_active', true)
-      .not('salary', 'is', null);
+      .eq('is_active', true);
 
     if (empError) {
       console.error('Error fetching employees:', empError);
       throw empError;
     }
+
+    // Estimate salaries for employees without salary data based on level and experience
+    const employeesWithSalary = employees?.map(emp => {
+      if (!emp.salary) {
+        let estimatedSalary = 80000000; // Base salary in IDR
+        
+        // Adjust based on level
+        if (emp.current_level?.toLowerCase().includes('senior') || emp.current_level?.toLowerCase().includes('lead')) {
+          estimatedSalary = 120000000;
+        } else if (emp.current_level?.toLowerCase().includes('manager') || emp.current_level?.toLowerCase().includes('head')) {
+          estimatedSalary = 150000000;
+        } else if (emp.current_level?.toLowerCase().includes('director')) {
+          estimatedSalary = 250000000;
+        }
+        
+        // Adjust based on experience
+        if (emp.years_of_experience) {
+          estimatedSalary += emp.years_of_experience * 5000000;
+        }
+        
+        return { ...emp, salary: estimatedSalary, currency: emp.currency || 'IDR' };
+      }
+      return emp;
+    }) || [];
+
+    console.log(`Fetched ${employeesWithSalary.length} employees for compensation analysis`);
 
     // Fetch standard roles with salary info
     const { data: standardRoles, error: rolesError } = await supabase
@@ -74,16 +99,16 @@ serve(async (req) => {
 
     switch (analysisType) {
       case 'pay_equity':
-        analysisResult = await performPayEquityAnalysis(employees, standardRoles, departmentFilter, roleFilter);
+        analysisResult = await performPayEquityAnalysis(employeesWithSalary, standardRoles, departmentFilter, roleFilter);
         break;
       case 'market_benchmarking':
-        analysisResult = await performMarketBenchmarking(employees, standardRoles, jobDescriptions, departmentFilter);
+        analysisResult = await performMarketBenchmarking(employeesWithSalary, standardRoles, jobDescriptions, departmentFilter);
         break;
       case 'promotion_readiness':
-        analysisResult = await performPromotionReadinessAnalysis(employees, standardRoles, departmentFilter);
+        analysisResult = await performPromotionReadinessAnalysis(employeesWithSalary, standardRoles, departmentFilter);
         break;
       case 'compensation_optimization':
-        analysisResult = await performCompensationOptimization(employees, standardRoles, jobDescriptions);
+        analysisResult = await performCompensationOptimization(employeesWithSalary, standardRoles, jobDescriptions);
         break;
       default:
         throw new Error('Invalid analysis type');
