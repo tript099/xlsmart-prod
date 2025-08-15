@@ -20,45 +20,61 @@ serve(async (req) => {
   }
 
   try {
-    const { planningType, identifier } = await req.json();
+    const { planningType, identifier, employees } = await req.json();
     
     console.log(`Starting bulk mobility planning: ${planningType} - ${identifier}`);
     
-    // Get employees based on planning type
-    let employeesQuery = supabase
-      .from('xlsmart_employees')
-      .select('*')
-      .eq('is_active', true);
+    let employeesToProcess;
+    
+    // Handle two calling patterns: 1) filter by type/identifier, 2) direct employees array
+    if (employees && Array.isArray(employees)) {
+      employeesToProcess = employees;
+      console.log(`Processing ${employees.length} employees directly from array`);
+    } else if (planningType && identifier) {
+      // Get employees based on planning type
+      let employeesQuery = supabase
+        .from('xlsmart_employees')
+        .select('*')
+        .eq('is_active', true);
 
-    switch (planningType) {
-      case 'company':
-        employeesQuery = employeesQuery.eq('source_company', identifier);
-        break;
-      case 'department':
-        employeesQuery = employeesQuery.eq('current_department', identifier);
-        break;
-      case 'role':
-        employeesQuery = employeesQuery.eq('current_position', identifier);
-        break;
-      default:
-        throw new Error('Invalid planning type');
+      switch (planningType) {
+        case 'company':
+          employeesQuery = employeesQuery.eq('source_company', identifier);
+          break;
+        case 'department':
+          employeesQuery = employeesQuery.eq('current_department', identifier);
+          break;
+        case 'role':
+          employeesQuery = employeesQuery.eq('current_position', identifier);
+          break;
+        default:
+          throw new Error('Invalid planning type');
+      }
+
+      const { data: employees, error: employeesError } = await employeesQuery;
+      if (employeesError) throw employeesError;
+      employeesToProcess = employees;
+    } else {
+      throw new Error('Either provide planningType+identifier or employees array');
     }
 
-    const { data: employees, error: employeesError } = await employeesQuery;
-    if (employeesError) throw employeesError;
-
-    if (!employees || employees.length === 0) {
-      throw new Error(`No employees found for ${planningType}: ${identifier}`);
+    if (!employeesToProcess || employeesToProcess.length === 0) {
+      return new Response(JSON.stringify({ 
+        error: 'No employees found for the specified criteria' 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Create planning session
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .insert({
-        session_name: `Bulk Mobility Planning - ${planningType.toUpperCase()}: ${identifier}`,
-        file_names: [`mobility_planning_${planningType}`],
+        session_name: `Bulk Mobility Planning - ${planningType ? planningType.toUpperCase() + ': ' + identifier : 'Direct employees'}`,
+        file_names: [`mobility_planning_${planningType || 'direct'}`],
         temp_table_names: [],
-        total_rows: employees.length,
+        total_rows: employeesToProcess.length,
         status: 'processing',
         created_by: '00000000-0000-0000-0000-000000000000' // System user
       })
@@ -75,8 +91,8 @@ serve(async (req) => {
       let errorCount = 0;
 
       try {
-        for (let i = 0; i < employees.length; i += BATCH_SIZE) {
-          const batch = employees.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < employeesToProcess.length; i += BATCH_SIZE) {
+          const batch = employeesToProcess.slice(i, i + BATCH_SIZE);
           
           // Process batch in parallel but with controlled concurrency
           const batchPromises = batch.map(async (employee) => {
@@ -113,7 +129,7 @@ serve(async (req) => {
                 processed: processedCount,
                 completed: completedCount,
                 errors: errorCount,
-                total: employees.length,
+                total: employeesToProcess.length,
                 planningType,
                 identifier
               }
@@ -133,7 +149,7 @@ serve(async (req) => {
               processed: processedCount,
               completed: completedCount,
               errors: errorCount,
-              total: employees.length,
+              total: employeesToProcess.length,
               planningType,
               identifier,
               completion_time: new Date().toISOString()
@@ -161,8 +177,8 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       success: true,
       sessionId: session.id,
-      message: `Started bulk mobility planning for ${employees.length} employees`,
-      estimatedDuration: `${Math.ceil(employees.length / 15)} minutes`
+      message: `Started bulk mobility planning for ${employeesToProcess.length} employees`,
+      estimatedDuration: `${Math.ceil(employeesToProcess.length / 15)} minutes`
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
