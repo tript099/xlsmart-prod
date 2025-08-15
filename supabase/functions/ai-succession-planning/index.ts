@@ -25,21 +25,37 @@ serve(async (req) => {
     // Fetch data
     let employeesQuery = supabase
       .from('xlsmart_employees')
-      .select('*');
+      .select('*')
+      .eq('is_active', true);
 
     if (departmentFilter) {
-      employeesQuery = employeesQuery.eq('department', departmentFilter);
+      employeesQuery = employeesQuery.eq('current_department', departmentFilter);
     }
 
-    const { data: employees } = await employeesQuery;
+    const { data: employees, error: employeesError } = await employeesQuery;
+    if (employeesError) {
+      console.error('Error fetching employees:', employeesError);
+      throw new Error(`Failed to fetch employees: ${employeesError.message}`);
+    }
 
-    const { data: standardRoles } = await supabase
+    const { data: standardRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
-      .select('*');
+      .select('*')
+      .eq('is_active', true);
+    
+    if (rolesError) {
+      console.error('Error fetching standard roles:', rolesError);
+      throw new Error(`Failed to fetch standard roles: ${rolesError.message}`);
+    }
 
-    const { data: skillAssessments } = await supabase
+    const { data: skillAssessments, error: skillsError } = await supabase
       .from('xlsmart_skill_assessments')
       .select('*');
+    
+    if (skillsError) {
+      console.error('Error fetching skill assessments:', skillsError);
+      throw new Error(`Failed to fetch skill assessments: ${skillsError.message}`);
+    }
 
     let result;
     switch (analysisType) {
@@ -189,8 +205,19 @@ ${positionLevel ? `Focus on position level: ${positionLevel}` : ''}
 
 Analyze succession readiness and create development pathways.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performLeadershipPipeline:', error);
+    // Return a fallback structure if AI parsing fails
+    return {
+      pipelineOverview: { totalLeadershipRoles: 0, totalPotentialSuccessors: 0, averageSuccessionDepth: 0, criticalGapsCount: 0 },
+      leadershipLevels: [],
+      successionChains: [],
+      developmentRecommendations: []
+    };
+  }
 }
 
 async function performSuccessionReadiness(employees: any[], skillAssessments: any[]) {
@@ -254,8 +281,18 @@ Skills Assessment Results: ${JSON.stringify(skillAssessments.slice(0, 15).map(as
 
 Evaluate readiness for advancement and create succession strategies.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performSuccessionReadiness:', error);
+    return {
+      readinessMetrics: { immediatelyReady: 0, readyWithDevelopment: 0, longerTermPotential: 0, averageReadinessScore: 0 },
+      readinessAssessment: [],
+      competencyGaps: [],
+      successionPlans: []
+    };
+  }
 }
 
 async function performHighPotentialIdentification(employees: any[], skillAssessments: any[]) {
@@ -322,8 +359,18 @@ Skills and Performance Data: ${JSON.stringify(skillAssessments.slice(0, 15).map(
 
 Identify high-potential talent and create targeted development plans.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performHighPotentialIdentification:', error);
+    return {
+      hipoIdentification: { totalHiposCandidates: 0, confirmedHipos: 0, emergingTalent: 0, hipoRetentionRate: 0 },
+      hipoProfiles: [],
+      talentSegmentation: [],
+      developmentTracking: []
+    };
+  }
 }
 
 async function performLeadershipGapAnalysis(employees: any[], standardRoles: any[], departmentFilter?: string) {
@@ -391,6 +438,16 @@ ${departmentFilter ? `Focus analysis on department: ${departmentFilter}` : ''}
 
 Identify critical leadership gaps and recommend strategies to close them.`;
 
-  const response = await callLiteLLM(prompt, systemPrompt);
-  return JSON.parse(response);
+  try {
+    const response = await callLiteLLM(prompt, systemPrompt);
+    return JSON.parse(response);
+  } catch (error) {
+    console.error('Error in performLeadershipGapAnalysis:', error);
+    return {
+      gapAnalysis: { totalLeadershipGaps: 0, criticalGaps: 0, averageTimeToFill: 'N/A', gapImpactRating: 0 },
+      leadershipGaps: [],
+      capabilityGaps: [],
+      closureStrategies: []
+    };
+  }
 }
