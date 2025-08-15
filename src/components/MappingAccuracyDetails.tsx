@@ -54,12 +54,13 @@ export const MappingAccuracyDetails = () => {
       // Calculate stats
       const totalMappings = mappingData.length;
       const averageAccuracy = totalMappings > 0 
-        ? Math.round(mappingData.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / totalMappings)
+        ? Math.round(mappingData.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / totalMappings * 100)
         : 0;
 
-      const highConfidence = mappingData.filter(m => (m.mapping_confidence || 0) >= 80).length;
-      const mediumConfidence = mappingData.filter(m => (m.mapping_confidence || 0) >= 60 && (m.mapping_confidence || 0) < 80).length;
-      const lowConfidence = mappingData.filter(m => (m.mapping_confidence || 0) < 60).length;
+      // Convert decimal confidence values to percentages for comparison
+      const highConfidence = mappingData.filter(m => ((m.mapping_confidence || 0) * 100) >= 80).length;
+      const mediumConfidence = mappingData.filter(m => ((m.mapping_confidence || 0) * 100) >= 60 && ((m.mapping_confidence || 0) * 100) < 80).length;
+      const lowConfidence = mappingData.filter(m => ((m.mapping_confidence || 0) * 100) < 60).length;
       const pendingReview = mappingData.filter(m => m.mapping_status === 'pending_review').length;
 
       setStats({
@@ -78,12 +79,15 @@ export const MappingAccuracyDetails = () => {
   };
 
   const getConfidenceBadge = (confidence: number) => {
-    if (confidence >= 80) {
-      return <Badge className="bg-green-100 text-green-800 border-green-200">High ({confidence}%)</Badge>;
-    } else if (confidence >= 60) {
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Medium ({confidence}%)</Badge>;
+    // Convert decimal to percentage for display
+    const confidencePercent = Math.round(confidence * 100);
+    
+    if (confidencePercent >= 80) {
+      return <Badge className="bg-green-100 text-green-800 border-green-200">High ({confidencePercent}%)</Badge>;
+    } else if (confidencePercent >= 60) {
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Medium ({confidencePercent}%)</Badge>;
     } else {
-      return <Badge className="bg-red-100 text-red-800 border-red-200">Low ({confidence}%)</Badge>;
+      return <Badge className="bg-red-100 text-red-800 border-red-200">Low ({confidencePercent}%)</Badge>;
     }
   };
 
