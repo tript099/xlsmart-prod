@@ -171,6 +171,11 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
   console.log('OpenAI API Key exists:', !!openAIApiKey);
   console.log('OpenAI API Key length:', openAIApiKey?.length || 0);
   
+  if (!openAIApiKey) {
+    console.error('CRITICAL: OpenAI API Key is missing!');
+    throw new Error('OpenAI API key is not configured');
+  }
+  
   try {
     console.log('Making request to LiteLLM proxy...');
     const requestBody = {
@@ -180,10 +185,12 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 3000,
+      max_completion_tokens: 3000, // Use max_completion_tokens for newer models
     };
     console.log('Request body prepared, model:', requestBody.model);
+    console.log('Using max_completion_tokens:', requestBody.max_completion_tokens);
     
+    const startTime = Date.now();
     const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -192,8 +199,11 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
       },
       body: JSON.stringify(requestBody),
     });
+    const endTime = Date.now();
+    console.log(`API call took ${endTime - startTime}ms`);
 
     console.log(`LiteLLM proxy response status: ${response.status}`);
+    console.log(`Response headers:`, Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -205,12 +215,14 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 
     const data = await response.json();
     console.log('LiteLLM response received successfully');
+    console.log('Full response structure:', JSON.stringify(data, null, 2));
     console.log('Response content length:', data.choices?.[0]?.message?.content?.length || 0);
     console.log('Response preview:', data.choices?.[0]?.message?.content?.substring(0, 200) || 'No content');
     
-    const content = data.choices[0].message.content;
+    const content = data.choices?.[0]?.message?.content;
     if (!content) {
       console.error('Empty content received from LiteLLM');
+      console.error('Full response data:', JSON.stringify(data, null, 2));
       throw new Error('Empty response from AI');
     }
     
@@ -219,7 +231,9 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
     console.error('=== LiteLLM API Call Failed ===');
     console.error('Error type:', error.constructor.name);
     console.error('Error message:', error.message);
-    console.error('Error details:', error);
+    if (error.stack) {
+      console.error('Error stack:', error.stack);
+    }
     throw error;
   }
 }
