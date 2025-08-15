@@ -1,8 +1,10 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AIJobDescriptionsIntelligence } from "@/components/AIJobDescriptionsIntelligence";
+import JobDescriptionDialog from "@/components/JobDescriptionDialog";
 import { useJobDescriptionStats } from "@/hooks/useJobDescriptionStats";
 import { useRecentJobDescriptions } from "@/hooks/useRecentJobDescriptions";
 import { useNavigate } from "react-router-dom";
@@ -12,21 +14,25 @@ const JobDescriptionsDashboard = () => {
   console.log('🔄 JobDescriptionsDashboard rendered');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("generator");
+  const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading } = useJobDescriptionStats();
   const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
   console.log('📊 Dashboard stats:', { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading });
 
-  const handleCardClick = useCallback((cardType: string) => {
-    const params = new URLSearchParams();
-    if (cardType.includes(',')) {
-      // Handle multiple statuses
-      const statuses = cardType.split(',');
-      statuses.forEach(status => params.append('status', status));
-    } else {
-      params.set('status', cardType);
+  const handleCardClick = useCallback((cardType: string, index: number) => {
+    console.log('🔍 Card clicked:', cardType, index);
+    
+    // Open dialog instead of navigation to prevent page reload
+    if (index === 0) {
+      setActiveDialog('all-jds');
+    } else if (index === 1) {
+      setActiveDialog('approved-jds');
+    } else if (index === 2) {
+      setActiveDialog('pending-jds');
+    } else if (index === 3) {
+      setActiveDialog('active-jds');
     }
-    navigate(`/dashboard/job-descriptions/review?${params.toString()}`);
-  }, [navigate]);
+  }, []);
 
   // Memoize the stats array to prevent re-renders
   const jdStats = useMemo(() => [
@@ -88,7 +94,7 @@ const JobDescriptionsDashboard = () => {
             <Card 
               key={`${stat.label}-${stat.value}`}
               className="hover:shadow-md transition-all duration-200 cursor-pointer hover:scale-105"
-              onClick={() => handleCardClick(stat.status)}
+              onClick={() => handleCardClick(stat.status, index)}
             >
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
@@ -245,6 +251,35 @@ const JobDescriptionsDashboard = () => {
           </CardContent>
         </Card>
       </section>
+
+      {/* Dialog Modals for JD Details */}
+      <Dialog open={activeDialog === 'all-jds'} onOpenChange={(open) => setActiveDialog(open ? 'all-jds' : null)}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">All Job Descriptions</DialogTitle>
+          <JobDescriptionDialog statusFilters={['all']} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'approved-jds'} onOpenChange={(open) => setActiveDialog(open ? 'approved-jds' : null)}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Approved Job Descriptions</DialogTitle>
+          <JobDescriptionDialog statusFilters={['approved']} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'pending-jds'} onOpenChange={(open) => setActiveDialog(open ? 'pending-jds' : null)}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Pending Review Job Descriptions</DialogTitle>
+          <JobDescriptionDialog statusFilters={['draft', 'review']} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'active-jds'} onOpenChange={(open) => setActiveDialog(open ? 'active-jds' : null)}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Active Job Descriptions</DialogTitle>
+          <JobDescriptionDialog statusFilters={['published']} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
