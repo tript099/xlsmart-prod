@@ -33,8 +33,10 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
       const { data, error } = await supabase.functions.invoke('ai-job-descriptions-intelligence', {
         body: {
           analysisType: selectedAnalysis,
-          departmentFilter: departmentFilter || undefined,
-          roleFilter: roleFilter || undefined
+          // Note: Department filtering not supported yet as xlsmart_job_descriptions 
+          // table doesn't have department column
+          // departmentFilter: departmentFilter || undefined,
+          // roleFilter: roleFilter || undefined
         }
       });
 
@@ -393,9 +395,9 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
           </SelectContent>
         </Select>
 
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="Filter by department" />
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled>
+          <SelectTrigger className="w-full sm:w-48 opacity-50">
+            <SelectValue placeholder="All Departments (Filtering Coming Soon)" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Departments</SelectItem>
