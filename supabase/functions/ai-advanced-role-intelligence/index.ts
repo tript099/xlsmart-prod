@@ -153,7 +153,7 @@ Return a JSON object with this structure:
 
   const prompt = `Analyze role evolution patterns and future requirements:
 
-Current Standard Roles: ${JSON.stringify(standardRoles.slice(0, 20).map(role => ({
+Current Standard Roles: ${JSON.stringify(standardRoles.map(role => ({
     title: role.role_title,
     department: role.department,
     level: role.role_level,
@@ -161,7 +161,7 @@ Current Standard Roles: ${JSON.stringify(standardRoles.slice(0, 20).map(role => 
     responsibilities: role.responsibilities
   })))}
 
-Employee Role Distribution: ${JSON.stringify(employees.slice(0, 15).map(emp => ({
+Employee Role Distribution: ${JSON.stringify((employees || []).map(emp => ({
     role: emp.current_role,
     department: emp.department,
     skills: emp.skills,
@@ -227,7 +227,7 @@ Return a JSON object with this structure:
 
   const prompt = `Analyze role redundancy and organizational efficiency:
 
-Standard Role Definitions: ${JSON.stringify(standardRoles.slice(0, 20).map(role => ({
+Standard Role Definitions: ${JSON.stringify(standardRoles.map(role => ({
     title: role.role_title,
     department: role.department,
     responsibilities: role.responsibilities,
@@ -235,7 +235,7 @@ Standard Role Definitions: ${JSON.stringify(standardRoles.slice(0, 20).map(role 
     level: role.role_level
   })))}
 
-Current Employee Roles: ${JSON.stringify(employees.slice(0, 25).map(emp => ({
+Current Employee Roles: ${JSON.stringify((employees || []).map(emp => ({
     role: emp.current_role,
     department: emp.department,
     responsibilities: emp.job_responsibilities,
@@ -300,14 +300,14 @@ Return a JSON object with this structure:
 
   const prompt = `Predict future role requirements and transformations:
 
-Current Role Landscape: ${JSON.stringify(standardRoles.slice(0, 15).map(role => ({
+Current Role Landscape: ${JSON.stringify(standardRoles.map(role => ({
     title: role.role_title,
     department: role.department,
     skills: role.required_skills,
     level: role.role_level
   })))}
 
-Job Description Patterns: ${JSON.stringify(jobDescriptions.slice(0, 10).map(jd => ({
+Job Description Patterns: ${JSON.stringify((jobDescriptions || []).map(jd => ({
     role: jd.role_title,
     requirements: jd.requirements,
     responsibilities: jd.key_responsibilities
@@ -373,14 +373,14 @@ Return a JSON object with this structure:
 
   const prompt = `Analyze role competitiveness and market positioning:
 
-Standard Roles Portfolio: ${JSON.stringify(standardRoles.slice(0, 20).map(role => ({
+Standard Roles Portfolio: ${JSON.stringify(standardRoles.map(role => ({
     title: role.role_title,
     department: role.department,
     level: role.role_level,
     skills: role.required_skills
   })))}
 
-Current Talent Profile: ${JSON.stringify(employees.slice(0, 20).map(emp => ({
+Current Talent Profile: ${JSON.stringify((employees || []).map(emp => ({
     role: emp.current_role,
     department: emp.department,
     experience: emp.years_experience,
