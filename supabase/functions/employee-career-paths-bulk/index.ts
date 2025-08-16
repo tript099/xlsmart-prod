@@ -67,12 +67,13 @@ serve(async (req) => {
       });
     }
 
-    // Create career path session
+    // Create career path session with unique timestamp
+    const timestamp = new Date().toISOString();
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .insert({
-        session_name: `Bulk Career Paths - ${careerPathType ? careerPathType.toUpperCase() + ': ' + identifier : 'Direct employees'}`,
-        file_names: [`career_paths_${careerPathType || 'direct'}`],
+        session_name: `Bulk Career Paths - ${careerPathType ? careerPathType.toUpperCase() + ': ' + identifier : 'Direct employees'} - ${timestamp}`,
+        file_names: [`career_paths_${careerPathType || 'direct'}_${Date.now()}`],
         temp_table_names: [],
         total_rows: employeesToProcess.length,
         status: 'processing',
@@ -247,7 +248,7 @@ Focus on realistic progression within their current field or logical career tran
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini-2025-08-07',
         messages: [
           { 
             role: 'system', 
@@ -255,13 +256,22 @@ Focus on realistic progression within their current field or logical career tran
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 800
+        max_completion_tokens: 800
       }),
     });
 
     const data = await response.json();
-    const result = JSON.parse(data.choices[0].message.content);
+    let resultText = data.choices[0].message.content;
+    
+    // Clean up potential markdown code blocks
+    if (resultText.includes('```json')) {
+      resultText = resultText.replace(/```json\s*|\s*```/g, '');
+    }
+    if (resultText.includes('```')) {
+      resultText = resultText.replace(/```\s*|\s*```/g, '');
+    }
+    
+    const result = JSON.parse(resultText);
 
     return {
       nextRoles: result.nextRoles || [employee.current_position + " (Senior)"],
