@@ -12,7 +12,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -195,8 +195,8 @@ serve(async (req) => {
 });
 
 async function generateMobilityPlan(employee: any) {
-  if (!openAIApiKey) {
-    return `Mobility planning unavailable - no OpenAI API key configured for employee ${employee.first_name} ${employee.last_name}`;
+  if (!liteLLMApiKey) {
+    return `Mobility planning unavailable - no LiteLLM API key configured for employee ${employee.first_name} ${employee.last_name}`;
   }
 
   try {
@@ -225,14 +225,14 @@ Create a detailed mobility plan that includes:
 
 Focus on realistic career progression within the organization and provide actionable steps.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${liteLLMApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           { 
             role: 'system', 
@@ -240,8 +240,7 @@ Focus on realistic career progression within the organization and provide action
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 1200
+        max_completion_tokens: 1200
       }),
     });
 

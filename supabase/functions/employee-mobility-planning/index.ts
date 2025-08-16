@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +41,7 @@ Format your response as a structured plan with clear sections for:
     const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${liteLLMApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -56,14 +56,13 @@ Current Performance: ${currentPerformance}
 
 Please create a comprehensive mobility and career planning strategy for this employee.`
           }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
+         ],
+        max_completion_tokens: 2000,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      throw new Error(`LiteLLM API error: ${response.status}`);
     }
 
     const data = await response.json();
