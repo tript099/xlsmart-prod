@@ -115,24 +115,24 @@ serve(async (req) => {
             try {
               console.log(`Starting assessment for employee ${employee.id}: ${employee.first_name} ${employee.last_name}`);
               
-              // Find job description for employee's current role if no target role specified
+              // Find job description for employee's assigned role if no target role specified
               let jobDescriptionId = targetRoleId;
               if (!jobDescriptionId) {
-                console.log(`Looking up job description for employee role: ${employee.current_position}`);
+                console.log(`Looking up job description for employee's standard role: ${employee.standard_role_id}`);
                 const { data: jobDesc } = await supabase
                   .from('xlsmart_job_descriptions')
                   .select('id')
-                  .ilike('title', `%${employee.current_position}%`)
+                  .eq('standard_role_id', employee.standard_role_id)
                   .eq('status', 'approved')
                   .maybeSingle();
                 
                 if (jobDesc) {
                   jobDescriptionId = jobDesc.id;
-                  console.log(`Found job description ${jobDescriptionId} for role ${employee.current_position}`);
+                  console.log(`Found job description ${jobDescriptionId} for standard role ${employee.standard_role_id}`);
                 } else {
-                  console.log(`No job description found for role: ${employee.current_position}`);
+                  console.log(`No job description found for standard role: ${employee.standard_role_id}`);
                   // Skip this employee if no job description found
-                  throw new Error(`No job description found for employee role: ${employee.current_position}`);
+                  throw new Error(`No job description found for employee's standard role: ${employee.standard_role_id}`);
                 }
               }
               
