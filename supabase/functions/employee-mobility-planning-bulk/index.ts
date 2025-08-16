@@ -67,11 +67,21 @@ serve(async (req) => {
       });
     }
 
-    // Create planning session
+    // Create planning session - first delete any existing processing sessions for this user
+    const { error: deleteError } = await supabase
+      .from('xlsmart_upload_sessions')
+      .delete()
+      .eq('created_by', '00000000-0000-0000-0000-000000000000')
+      .eq('status', 'processing');
+
+    if (deleteError) {
+      console.log('Note: Could not delete existing sessions:', deleteError.message);
+    }
+
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .insert({
-        session_name: `Bulk Mobility Planning - ${planningType ? planningType.toUpperCase() + ': ' + identifier : 'Direct employees'}`,
+        session_name: `Bulk Mobility Planning - ${planningType ? planningType.toUpperCase() + ': ' + identifier : 'Direct employees'} - ${Date.now()}`,
         file_names: [`mobility_planning_${planningType || 'direct'}`],
         temp_table_names: [],
         total_rows: employeesToProcess.length,
