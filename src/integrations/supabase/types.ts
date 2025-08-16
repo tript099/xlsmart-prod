@@ -1814,7 +1814,7 @@ export type Database = {
           created_at: string
           employee_id: string
           id: string
-          job_description_id: string
+          job_description_id: string | null
           level_fit_score: number | null
           next_role_recommendations: Json | null
           overall_match_percentage: number | null
@@ -1831,7 +1831,7 @@ export type Database = {
           created_at?: string
           employee_id: string
           id?: string
-          job_description_id: string
+          job_description_id?: string | null
           level_fit_score?: number | null
           next_role_recommendations?: Json | null
           overall_match_percentage?: number | null
@@ -1848,7 +1848,7 @@ export type Database = {
           created_at?: string
           employee_id?: string
           id?: string
-          job_description_id?: string
+          job_description_id?: string | null
           level_fit_score?: number | null
           next_role_recommendations?: Json | null
           overall_match_percentage?: number | null
