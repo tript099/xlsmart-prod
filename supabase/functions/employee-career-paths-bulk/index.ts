@@ -257,6 +257,8 @@ Respond with JSON format:
 
 Focus on realistic progression within their industry and transferable skills.`;
 
+    console.log('Calling OpenAI API for employee:', employee.first_name, employee.last_name);
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -276,6 +278,14 @@ Focus on realistic progression within their industry and transferable skills.`;
         max_tokens: 800
       }),
     });
+
+    console.log('OpenAI API response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('OpenAI API error response:', errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+    }
 
     const data = await response.json();
     
