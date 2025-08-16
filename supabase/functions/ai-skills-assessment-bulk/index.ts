@@ -148,6 +148,9 @@ serve(async (req) => {
                 job_description_id: jobDescriptionId,
                 overall_match_percentage: assessment.overallMatch || 0,
                 skill_gaps: assessment.skillGaps || [],
+                churn_risk_score: assessment.churnRisk || 25,
+                rotation_risk_score: assessment.rotationRisk || 30,
+                level_fit_score: assessment.levelFit || 75,
                 recommendations: assessment.recommendations || 'No recommendations available',
                 next_role_recommendations: assessment.nextRoles || [],
                 ai_analysis: `Bulk assessment via ${assessmentType}`,
@@ -294,6 +297,15 @@ Provide a JSON response with:
 2. skillGaps: array of objects with {skill, currentLevel, requiredLevel, gap}
 3. recommendations: detailed text recommendations for skill development
 4. nextRoles: array of 3-5 suggested career progression roles
+5. churnRisk: percentage (0-100) - higher values indicate higher risk of employee leaving (consider: skill gaps, overqualification, market demand, career stagnation)
+6. rotationRisk: percentage (0-100) - higher values indicate higher likelihood of internal role change (consider: growth potential, skill transferability, ambition)
+7. levelFit: percentage (0-100) - how well the employee's experience and skills match their current level
+
+Analyze realistic risk factors:
+- High skill gaps or overqualification can increase churn risk
+- Strong performers with growth potential have higher rotation risk
+- Consider market conditions, career aspirations, and development opportunities
+- Vary the scores based on individual profiles - not everyone should be "Low" risk
 
 Focus on actionable insights and realistic assessments.`;
 
@@ -344,7 +356,10 @@ Focus on actionable insights and realistic assessments.`;
       overallMatch: result.overallMatch || 50,
       skillGaps: result.skillGaps || [],
       recommendations: result.recommendations || 'No specific recommendations available',
-      nextRoles: result.nextRoles || []
+      nextRoles: result.nextRoles || [],
+      churnRisk: result.churnRisk || 25,
+      rotationRisk: result.rotationRisk || 30,
+      levelFit: result.levelFit || 75
     };
 
   } catch (error) {
@@ -353,7 +368,10 @@ Focus on actionable insights and realistic assessments.`;
       overallMatch: 50,
       skillGaps: [],
       recommendations: `Assessment error: ${error.message}`,
-      nextRoles: []
+      nextRoles: [],
+      churnRisk: 25,
+      rotationRisk: 30,
+      levelFit: 75
     };
   }
 }
