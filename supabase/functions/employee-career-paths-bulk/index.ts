@@ -278,6 +278,17 @@ Focus on realistic progression within their industry and transferable skills.`;
     });
 
     const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('OpenAI API error:', data);
+      throw new Error(`OpenAI API error: ${data.error?.message || response.statusText}`);
+    }
+    
+    if (!data.choices || data.choices.length === 0) {
+      console.error('No choices in OpenAI response:', data);
+      throw new Error('No response choices from OpenAI');
+    }
+    
     let resultText = data.choices[0].message.content;
     
     // Clean up potential markdown code blocks
