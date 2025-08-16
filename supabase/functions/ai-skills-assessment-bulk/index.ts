@@ -115,6 +115,27 @@ serve(async (req) => {
             try {
               console.log(`Starting assessment for employee ${employee.id}: ${employee.first_name} ${employee.last_name}`);
               
+              // Find job description for employee's current role if no target role specified
+              let jobDescriptionId = targetRoleId;
+              if (!jobDescriptionId) {
+                console.log(`Looking up job description for employee role: ${employee.current_position}`);
+                const { data: jobDesc } = await supabase
+                  .from('xlsmart_job_descriptions')
+                  .select('id')
+                  .ilike('title', `%${employee.current_position}%`)
+                  .eq('status', 'approved')
+                  .single();
+                
+                if (jobDesc) {
+                  jobDescriptionId = jobDesc.id;
+                  console.log(`Found job description ${jobDescriptionId} for role ${employee.current_position}`);
+                } else {
+                  console.log(`No job description found for role: ${employee.current_position}`);
+                  // Skip this employee if no job description found
+                  throw new Error(`No job description found for employee role: ${employee.current_position}`);
+                }
+              }
+              
               const assessment = await runEmployeeAssessment(employee, targetRole);
               
               console.log(`Assessment completed for ${employee.id}:`, JSON.stringify(assessment, null, 2));
@@ -124,7 +145,7 @@ serve(async (req) => {
               
               const insertData = {
                 employee_id: employee.id,
-                job_description_id: targetRoleId || null, // Now nullable for general assessments
+                job_description_id: jobDescriptionId,
                 overall_match_percentage: assessment.overallMatch || 0,
                 skill_gaps: assessment.skillGaps || [],
                 recommendations: assessment.recommendations || 'No recommendations available',
