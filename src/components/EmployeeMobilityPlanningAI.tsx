@@ -129,14 +129,70 @@ export const EmployeeMobilityPlanningAI = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      if (data?.success && data.sessionId) {
         toast({
           title: "Mobility Analysis Started",
-          description: data.message || `Processing mobility plans for employees`,
+          description: `Processing mobility plans for ${employees.length} employees`,
         });
         
-        // Reload data to show new mobility plans
-        await loadData();
+        // Poll for progress updates
+        const pollProgress = setInterval(async () => {
+          try {
+            const { data: progressData } = await supabase.functions.invoke('employee-mobility-planning-progress', {
+              body: { sessionId: data.sessionId }
+            });
+
+            if (progressData?.progress) {
+              setProgress({
+                processed: progressData.progress.processed || 0,
+                total: progressData.progress.total || employees.length
+              });
+              
+              if (progressData.status === 'completed') {
+                clearInterval(pollProgress);
+                setAnalyzing(false);
+                setProgress(null);
+                
+                toast({
+                  title: "Mobility Analysis Complete!",
+                  description: `Generated mobility plans for ${progressData.progress.completed || employees.length} employees`,
+                });
+                
+                // Reload data to show new mobility plans
+                await loadData();
+              } else if (progressData.status === 'error') {
+                clearInterval(pollProgress);
+                setAnalyzing(false);
+                setProgress(null);
+                
+                toast({
+                  title: "Analysis Failed",
+                  description: progressData.error || "An error occurred during analysis",
+                  variant: "destructive",
+                });
+              }
+            }
+          } catch (progressError) {
+            console.error('Error checking progress:', progressError);
+          }
+        }, 2000);
+
+        // Set a timeout to stop polling after 5 minutes
+        setTimeout(() => {
+          clearInterval(pollProgress);
+          if (analyzing) {
+            setAnalyzing(false);
+            setProgress(null);
+            toast({
+              title: "Analysis Timeout",
+              description: "Analysis is taking longer than expected. Please check back later.",
+              variant: "destructive",
+            });
+          }
+        }, 300000); // 5 minutes
+        
+      } else {
+        throw new Error('Failed to start mobility analysis session');
       }
 
     } catch (error: any) {
@@ -146,7 +202,6 @@ export const EmployeeMobilityPlanningAI = () => {
         description: error.message || "Failed to run mobility analysis",
         variant: "destructive",
       });
-    } finally {
       setAnalyzing(false);
       setProgress(null);
     }
