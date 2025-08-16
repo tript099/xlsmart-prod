@@ -67,13 +67,23 @@ export const AISkillsAssessmentEnhanced = () => {
     try {
       setLoading(true);
       
-      // Load all employees
+      // Check authentication first
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('Current user:', user?.id, 'Auth error:', authError);
+      
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+      
+      // Load all employees with debugging
+      console.log('Loading employees...');
       const { data: employeesData, error: employeesError } = await supabase
         .from('xlsmart_employees')
         .select('*')
         .eq('is_active', true)
         .order('first_name');
 
+      console.log('Employees query result:', { employeesData, employeesError });
       if (employeesError) throw employeesError;
 
       // Load standard roles
