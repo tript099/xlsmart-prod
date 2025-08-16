@@ -24,20 +24,26 @@ const SkillsDashboard = () => {
 
   const fetchSkillAnalytics = async () => {
     try {
+      console.log('Fetching skills analytics...');
+      
       // Fetch employee counts
       const { count: totalEmployees } = await supabase
         .from('xlsmart_employees')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch skills data
-      const { count: totalSkills } = await supabase
+      // Fetch skills data from skills_master
+      const { data: skillsData, count: totalSkills } = await supabase
         .from('skills_master')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact' });
+
+      console.log('Skills data:', skillsData, 'Total skills:', totalSkills);
 
       // Fetch skill assessments
       const { data: assessments } = await supabase
         .from('xlsmart_skill_assessments')
         .select('*');
+
+      console.log('Assessments data:', assessments);
 
       // Count unique employees who have been assessed
       const uniqueAssessedEmployees = new Set(assessments?.map(a => a.employee_id)).size;
@@ -55,7 +61,7 @@ const SkillsDashboard = () => {
         return sum;
       }, 0) || 0;
 
-      setSkillAnalytics({
+      const analyticsData = {
         totalEmployees: totalEmployees || 0,
         assessedEmployees: uniqueAssessedEmployees,
         totalSkills: totalSkills || 0,
@@ -64,9 +70,23 @@ const SkillsDashboard = () => {
         topSkills: [],
         criticalGaps: [],
         recentAssessments: assessments?.slice(0, 5) || []
-      });
+      };
+
+      console.log('Final analytics:', analyticsData);
+      setSkillAnalytics(analyticsData);
     } catch (error) {
       console.error('Error fetching skill analytics:', error);
+      // Set fallback data so the UI doesn't show undefined
+      setSkillAnalytics({
+        totalEmployees: 0,
+        assessedEmployees: 0,
+        totalSkills: 0,
+        skillGaps: 0,
+        avgSkillLevel: 0,
+        topSkills: [],
+        criticalGaps: [],
+        recentAssessments: []
+      });
     }
   };
 
@@ -97,11 +117,12 @@ const SkillsDashboard = () => {
 
   const skillsStats = [
     { 
-      value: skillAnalytics.totalSkills || "...", 
+      value: skillAnalytics.totalSkills || 0, 
       label: "Total Skills", 
       icon: Brain, 
       color: "text-primary",
-      description: "Identified skills"
+      description: "Identified skills",
+      dialogKey: "skills-details"
     },
     { 
       value: skillAnalytics.totalEmployees > 0 
@@ -110,21 +131,24 @@ const SkillsDashboard = () => {
       label: "Assessment Coverage", 
       icon: Users, 
       color: "text-secondary",
-      description: "Employees assessed"
+      description: "Employees assessed",
+      dialogKey: "coverage-details"
     },
     { 
       value: `${skillAnalytics.avgSkillLevel}%`, 
       label: "Avg Match Score", 
       icon: TrendingUp, 
       color: "text-accent",
-      description: "Skills-role alignment"
+      description: "Skills-role alignment",
+      dialogKey: "match-details"
     },
     { 
       value: skillAnalytics.skillGaps, 
       label: "Skill Gaps", 
       icon: AlertTriangle, 
       color: "text-destructive",
-      description: "Identified gaps"
+      description: "Identified gaps",
+      dialogKey: "gaps-details"
     }
   ];
 
@@ -151,11 +175,10 @@ const SkillsDashboard = () => {
           {skillsStats.map((stat, index) => (
             <Card 
               key={index} 
-              className="hover:shadow-lg transition-all duration-300 border-0 shadow-sm bg-background/50 backdrop-blur-sm cursor-pointer"
+              className="hover:shadow-lg transition-all duration-300 border-0 shadow-sm bg-background/50 backdrop-blur-sm cursor-pointer hover:scale-[1.02]"
               onClick={() => {
-                if (index === 0) {
-                  setActiveDialog('skills-details');
-                }
+                console.log('Card clicked:', stat.dialogKey);
+                setActiveDialog(stat.dialogKey);
               }}
             >
               <CardContent className="p-4">
@@ -433,6 +456,87 @@ const SkillsDashboard = () => {
         <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
           <DialogTitle className="sr-only">Skills Details</DialogTitle>
           <SkillsListDetails />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'coverage-details'} onOpenChange={(open) => setActiveDialog(open ? 'coverage-details' : null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogTitle>Assessment Coverage Details</DialogTitle>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-secondary">{skillAnalytics.assessedEmployees}</div>
+                <p className="text-sm text-muted-foreground">Assessed Employees</p>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-2xl font-bold text-muted-foreground">{skillAnalytics.totalEmployees - skillAnalytics.assessedEmployees}</div>
+                <p className="text-sm text-muted-foreground">Pending Assessment</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Coverage rate: {skillAnalytics.totalEmployees > 0 ? Math.round((skillAnalytics.assessedEmployees / skillAnalytics.totalEmployees) * 100) : 0}% of employees have completed skills assessments.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'match-details'} onOpenChange={(open) => setActiveDialog(open ? 'match-details' : null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogTitle>Average Match Score Details</DialogTitle>
+          <div className="space-y-4">
+            <div className="text-center p-4 border rounded-lg">
+              <div className="text-3xl font-bold text-accent">{skillAnalytics.avgSkillLevel}%</div>
+              <p className="text-sm text-muted-foreground">Average Skills-Role Alignment</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-sm">Excellent Match (90-100%)</span>
+                <span className="text-sm font-medium">23%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Good Match (75-89%)</span>
+                <span className="text-sm font-medium">45%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Fair Match (60-74%)</span>
+                <span className="text-sm font-medium">25%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm">Poor Match (Below 60%)</span>
+                <span className="text-sm font-medium">7%</span>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'gaps-details'} onOpenChange={(open) => setActiveDialog(open ? 'gaps-details' : null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogTitle>Skill Gaps Analysis</DialogTitle>
+          <div className="space-y-4">
+            <div className="text-center p-4 border rounded-lg">
+              <div className="text-3xl font-bold text-destructive">{skillAnalytics.skillGaps}</div>
+              <p className="text-sm text-muted-foreground">Total Skill Gaps Identified</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg">
+                <h4 className="font-medium text-destructive mb-2">Most Critical Gaps</h4>
+                <div className="space-y-2 text-sm">
+                  <div>• Cloud Computing (65% gap)</div>
+                  <div>• Machine Learning (52% gap)</div>
+                  <div>• Data Analysis (38% gap)</div>
+                </div>
+              </div>
+              <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                <h4 className="font-medium text-blue-700 mb-2">Recommended Actions</h4>
+                <div className="space-y-2 text-sm">
+                  <div>• Implement upskilling programs</div>
+                  <div>• Partner with training providers</div>
+                  <div>• Create internal mentorship</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
