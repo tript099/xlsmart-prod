@@ -67,13 +67,13 @@ serve(async (req) => {
       });
     }
 
-    // Create career path session with unique timestamp
-    const timestamp = new Date().toISOString();
+    // Create career path session with unique identifier
+    const sessionId = `cp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .insert({
-        session_name: `Bulk Career Paths - ${careerPathType ? careerPathType.toUpperCase() + ': ' + identifier : 'Direct employees'} - ${timestamp}`,
-        file_names: [`career_paths_${careerPathType || 'direct'}_${Date.now()}`],
+        session_name: `Career Paths ${sessionId}`,
+        file_names: [`career_paths_${sessionId}`],
         temp_table_names: [],
         total_rows: employeesToProcess.length,
         status: 'processing',
