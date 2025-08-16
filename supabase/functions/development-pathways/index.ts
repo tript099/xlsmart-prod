@@ -66,8 +66,7 @@ Industry Trends: ${industryTrends || 'Consider current market trends'}
 Please create a comprehensive development pathway plan for this employee.`
           }
         ],
-        temperature: 0.7,
-        max_tokens: 2500,
+        max_completion_tokens: 2500,
       }),
     });
 

@@ -81,25 +81,32 @@ serve(async (req) => {
           // Process batch in parallel but with controlled concurrency
           const batchPromises = batch.map(async (employee) => {
             try {
+              console.log(`Processing development pathway for employee: ${employee.first_name} ${employee.last_name} (ID: ${employee.id})`);
               const developmentPlan = await generateDevelopmentPathway(employee);
               
-              // Store development plan result
+              // Store development plan result in AI analysis results table
               await supabase
-                .from('xlsmart_development_plans')
+                .from('ai_analysis_results')
                 .insert({
-                  employee_id: employee.id,
-                  target_role: 'Career Advancement',
-                  development_areas: [employee.current_position],
-                  recommended_courses: [],
-                  recommended_certifications: [],
-                  recommended_projects: [],
-                  timeline_months: 12,
-                  created_by: session.created_by,
-                  assigned_to: employee.id,
-                  plan_status: 'active'
+                  analysis_type: 'development_pathways',
+                  function_name: 'development-pathways-bulk',
+                  input_parameters: {
+                    employee_id: employee.id,
+                    employee_name: `${employee.first_name} ${employee.last_name}`,
+                    current_position: employee.current_position,
+                    department: employee.current_department,
+                    experience: employee.years_of_experience
+                  },
+                  analysis_result: {
+                    developmentPlan: developmentPlan,
+                    timestamp: new Date().toISOString()
+                  },
+                  created_by: '00000000-0000-0000-0000-000000000000',
+                  status: 'completed'
                 });
 
               completedCount++;
+              console.log(`Completed development pathway for ${employee.first_name} ${employee.last_name}. Total completed: ${completedCount}`);
               return { success: true, employee: employee.id };
             } catch (error) {
               console.error(`Error generating development pathway for employee ${employee.id}:`, error);
@@ -147,7 +154,7 @@ serve(async (req) => {
           })
           .eq('id', session.id);
 
-        console.log(`Bulk development pathways completed: ${completedCount} pathways, ${errorCount} errors`);
+        console.log(`Bulk development pathways completed: ${completedCount} pathways generated, ${errorCount} errors, Total employees: ${employees.length}`);
 
       } catch (error) {
         console.error('Error in bulk development pathways processing:', error);
@@ -217,14 +224,14 @@ Generate a detailed development plan that includes:
 
 Focus on practical, actionable development steps that align with current industry trends and the employee's career trajectory.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           { 
             role: 'system', 
@@ -232,8 +239,7 @@ Focus on practical, actionable development steps that align with current industr
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 1200
+        max_completion_tokens: 1200
       }),
     });
 
