@@ -100,20 +100,28 @@ serve(async (req) => {
             try {
               const careerPath = await generateEmployeeCareerPath(employee);
               
-              // Store career path result in development plans table
+              // Store career path result in AI analysis results table
               await supabase
-                .from('xlsmart_development_plans')
+                .from('ai_analysis_results')
                 .insert({
-                  employee_id: employee.id,
-                  target_role: careerPath.nextRoles[0] || 'Career Advancement',
-                  development_areas: careerPath.requiredSkills || [employee.current_position],
-                  recommended_courses: [],
-                  recommended_certifications: careerPath.certifications || [],
-                  recommended_projects: [],
-                  timeline_months: 24, // 2 years for career progression
+                  analysis_type: 'career_path',
+                  function_name: 'employee-career-paths-bulk',
+                  input_parameters: {
+                    employee_id: employee.id,
+                    employee_name: `${employee.first_name} ${employee.last_name}`,
+                    current_position: employee.current_position,
+                    department: employee.current_department
+                  },
+                  analysis_result: {
+                    lateralRoles: careerPath.lateralRoles,
+                    nextRoles: careerPath.nextRoles,
+                    requiredSkills: careerPath.requiredSkills,
+                    certifications: careerPath.certifications,
+                    actionsPlan: careerPath.actionsPlan,
+                    recommendations: careerPath.recommendations
+                  },
                   created_by: session.created_by,
-                  assigned_to: employee.id,
-                  plan_status: 'active'
+                  status: 'completed'
                 });
 
               completedCount++;
@@ -204,9 +212,11 @@ serve(async (req) => {
 async function generateEmployeeCareerPath(employee: any) {
   if (!openAIApiKey) {
     return {
+      lateralRoles: [employee.current_position + " (Specialist)"],
       nextRoles: [employee.current_position + " (Advanced)"],
       requiredSkills: ["Leadership", "Communication"],
       certifications: ["Industry Standard Certification"],
+      actionsPlan: { lateral: ["Develop expertise"], vertical: ["Lead projects"] },
       recommendations: `Career path unavailable - no OpenAI API key configured for ${employee.first_name} ${employee.last_name}`
     };
   }
@@ -221,25 +231,31 @@ Skills: ${Array.isArray(employee.skills) ? employee.skills.join(', ') : employee
 Company: ${employee.source_company}
 `;
 
-    const prompt = `Generate a focused career path for this employee.
+    const prompt = `Generate a comprehensive career path for this employee including lateral and vertical moves.
 
 ${employeeProfile}
 
-Create a career progression plan that includes:
-1. 2-3 realistic next career steps
-2. Top 3-5 skills needed for advancement
-3. 2-3 relevant certifications
-4. Brief progression strategy
+Create a detailed career progression plan that includes:
+1. 2-3 lateral role options (same level, different expertise)
+2. 2-3 next level roles (vertical progression)
+3. Top 5 skills needed for advancement
+4. 2-3 relevant certifications
+5. Specific recommended actions for each role transition
 
 Respond with JSON format:
 {
-  "nextRoles": ["Role 1", "Role 2"],
-  "requiredSkills": ["Skill 1", "Skill 2", "Skill 3"],
+  "lateralRoles": ["Role 1", "Role 2"],
+  "nextRoles": ["Senior Role 1", "Senior Role 2"],
+  "requiredSkills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4", "Skill 5"],
   "certifications": ["Cert 1", "Cert 2"],
-  "recommendations": "Brief actionable advice"
+  "actionsPlan": {
+    "lateral": ["Action 1 for lateral move", "Action 2 for lateral move"],
+    "vertical": ["Action 1 for promotion", "Action 2 for promotion"]
+  },
+  "recommendations": "Overall career strategy and timeline"
 }
 
-Focus on realistic progression within their current field or logical career transitions.`;
+Focus on realistic progression within their industry and transferable skills.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -275,18 +291,22 @@ Focus on realistic progression within their current field or logical career tran
     const result = JSON.parse(resultText);
 
     return {
+      lateralRoles: result.lateralRoles || [employee.current_position + " (Specialist)"],
       nextRoles: result.nextRoles || [employee.current_position + " (Senior)"],
       requiredSkills: result.requiredSkills || ["Leadership", "Communication", "Technical Skills"],
       certifications: result.certifications || ["Professional Certification"],
+      actionsPlan: result.actionsPlan || { lateral: ["Develop expertise"], vertical: ["Lead projects"] },
       recommendations: result.recommendations || "Continue developing current skills and seek leadership opportunities."
     };
 
   } catch (error) {
     console.error('Error in AI career path generation:', error);
     return {
+      lateralRoles: [employee.current_position + " (Specialist)"],
       nextRoles: [employee.current_position + " (Advanced)"],
       requiredSkills: ["Leadership", "Communication"],
       certifications: ["Industry Certification"],
+      actionsPlan: { lateral: ["Develop expertise"], vertical: ["Lead projects"] },
       recommendations: `Error generating career path: ${error.message}`
     };
   }

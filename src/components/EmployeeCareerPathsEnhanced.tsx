@@ -37,12 +37,15 @@ interface StandardRole {
 interface CareerPath {
   id: string;
   employee_id: string;
-  current_role: string;
-  next_roles: any;
-  timeframe: string;
-  required_skills: any;
-  development_plan: string;
-  ai_analysis: string;
+  lateralRoles: string[];
+  nextRoles: string[];
+  requiredSkills: string[];
+  certifications: string[];
+  actionsPlan: {
+    lateral: string[];
+    vertical: string[];
+  };
+  recommendations: string;
   created_at: string;
 }
 
@@ -80,8 +83,36 @@ export const EmployeeCareerPathsEnhanced = () => {
 
       if (rolesError) throw rolesError;
 
+      // Load AI-generated career paths
+      const { data: careerPathsData, error: careerPathsError } = await supabase
+        .from('ai_analysis_results')
+        .select('*')
+        .eq('analysis_type', 'career_path')
+        .order('created_at', { ascending: false });
+
+      if (careerPathsError) throw careerPathsError;
+
+      // Transform career paths data
+      const transformedCareerPaths = careerPathsData?.map(path => {
+        const inputParams = path.input_parameters as any;
+        const analysisResult = path.analysis_result as any;
+        
+        return {
+          id: path.id,
+          employee_id: inputParams?.employee_id || '',
+          lateralRoles: analysisResult?.lateralRoles || [],
+          nextRoles: analysisResult?.nextRoles || [],
+          requiredSkills: analysisResult?.requiredSkills || [],
+          certifications: analysisResult?.certifications || [],
+          actionsPlan: analysisResult?.actionsPlan || { lateral: [], vertical: [] },
+          recommendations: analysisResult?.recommendations || '',
+          created_at: path.created_at
+        };
+      }) || [];
+
       setEmployees(employeesData || []);
       setStandardRoles(rolesData || []);
+      setCareerPaths(transformedCareerPaths);
 
     } catch (error: any) {
       console.error('Error loading data:', error);
@@ -163,15 +194,23 @@ export const EmployeeCareerPathsEnhanced = () => {
     return "Expert Track";
   };
 
-  const getNextRoleSuggestions = (employee: Employee) => {
-    // Find similar roles in higher levels
-    const currentRole = employee.current_position;
-    const relevantRoles = standardRoles.filter(role => 
-      role.department === employee.current_department ||
-      role.job_family.toLowerCase().includes(currentRole.toLowerCase().split(' ')[0])
-    );
+  const getEmployeeCareerPath = (employee: Employee) => {
+    return careerPaths.find(path => path.employee_id === employee.id);
+  };
 
-    return relevantRoles.slice(0, 3).map(role => role.role_title);
+  const getLateralRoles = (employee: Employee) => {
+    const careerPath = getEmployeeCareerPath(employee);
+    return careerPath?.lateralRoles || [];
+  };
+
+  const getNextRoles = (employee: Employee) => {
+    const careerPath = getEmployeeCareerPath(employee);
+    return careerPath?.nextRoles || [];
+  };
+
+  const getRecommendedActions = (employee: Employee) => {
+    const careerPath = getEmployeeCareerPath(employee);
+    return careerPath?.actionsPlan || { lateral: [], vertical: [] };
   };
 
   const calculateProgressPercentage = () => {
@@ -313,63 +352,109 @@ export const EmployeeCareerPathsEnhanced = () => {
                   <TableRow>
                     <TableHead>Employee</TableHead>
                     <TableHead>Current Role</TableHead>
-                    <TableHead>Department</TableHead>
                     <TableHead>Experience</TableHead>
                     <TableHead>Performance</TableHead>
-                    <TableHead>Career Direction</TableHead>
+                    <TableHead>Lateral Roles</TableHead>
                     <TableHead>Next Roles</TableHead>
+                    <TableHead>Recommended Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {employees.map((employee) => (
-                    <TableRow key={employee.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {employee.first_name} {employee.last_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {employee.employee_number}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{employee.current_position}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {employee.current_department || 'N/A'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {employee.years_of_experience || 0} years
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-3 w-3 text-yellow-500" />
-                          {employee.performance_rating || 0}/5
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={getCareerDirection(employee) === 'Leadership Track' ? 'default' : 'secondary'}
-                        >
-                          {getCareerDirection(employee)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          {getNextRoleSuggestions(employee).map((role, index) => (
-                            <div key={index} className="flex items-center gap-1 text-sm">
-                              <ArrowRight className="h-3 w-3 text-blue-500" />
-                              {role}
+                  {employees.map((employee) => {
+                    const lateralRoles = getLateralRoles(employee);
+                    const nextRoles = getNextRoles(employee);
+                    const actions = getRecommendedActions(employee);
+                    
+                    return (
+                      <TableRow key={employee.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {employee.first_name} {employee.last_name}
                             </div>
-                          ))}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            <div className="text-sm text-muted-foreground">
+                              {employee.employee_number}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {employee.current_department || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {employee.current_position}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {employee.years_of_experience || 0} years
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3 w-3 text-yellow-500" />
+                            {employee.performance_rating || 0}/5
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1 max-w-[200px]">
+                            {lateralRoles.length > 0 ? (
+                              lateralRoles.map((role, index) => (
+                                <div key={index} className="flex items-center gap-1 text-sm">
+                                  <MapPin className="h-3 w-3 text-green-500" />
+                                  <span className="truncate">{role}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-sm text-muted-foreground">No lateral roles identified</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1 max-w-[200px]">
+                            {nextRoles.length > 0 ? (
+                              nextRoles.map((role, index) => (
+                                <div key={index} className="flex items-center gap-1 text-sm">
+                                  <ArrowRight className="h-3 w-3 text-blue-500" />
+                                  <span className="truncate">{role}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-sm text-muted-foreground">No next roles identified</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[250px] space-y-2">
+                            {actions.lateral.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-green-600 mb-1">Lateral:</div>
+                                {actions.lateral.slice(0, 2).map((action, index) => (
+                                  <div key={index} className="text-xs text-muted-foreground mb-1">
+                                    • {action}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {actions.vertical.length > 0 && (
+                              <div>
+                                <div className="text-xs font-medium text-blue-600 mb-1">Vertical:</div>
+                                {actions.vertical.slice(0, 2).map((action, index) => (
+                                  <div key={index} className="text-xs text-muted-foreground mb-1">
+                                    • {action}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {actions.lateral.length === 0 && actions.vertical.length === 0 && (
+                              <span className="text-xs text-muted-foreground">Run AI analysis for recommendations</span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
