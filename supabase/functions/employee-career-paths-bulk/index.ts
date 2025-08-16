@@ -12,7 +12,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -210,14 +210,14 @@ serve(async (req) => {
 });
 
 async function generateEmployeeCareerPath(employee: any) {
-  if (!openAIApiKey) {
+  if (!liteLLMApiKey) {
     return {
       lateralRoles: [employee.current_position + " (Specialist)"],
       nextRoles: [employee.current_position + " (Advanced)"],
       requiredSkills: ["Leadership", "Communication"],
       certifications: ["Industry Standard Certification"],
       actionsPlan: { lateral: ["Develop expertise"], vertical: ["Lead projects"] },
-      recommendations: `Career path unavailable - no OpenAI API key configured for ${employee.first_name} ${employee.last_name}`
+      recommendations: `Career path unavailable - no LiteLLM API key configured for ${employee.first_name} ${employee.last_name}`
     };
   }
 
@@ -257,16 +257,16 @@ Respond with JSON format:
 
 Focus on realistic progression within their industry and transferable skills.`;
 
-    console.log('Calling OpenAI API for employee:', employee.first_name, employee.last_name);
+    console.log('Calling LiteLLM API for employee:', employee.first_name, employee.last_name);
     
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${liteLLMApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           { 
             role: 'system', 
@@ -274,29 +274,23 @@ Focus on realistic progression within their industry and transferable skills.`;
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 800
+        max_completion_tokens: 800
       }),
     });
 
-    console.log('OpenAI API response status:', response.status);
+    console.log('LiteLLM API response status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error response:', errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     
-    if (!response.ok) {
-      console.error('OpenAI API error:', data);
-      throw new Error(`OpenAI API error: ${data.error?.message || response.statusText}`);
-    }
-    
     if (!data.choices || data.choices.length === 0) {
-      console.error('No choices in OpenAI response:', data);
-      throw new Error('No response choices from OpenAI');
+      console.error('No choices in LiteLLM response:', data);
+      throw new Error('No response choices from LiteLLM');
     }
     
     let resultText = data.choices[0].message.content;
