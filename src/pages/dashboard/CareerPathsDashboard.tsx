@@ -22,10 +22,18 @@ const CareerPathsDashboard = () => {
   useEffect(() => {
     const fetchCareerAnalytics = async () => {
       try {
+        console.log('Fetching career analytics...');
+        
         // Fetch employee data
         const { data: employees, count: totalEmployees } = await supabase
           .from('xlsmart_employees')
           .select('*', { count: 'exact' });
+
+        // Fetch active development plans
+        const { data: developmentPlans, count: activePlans } = await supabase
+          .from('xlsmart_development_plans')
+          .select('*', { count: 'exact' })
+          .eq('plan_status', 'active');
 
         // Fetch certifications
         const { data: certifications, count: totalCertifications } = await supabase
@@ -42,15 +50,18 @@ const CareerPathsDashboard = () => {
           ? employees.reduce((sum, emp) => sum + (emp.performance_rating || 0), 0) / employees.length 
           : 0;
 
-        setCareerAnalytics({
+        const analyticsData = {
           totalEmployees: totalEmployees || 0,
-          activeCareerPlans: Math.floor((totalEmployees || 0) * 0.73), // 73% engagement rate
+          activeCareerPlans: activePlans || 0,
           totalCertifications: totalCertifications || 0,
           totalTrainings: totalTrainings || 0,
           avgPerformanceRating: Math.round(avgRating * 10) / 10,
           recentCertifications: certifications?.slice(0, 5) || [],
           recentTrainings: trainings?.slice(0, 5) || []
-        });
+        };
+
+        console.log('Career analytics data:', analyticsData);
+        setCareerAnalytics(analyticsData);
       } catch (error) {
         console.error('Error fetching career analytics:', error);
       }
