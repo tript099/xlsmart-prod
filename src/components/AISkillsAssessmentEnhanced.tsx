@@ -67,14 +67,6 @@ export const AISkillsAssessmentEnhanced = () => {
     try {
       setLoading(true);
       
-      // Check authentication first
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      console.log('Current user:', user?.id, 'Auth error:', authError);
-      
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
-      
       // Load all employees with debugging
       console.log('Loading employees...');
       const { data: employeesData, error: employeesError } = await supabase
