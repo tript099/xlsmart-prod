@@ -1,12 +1,59 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlanningAI";
 import { Target, TrendingUp, Users, AlertTriangle, Loader2 } from "lucide-react";
 import { useMobilityAnalytics } from "@/hooks/useMobilityAnalytics";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const MobilityDashboard = () => {
   const mobilityAnalytics = useMobilityAnalytics();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('xlsmart_employees')
+        .select('*')
+        .eq('is_active', true);
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get actual high-risk employees from the database
+  const getHighRiskEmployees = () => {
+    if (!employees.length) return [];
+    
+    return employees
+      .filter(emp => {
+        // Calculate risk based on performance rating and other factors
+        const performance = emp.performance_rating || 0;
+        const experience = emp.years_of_experience || 0;
+        const hasStandardRole = !!emp.standard_role_id;
+        
+        // High risk: low performance OR high experience without standard role
+        return performance < 3 || (experience > 5 && !hasStandardRole);
+      })
+      .slice(0, 10) // Show top 10 high-risk employees
+      .map(emp => ({
+        name: `${emp.first_name || 'Unknown'} ${emp.last_name || 'Employee'}`,
+        position: emp.current_position || 'Unknown Position',
+        risk: emp.performance_rating < 2 ? 'High' : emp.performance_rating < 3 ? 'Medium' : 'Low',
+        riskColor: emp.performance_rating < 2 ? 'destructive' : emp.performance_rating < 3 ? 'secondary' : 'default'
+      }));
+  };
 
   const mobilityStats = [
     { 
@@ -120,27 +167,29 @@ const MobilityDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
-                <div>
-                  <p className="font-medium text-red-800">Sarah Johnson</p>
-                  <p className="text-sm text-red-600">Senior Developer</p>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading employees...</span>
                 </div>
-                <div className="text-red-600 text-sm font-medium">High Risk</div>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                <div>
-                  <p className="font-medium text-orange-800">Mike Chen</p>
-                  <p className="text-sm text-orange-600">Product Manager</p>
+              ) : getHighRiskEmployees().length > 0 ? (
+                getHighRiskEmployees().map((employee, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                      <p className="font-medium">{employee.name}</p>
+                      <p className="text-sm text-muted-foreground">{employee.position}</p>
+                    </div>
+                    <Badge variant={employee.riskColor as any}>
+                      {employee.risk} Risk
+                    </Badge>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p>No high-risk employees identified</p>
+                  <p className="text-sm">All employees appear to be in good standing</p>
                 </div>
-                <div className="text-orange-600 text-sm font-medium">Medium Risk</div>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <div>
-                  <p className="font-medium text-yellow-800">Alex Rivera</p>
-                  <p className="text-sm text-yellow-600">Data Analyst</p>
-                </div>
-                <div className="text-yellow-600 text-sm font-medium">Low Risk</div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
