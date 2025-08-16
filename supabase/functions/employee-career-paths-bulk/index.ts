@@ -248,7 +248,7 @@ Focus on realistic progression within their current field or logical career tran
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
@@ -256,7 +256,8 @@ Focus on realistic progression within their current field or logical career tran
           },
           { role: 'user', content: prompt }
         ],
-        max_completion_tokens: 800
+        temperature: 0.3,
+        max_tokens: 800
       }),
     });
 
