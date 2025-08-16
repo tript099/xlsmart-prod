@@ -124,7 +124,7 @@ serve(async (req) => {
                   .select('id')
                   .ilike('title', `%${employee.current_position}%`)
                   .eq('status', 'approved')
-                  .single();
+                  .maybeSingle();
                 
                 if (jobDesc) {
                   jobDescriptionId = jobDesc.id;
