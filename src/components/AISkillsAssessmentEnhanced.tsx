@@ -132,6 +132,7 @@ export const AISkillsAssessmentEnhanced = () => {
       });
 
       // Call the bulk skills assessment function
+      console.log('Starting bulk assessment with employees:', employees.length);
       const { data, error } = await supabase.functions.invoke('ai-skills-assessment-bulk', {
         body: {
           assessmentType: 'all',
@@ -140,7 +141,10 @@ export const AISkillsAssessmentEnhanced = () => {
         }
       });
 
+      console.log('Function response:', { data, error });
+
       if (error) {
+        console.error('Function invocation error:', error);
         throw error;
       }
 
