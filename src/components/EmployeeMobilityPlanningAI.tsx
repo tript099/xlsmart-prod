@@ -131,8 +131,8 @@ export const EmployeeMobilityPlanningAI = () => {
 
       if (data?.success) {
         toast({
-          title: "Mobility Analysis Complete",
-          description: `Generated mobility plans for ${data.total_processed} employees`,
+          title: "Mobility Analysis Started",
+          description: data.message || `Processing mobility plans for employees`,
         });
         
         // Reload data to show new mobility plans

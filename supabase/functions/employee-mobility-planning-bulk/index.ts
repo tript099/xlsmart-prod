@@ -107,19 +107,33 @@ serve(async (req) => {
           // Process batch in parallel but with controlled concurrency
           const batchPromises = batch.map(async (employee) => {
             try {
+              console.log(`Processing mobility plan for employee: ${employee.first_name} ${employee.last_name} (ID: ${employee.id})`);
               const mobilityPlan = await generateMobilityPlan(employee);
               
-              // Store development plan result in a development plans table (create if needed)
-              // For now, we'll update the employee record with the plan
+              // Store mobility plan result in AI analysis results table
               await supabase
-                .from('xlsmart_employees')
-                .update({
-                  // Add a mobility_plan field or create a separate table for plans
-                  // For demonstration, we'll add it to AI analysis for tracking
-                })
-                .eq('id', employee.id);
+                .from('ai_analysis_results')
+                .insert({
+                  analysis_type: 'mobility_plan',
+                  function_name: 'employee-mobility-planning-bulk',
+                  input_parameters: {
+                    employee_id: employee.id,
+                    employee_name: `${employee.first_name} ${employee.last_name}`,
+                    current_position: employee.current_position,
+                    department: employee.current_department,
+                    experience: employee.years_of_experience,
+                    performance_rating: employee.performance_rating
+                  },
+                  analysis_result: {
+                    mobilityPlan: mobilityPlan,
+                    timestamp: new Date().toISOString()
+                  },
+                  created_by: '00000000-0000-0000-0000-000000000000',
+                  status: 'completed'
+                });
 
               completedCount++;
+              console.log(`Completed mobility plan for ${employee.first_name} ${employee.last_name}. Total completed: ${completedCount}`);
               return { success: true, employee: employee.id };
             } catch (error) {
               console.error(`Error generating mobility plan for employee ${employee.id}:`, error);
@@ -167,7 +181,7 @@ serve(async (req) => {
           })
           .eq('id', session.id);
 
-        console.log(`Bulk mobility planning completed: ${completedCount} plans, ${errorCount} errors`);
+        console.log(`Bulk mobility planning completed: ${completedCount} plans generated, ${errorCount} errors, Total employees: ${employeesToProcess.length}`);
 
       } catch (error) {
         console.error('Error in bulk mobility planning processing:', error);
@@ -209,9 +223,9 @@ async function generateMobilityPlan(employee: any) {
     return `Mobility planning unavailable - no LiteLLM API key configured for employee ${employee.first_name} ${employee.last_name}`;
   }
 
-  try {
-    const employeeProfile = `
-Employee: ${employee.first_name} ${employee.last_name}
+    console.log(`Generating mobility plan for employee: ${employee.first_name} ${employee.last_name}`);
+    try {
+const employeeProfile = `
 Current Position: ${employee.current_position}
 Department: ${employee.current_department || 'Not specified'}
 Experience: ${employee.years_of_experience || 0} years
