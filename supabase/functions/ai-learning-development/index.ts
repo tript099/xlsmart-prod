@@ -59,7 +59,7 @@ serve(async (req) => {
     console.log(`Found ${employees?.length || 0} employees`);
 
     // Call LiteLLM for AI analysis
-    const aiResponse = await callLiteLLM(employees, analysisType, employeeId, departmentFilter, openAIApiKey);
+    const aiResponse = await callLiteLLM(employees, analysisType, employeeId, departmentFilter);
     
     console.log('Returning AI response for analysis type:', analysisType);
     
@@ -82,9 +82,11 @@ serve(async (req) => {
   }
 });
 
-async function callLiteLLM(employees: any[], analysisType: string, employeeId?: string, departmentFilter?: string, openAIApiKey?: string) {
-  console.log('callLiteLLM - API key exists:', !!openAIApiKey);
-  console.log('callLiteLLM - API key length:', openAIApiKey?.length || 0);
+async function callLiteLLM(employees: any[], analysisType: string, employeeId?: string, departmentFilter?: string) {
+  let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+  }
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
