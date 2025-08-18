@@ -264,17 +264,17 @@ const Login = () => {
                       
                       <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
                         <p className="text-sm text-green-700 text-center mb-2">
-                          <strong>Testing the Job Description Intelligence:</strong>
+                          <strong>Testing the Complete Platform:</strong>
                         </p>
                         <ol className="text-xs text-green-600 text-left space-y-1">
                           <li>1. Click "Fill Test Credentials" above</li>
                           <li>2. Click "Create Account" (or "Sign In" if account exists)</li>
                           <li>3. Navigate to "Job Descriptions" in the sidebar</li>
-                          <li>4. Click the "Intelligence" tab</li>
-                          <li>5. Select an analysis type and click "Analyze"</li>
+                          <li>4. Test the "Intelligence" tab for JD analysis</li>
+                          <li>5. Test the "AI Tester" tab for role assignments</li>
                         </ol>
                         <p className="text-xs text-green-600 text-center mt-2">
-                          Database contains 34 job descriptions ready for analysis.
+                          ✅ Database: 34 job descriptions | ✅ AI: OpenAI API configured | ✅ Functions: All operational
                         </p>
                       </div>
                     </TabsContent>

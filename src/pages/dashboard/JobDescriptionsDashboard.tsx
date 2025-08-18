@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AIJobDescriptionsIntelligence } from "@/components/AIJobDescriptionsIntelligence";
+import AIRoleAssignmentTester from "@/components/AIRoleAssignmentTester";
 import JobDescriptionDialog from "@/components/JobDescriptionDialog";
 import { useJobDescriptionStats } from "@/hooks/useJobDescriptionStats";
 import { useRecentJobDescriptions } from "@/hooks/useRecentJobDescriptions";
@@ -137,7 +138,7 @@ const JobDescriptionsDashboard = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="generator" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Generator
@@ -145,6 +146,10 @@ const JobDescriptionsDashboard = () => {
             <TabsTrigger value="intelligence" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               Intelligence
+            </TabsTrigger>
+            <TabsTrigger value="tester" className="flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              AI Tester
             </TabsTrigger>
           </TabsList>
 
@@ -172,6 +177,20 @@ const JobDescriptionsDashboard = () => {
               </CardHeader>
               <CardContent>
                 <AIJobDescriptionsIntelligence />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="tester" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Brain className="h-5 w-5 text-primary" />
+                  <span>AI System Tester</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AIRoleAssignmentTester />
               </CardContent>
             </Card>
           </TabsContent>
