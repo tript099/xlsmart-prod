@@ -160,6 +160,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
+    temperature: 0.7,
     max_completion_tokens: 3000,
   };
 
@@ -220,7 +221,7 @@ async function performPayEquityAnalysis(employees: any[], standardRoles: any[], 
     filteredEmployees = filteredEmployees.filter(emp => emp.current_position === roleFilter);
   }
 
-  const systemPrompt = `You are an AI compensation analyst specializing in pay equity analysis. Analyze salary data to identify potential pay gaps and ensure fair compensation practices.
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in pay equity analysis and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
 
 Return analysis in JSON format:
 {
@@ -320,7 +321,7 @@ async function performMarketBenchmarking(employees: any[], standardRoles: any[],
     ? employees.filter(emp => emp.current_department === departmentFilter)
     : employees;
 
-  const systemPrompt = `You are an AI compensation benchmarking specialist. Analyze current compensation against market standards and provide competitive positioning insights.
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in market benchmarking and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
 
 Return analysis in JSON format:
 {
@@ -406,7 +407,7 @@ async function performPromotionReadinessAnalysis(employees: any[], standardRoles
     ? employees.filter(emp => emp.current_department === departmentFilter)
     : employees;
 
-  const systemPrompt = `You are an AI promotion and advancement specialist. Analyze employee data to identify promotion-ready candidates and salary advancement opportunities.
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in promotion readiness and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
 
 Return analysis in JSON format:
 {
@@ -484,7 +485,7 @@ Provide comprehensive promotion readiness analysis focusing on:
 }
 
 async function performCompensationOptimization(employees: any[], standardRoles: any[], jobDescriptions: any[]) {
-  const systemPrompt = `You are an AI compensation optimization strategist. Analyze comprehensive compensation data to provide strategic recommendations for optimal compensation structure.
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in compensation optimization and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
 
 Return analysis in JSON format:
 {
