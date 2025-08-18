@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
-import { AIJobDescriptionsIntelligence } from "@/components/AIJobDescriptionsIntelligence";
+import { AIJobDescriptionsIntelligenceTest } from "@/components/AIJobDescriptionsIntelligenceTest";
 import JobDescriptionDialog from "@/components/JobDescriptionDialog";
 import { useJobDescriptionStats } from "@/hooks/useJobDescriptionStats";
 import { useRecentJobDescriptions } from "@/hooks/useRecentJobDescriptions";
@@ -173,7 +173,7 @@ const JobDescriptionsDashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <AIJobDescriptionsIntelligence />
+                  <AIJobDescriptionsIntelligenceTest />
                 </CardContent>
               </Card>
             </TabsContent>
