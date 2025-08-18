@@ -14,6 +14,8 @@ interface JobDescriptionsIntelligenceProps {
 }
 
 export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligenceProps> = ({ onAnalysisComplete }) => {
+  console.log('🧠 AIJobDescriptionsIntelligence component rendered');
+  
   const [selectedAnalysis, setSelectedAnalysis] = useState<string>('jd_optimization');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
@@ -22,6 +24,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   const [fixingJobs, setFixingJobs] = useState<Set<string>>(new Set());
   const [pastResults, setPastResults] = useState<any[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string>('');
+  const [isComponentMounted, setIsComponentMounted] = useState(false);
 
   const analysisTypes = [
     { value: 'jd_optimization', label: 'JD Optimization', icon: Target },
@@ -31,6 +34,8 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   ];
 
   React.useEffect(() => {
+    console.log('🧠 Component mounted, fetching past results...');
+    setIsComponentMounted(true);
     fetchPastResults();
   }, []);
 
@@ -467,8 +472,28 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
     </div>
   );
 
+  console.log('🧠 Rendering component. isComponentMounted:', isComponentMounted, 'results:', !!results);
+
+  if (!isComponentMounted) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-muted-foreground">Loading intelligence tools...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      <div className="mb-4 p-4 bg-muted/30 rounded-lg border">
+        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          <Brain className="h-5 w-5 text-primary" />
+          Job Description Intelligence
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          Analyze job descriptions for optimization, market alignment, skills mapping, and compliance.
+        </p>
+      </div>
+      
       <div className="flex flex-col sm:flex-row gap-4">
         <Select value={selectedAnalysis} onValueChange={handleAnalysisTypeChange}>
           <SelectTrigger className="w-full sm:w-64">
