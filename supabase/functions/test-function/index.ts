@@ -11,7 +11,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  console.log('=== TEST FUNCTION STARTED ===');
+  console.log('=== TEST FUNCTION STARTED - API KEY REFRESH ===');
 
   try {
     // Test basic environment variables
