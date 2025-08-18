@@ -140,27 +140,27 @@ serve(async (req) => {
   }
 });
 
-async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+async function callOpenAI(prompt: string, systemPrompt: string) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'azure/gpt-4.1',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      max_completion_tokens: 2000,
+      max_tokens: 2000,
     }),
   });
 
   const data = await response.json();
   if (!response.ok) {
-    console.error('LiteLLM API error:', data);
-    throw new Error(`LiteLLM API error: ${data.error?.message || 'Unknown error'}`);
+    console.error('OpenAI API error:', data);
+    throw new Error(`OpenAI API error: ${data.error?.message || 'Unknown error'}`);
   }
   
   return data.choices[0].message.content;
@@ -347,7 +347,7 @@ Provide personalized learning analysis focusing on:
 3. Certification recommendations for professional growth
 4. Customized learning preferences and delivery methods`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
+  const result = await callOpenAI(prompt, systemPrompt);
   console.log('AI Response received, length:', result.length);
   console.log('AI Response first 1000 chars:', result.substring(0, 1000));
   console.log('AI Response last 500 chars:', result.substring(Math.max(0, result.length - 500)));
@@ -451,7 +451,7 @@ Provide comprehensive skills development analysis focusing on:
 3. Emerging skills preparation and future-readiness
 4. Department-specific development needs and strategies`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
+  const result = await callOpenAI(prompt, systemPrompt);
   try {
     const cleanedResult = cleanJsonResponse(result);
     return JSON.parse(cleanedResult);
@@ -530,7 +530,7 @@ Provide comprehensive training effectiveness analysis focusing on:
 3. Learner-specific effectiveness and engagement
 4. Strategic optimization recommendations for L&D programs`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
+  const result = await callOpenAI(prompt, systemPrompt);
   try {
     const cleanedResult = cleanJsonResponse(result);
     return JSON.parse(cleanedResult);
@@ -619,7 +619,7 @@ Provide comprehensive learning strategy analysis focusing on:
 3. Learning infrastructure and technology requirements
 4. Implementation roadmap with phased approach and milestones`;
 
-  const result = await callLiteLLM(prompt, systemPrompt);
+  const result = await callOpenAI(prompt, systemPrompt);
   try {
     const cleanedResult = cleanJsonResponse(result);
     return JSON.parse(cleanedResult);
