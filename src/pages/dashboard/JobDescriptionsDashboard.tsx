@@ -14,6 +14,8 @@ const JobDescriptionsDashboard = () => {
   console.log('🔄 JobDescriptionsDashboard rendered');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("generator");
+  
+  console.log('🎯 Current activeTab:', activeTab);
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
   const { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading } = useJobDescriptionStats();
   const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
@@ -146,38 +148,33 @@ const JobDescriptionsDashboard = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Only render the active tab content */}
-          {activeTab === "generator" && (
-            <TabsContent value="generator" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    <span>Generate Job Descriptions</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AIJobDescriptionGeneratorEnhanced />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+          <TabsContent value="generator" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <span>Generate Job Descriptions</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AIJobDescriptionGeneratorEnhanced />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {activeTab === "intelligence" && (
-            <TabsContent value="intelligence" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Brain className="h-5 w-5 text-primary" />
-                    <span>Job Description Intelligence</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AIJobDescriptionsIntelligenceTest />
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
+          <TabsContent value="intelligence" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Brain className="h-5 w-5 text-primary" />
+                  <span>Job Description Intelligence</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AIJobDescriptionsIntelligenceTest />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </section>
 
