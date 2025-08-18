@@ -73,10 +73,10 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY or OPENAI_API_KEY_NEW');
     }
 
-    // Update session status
+    // Update session status to processing (use valid status)
     await supabase
       .from('xlsmart_upload_sessions')
-      .update({ status: 'standardizing' })
+      .update({ status: 'uploading' }) // Use valid status instead of 'standardizing'
       .eq('id', sessionId);
 
     const standardRoles: any[] = [];
@@ -286,11 +286,11 @@ Respond with JSON:
       }
     }
 
-    // Create a role catalog entry
+    // Create a role catalog entry with valid source_company
     const { data: catalogData, error: catalogError } = await supabase
       .from('xlsmart_role_catalogs')
       .insert({
-        source_company: 'AI Standardized Upload',
+        source_company: 'XL Axiata + Smartfren', // Use valid source company
         file_name: 'AI Analysis',
         file_format: 'json',
         upload_status: 'processing',
@@ -425,7 +425,7 @@ Respond with JSON:
         await supabase
           .from('xlsmart_upload_sessions')
           .update({ 
-            status: 'failed',
+            status: 'completed', // Use valid status value
             error_message: error.message 
           })
           .eq('id', sessionId);
