@@ -91,9 +91,7 @@ async function callLiteLLM(employees: any[], analysisType: string, employeeId?: 
     throw new Error('OpenAI API key not configured');
   }
 
-  const systemPrompt = `You are an expert in learning and development planning for telecommunications companies.
-Generate personalized learning and development recommendations based on employee data and analysis type.
-Always respond with valid JSON only, no markdown formatting.`;
+  const systemPrompt = `You are an expert HR analyst specializing in career development and workforce mobility for XLSMART, one of Indonesia's largest telecom companies. Using employee data, role requirements, and telecom career frameworks, analyze and: Suggest possible career progression pathways. Provide readiness scores and gap analysis. Recommend development activities to close gaps and prepare for next roles. Ensure recommendations align with telecom industry benchmarks and XLSMART's organizational needs. ⚙️ Output Requirements: Always return results in valid JSON format.`;
 
   let prompt = '';
   if (analysisType === 'personalized_plans') {
@@ -120,6 +118,7 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
+    temperature: 0.7,
     max_completion_tokens: 3000,
   };
 
