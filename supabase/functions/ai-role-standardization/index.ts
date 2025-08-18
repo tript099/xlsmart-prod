@@ -22,8 +22,14 @@ serve(async (req) => {
     console.log('Request URL:', req.url);
     console.log('Headers:', Object.fromEntries(req.headers.entries()));
     
-    const body = await req.json();
-    console.log('Request body:', JSON.stringify(body, null, 2));
+    let body;
+    try {
+      body = await req.json();
+      console.log('Request body:', JSON.stringify(body, null, 2));
+    } catch (parseError) {
+      console.error('Failed to parse request body:', parseError);
+      throw new Error('Invalid JSON in request body');
+    }
     
     const { sessionId } = body;
     
@@ -243,31 +249,41 @@ Respond with JSON:
     console.log('AI Analysis:', analysis);
 
     // Create NEW standard roles only (existing ones are already in database)
+    console.log('Creating new standard roles. Count:', analysis.newStandardRoles?.length || 0);
     for (const standardRole of analysis.newStandardRoles || []) {
-      const { data: createdRole, error: roleError } = await supabase
-        .from('xlsmart_standard_roles')
-        .insert({
-          role_title: standardRole.role_title,
-          job_family: standardRole.job_family,
-          role_level: standardRole.role_level,
-          role_category: 'Technical',
-          department: standardRole.department,
-          standard_description: standardRole.standard_description,
-          core_responsibilities: standardRole.core_responsibilities || [],
-          required_skills: standardRole.required_skills || [],
-          keywords: standardRole.keywords || [],
-          created_by: session.created_by,
-          industry_alignment: 'Telecommunications'
-        })
-        .select()
-        .single();
+      console.log('Creating standard role:', standardRole.role_title);
+      try {
+        const { data: createdRole, error: roleError } = await supabase
+          .from('xlsmart_standard_roles')
+          .insert({
+            role_title: standardRole.role_title,
+            job_family: standardRole.job_family,
+            role_level: standardRole.role_level,
+            role_category: 'Technical',
+            department: standardRole.department,
+            standard_description: standardRole.standard_description,
+            core_responsibilities: standardRole.core_responsibilities || [],
+            required_skills: standardRole.required_skills || [],
+            keywords: standardRole.keywords || [],
+            created_by: session.created_by,
+            industry_alignment: 'Telecommunications'
+          })
+          .select()
+          .single();
 
-      if (roleError) {
-        console.error('Error creating standard role:', roleError);
+        if (roleError) {
+          console.error('Error creating standard role:', roleError);
+          console.error('Failed role data:', standardRole);
+          continue;
+        }
+
+        console.log('Successfully created standard role:', createdRole.role_title);
+        standardRoles.push(createdRole);
+      } catch (roleCreateError) {
+        console.error('Exception creating standard role:', roleCreateError);
+        console.error('Failed role data:', standardRole);
         continue;
       }
-
-      standardRoles.push(createdRole);
     }
 
     // Create a role catalog entry
