@@ -59,9 +59,12 @@ serve(async (req) => {
       throw new Error('Role title is required');
     }
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY not found in environment');
+      openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    }
+    if (!openAIApiKey) {
+      console.error('Neither OPENAI_API_KEY nor OPENAI_API_KEY_NEW found in environment');
       throw new Error('OpenAI API key not configured');
     }
     
