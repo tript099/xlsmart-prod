@@ -103,6 +103,8 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
+      temperature: 0.7,
+      max_completion_tokens: 3000,
     }),
   });
 
@@ -127,7 +129,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 }
 
 async function performRoleEvolution(standardRoles: any[], employees: any[], timeHorizon?: string) {
-  const systemPrompt = `You are an expert in workforce evolution and role transformation analysis. Analyze how roles are evolving and predict future skill requirements and role changes.
+  const systemPrompt = `You are an AI specialist in advanced role intelligence for XLSMART, one of Indonesia's largest telecom companies. Specialize in role evolution analysis to: Analyze how roles are evolving and predict future skill requirements. Identify emerging roles and transformation patterns. Recommend adaptation strategies for workforce evolution. Ensure insights align with telecom industry trends and XLSMART's organizational development. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are structured, comprehensive, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -200,7 +202,7 @@ Analyze role evolution trends and predict future role requirements.`;
 }
 
 async function performRedundancyAnalysis(standardRoles: any[], employees: any[]) {
-  const systemPrompt = `You are an expert in organizational efficiency and role optimization. Analyze role redundancy and overlap to recommend organizational restructuring opportunities.
+  const systemPrompt = `You are an AI specialist in advanced role intelligence for XLSMART, one of Indonesia's largest telecom companies. Specialize in redundancy analysis to: Analyze role redundancy and overlap across the organization. Identify consolidation opportunities and efficiency improvements. Recommend organizational restructuring strategies. Ensure optimization aligns with telecom operational excellence and XLSMART's strategic goals. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are structured, comprehensive, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -278,7 +280,7 @@ Identify redundant roles and recommend optimization strategies.`;
 }
 
 async function performFuturePrediction(standardRoles: any[], jobDescriptions: any[], timeHorizon?: string) {
-  const systemPrompt = `You are an expert in future of work analysis and role prediction. Predict future role requirements and organizational needs based on industry trends and technological advancement.
+  const systemPrompt = `You are an AI specialist in advanced role intelligence for XLSMART, one of Indonesia's largest telecom companies. Specialize in future prediction analysis to: Predict future role requirements and organizational needs based on telecom industry trends. Identify emerging roles and obsolescence risks. Recommend preparation strategies for workforce transformation. Ensure predictions align with technological advancement and XLSMART's strategic vision. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are structured, comprehensive, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -357,7 +359,7 @@ Predict future role evolution and organizational needs.`;
 }
 
 async function performCompetitivenessScoring(standardRoles: any[], employees: any[], departmentFilter?: string) {
-  const systemPrompt = `You are an expert in competitive role analysis and market positioning. Analyze role competitiveness in the talent market and recommend strategies to improve talent attraction and retention.
+  const systemPrompt = `You are an AI specialist in advanced role intelligence for XLSMART, one of Indonesia's largest telecom companies. Specialize in competitiveness scoring to: Analyze role competitiveness in the telecom talent market. Assess market positioning and talent attraction capabilities. Recommend strategies to improve competitive advantage and retention. Ensure analysis aligns with Indonesian telecom market dynamics and XLSMART's talent strategy. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are structured, comprehensive, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
