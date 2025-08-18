@@ -31,6 +31,8 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
   const handleAnalysis = async () => {
     setIsAnalyzing(true);
     try {
+      console.log('Starting AI development analysis for 51 employees');
+      
       const { data, error } = await supabase.functions.invoke('ai-learning-development', {
         body: {
           analysisType: selectedAnalysis,
@@ -39,7 +41,16 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
         }
       });
 
-      if (error) throw error;
+      console.log('Function response:', { data, error });
+
+      if (error) {
+        console.error('Development analysis error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('No data returned from analysis');
+      }
 
       setAnalysisResult(data);
       onAnalysisComplete?.(data);
@@ -49,10 +60,10 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
         description: "AI learning & development analysis has been completed successfully.",
       });
     } catch (error) {
-      console.error('Analysis error:', error);
+      console.error('Development analysis error:', error);
       toast({
         title: "Analysis Failed",
-        description: "Failed to complete learning & development analysis. Please try again.",
+        description: `Failed to complete learning & development analysis: ${error.message}`,
         variant: "destructive",
       });
     } finally {
