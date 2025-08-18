@@ -328,12 +328,21 @@ Provide personalized learning analysis focusing on:
 4. Customized learning preferences and delivery methods`;
 
   const result = await callLiteLLM(prompt, systemPrompt);
+  console.log('AI Response received, length:', result.length);
+  console.log('AI Response first 1000 chars:', result.substring(0, 1000));
+  console.log('AI Response last 500 chars:', result.substring(Math.max(0, result.length - 500)));
+  
   try {
     const cleanedResult = cleanJsonResponse(result);
-    return JSON.parse(cleanedResult);
+    console.log('Cleaned JSON length:', cleanedResult.length);
+    console.log('Cleaned JSON preview:', cleanedResult.substring(0, 500));
+    const parsed = JSON.parse(cleanedResult);
+    console.log('Successfully parsed JSON with keys:', Object.keys(parsed));
+    return parsed;
   } catch (parseError) {
     console.error('Failed to parse personalized learning analysis result:', parseError);
-    console.error('Raw result:', result);
+    console.error('Parse error details:', parseError.message);
+    console.error('Raw result length:', result.length);
     throw new Error(`Failed to parse AI response: ${parseError.message}`);
   }
 }
