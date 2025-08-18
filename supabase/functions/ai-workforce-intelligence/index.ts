@@ -142,7 +142,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     }),
   });
 
@@ -158,7 +158,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 async function performRoleOptimization(employees: any[], standardRoles: any[], jobDescriptions: any[], skillAssessments: any[], employeeId?: string) {
   const targetEmployees = employeeId ? employees.filter(emp => emp.id === employeeId) : employees;
   
-  const systemPrompt = `You are an AI HR specialist focused on role optimization. Analyze employee data against standard roles to provide optimal role assignments and identify misalignments.
+  const systemPrompt = `You are an AI HR workforce intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in role optimization and analyze employee data against standard roles, skills, and career frameworks to: Detect mismatches, risks, or opportunities. Provide structured insights for workforce planning and optimization. Recommend actionable strategies (role changes, training, promotions, hiring needs). ⚙️ Output Requirements: Always return results in valid JSON format. Ensure outputs are concise, structured, and machine-readable for integration into XLSMART's HR application.
 
 Return your analysis in JSON format with:
 {
@@ -218,7 +218,7 @@ async function performSkillsIntelligence(employees: any[], standardRoles: any[],
     ? employees.filter(emp => emp.current_department === departmentFilter)
     : employees;
 
-  const systemPrompt = `You are an AI skills intelligence analyst. Analyze workforce skills data to provide insights on skill gaps, distribution, and strategic recommendations.
+  const systemPrompt = `You are an AI HR workforce intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in skills intelligence and analyze employee data against standard roles, skills, and career frameworks to: Detect mismatches, risks, or opportunities. Provide structured insights for workforce planning and optimization. Recommend actionable strategies (role changes, training, promotions, hiring needs). ⚙️ Output Requirements: Always return results in valid JSON format. Ensure outputs are concise, structured, and machine-readable for integration into XLSMART's HR application.
 
 Return analysis in JSON format:
 {
@@ -280,7 +280,7 @@ Provide comprehensive skills intelligence focusing on:
 async function performCareerPlanning(employees: any[], standardRoles: any[], jobDescriptions: any[], skillAssessments: any[], employeeId?: string) {
   const targetEmployees = employeeId ? employees.filter(emp => emp.id === employeeId) : employees.slice(0, 10);
 
-  const systemPrompt = `You are an AI career planning specialist. Analyze employee data to create personalized career progression pathways and development plans.
+  const systemPrompt = `You are an AI HR workforce intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in career planning and analyze employee data against standard roles, skills, and career frameworks to: Detect mismatches, risks, or opportunities. Provide structured insights for workforce planning and optimization. Recommend actionable strategies (role changes, training, promotions, hiring needs). ⚙️ Output Requirements: Always return results in valid JSON format. Ensure outputs are concise, structured, and machine-readable for integration into XLSMART's HR application.
 
 Return analysis in JSON format:
 {
@@ -347,7 +347,7 @@ async function performTalentAnalytics(employees: any[], standardRoles: any[], sk
     ? employees.filter(emp => emp.current_department === departmentFilter)
     : employees;
 
-  const systemPrompt = `You are an AI talent analytics specialist. Analyze workforce data to identify high performers, talent risks, and strategic talent insights.
+  const systemPrompt = `You are an AI HR workforce intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in talent analytics and analyze employee data against standard roles, skills, and career frameworks to: Detect mismatches, risks, or opportunities. Provide structured insights for workforce planning and optimization. Recommend actionable strategies (role changes, training, promotions, hiring needs). ⚙️ Output Requirements: Always return results in valid JSON format. Ensure outputs are concise, structured, and machine-readable for integration into XLSMART's HR application.
 
 Return analysis in JSON format:
 {
@@ -409,7 +409,7 @@ async function performWorkforceForecasting(employees: any[], standardRoles: any[
     ? employees.filter(emp => emp.current_department === departmentFilter)
     : employees;
 
-  const systemPrompt = `You are an AI workforce planning specialist. Analyze current workforce data to forecast future needs, optimal team compositions, and strategic workforce recommendations.
+  const systemPrompt = `You are an AI HR workforce intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in workforce forecasting and analyze employee data against standard roles, skills, and career frameworks to: Detect mismatches, risks, or opportunities. Provide structured insights for workforce planning and optimization. Recommend actionable strategies (role changes, training, promotions, hiring needs). ⚙️ Output Requirements: Always return results in valid JSON format. Ensure outputs are concise, structured, and machine-readable for integration into XLSMART's HR application.
 
 Return analysis in JSON format:
 {
