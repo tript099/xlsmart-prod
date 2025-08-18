@@ -71,7 +71,7 @@ export const useWorkforceAnalytics = () => {
         standardRolesResult,
         aiAnalysesResult
       ] = await Promise.all([
-        supabase.from('xlsmart_employees').select('*').eq('is_active', true),
+        supabase.from('xlsmart_employees').select('*'),
         supabase.from('xlsmart_skill_assessments').select('*'),
         supabase.from('employee_skills').select('*'),
         supabase.from('employee_trainings').select('*'),
