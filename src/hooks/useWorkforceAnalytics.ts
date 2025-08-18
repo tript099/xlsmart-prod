@@ -112,23 +112,36 @@ export const useWorkforceAnalytics = () => {
       // Department breakdown
       const departmentBreakdown: { [key: string]: number } = {};
       employees.forEach(emp => {
-        const dept = emp.current_department || 'Unassigned';
+        const dept = emp.current_department || emp.source_company || 'Unassigned';
         departmentBreakdown[dept] = (departmentBreakdown[dept] || 0) + 1;
       });
 
       // Skills distribution from employee skills and assessments
       const skillDistribution: { [key: string]: number } = {};
       employees.forEach(emp => {
-        if (emp.skills && Array.isArray(emp.skills)) {
-          emp.skills.forEach((skill: any) => {
-            const skillName = typeof skill === 'string' ? skill : skill.name || 'Unknown';
-            skillDistribution[skillName] = (skillDistribution[skillName] || 0) + 1;
+        if (emp.skills) {
+          // Handle skills stored as string array or JSON
+          let skillsArray: string[] = [];
+          if (Array.isArray(emp.skills)) {
+            skillsArray = emp.skills.map((skill: any) => 
+              typeof skill === 'string' ? skill : skill.name || 'Unknown'
+            );
+          } else if (typeof emp.skills === 'string') {
+            // Parse skills from string format like "[SQL, dbt, Python, ...]"
+            skillsArray = emp.skills.replace(/[\[\]]/g, '').split(',').map(s => s.trim()).filter(s => s);
+          }
+          
+          skillsArray.forEach(skill => {
+            // Extract actual skill names (remove extra text like "Aspirations:", "Location:")
+            if (!skill.includes(':') && skill.length > 1) {
+              skillDistribution[skill] = (skillDistribution[skill] || 0) + 1;
+            }
           });
         }
       });
 
       // Performance metrics
-      const performanceRatings = employees.map(emp => emp.performance_rating).filter(Boolean);
+      const performanceRatings = employees.map(emp => Number(emp.performance_rating)).filter(rating => !isNaN(rating) && rating > 0);
       const averageRating = performanceRatings.reduce((sum, rating) => sum + rating, 0) / performanceRatings.length || 0;
       const highPerformers = performanceRatings.filter(rating => rating >= 4).length;
       const lowPerformers = performanceRatings.filter(rating => rating <= 2).length;
