@@ -195,6 +195,8 @@ Analyze sentiment patterns, identify engagement drivers, and provide actionable 
 
   try {
     const response = await callLiteLLM(prompt, systemPrompt);
+    console.log('Sentiment analysis - Raw response length:', response.length);
+    console.log('Sentiment analysis - Response preview:', response.substring(0, 200));
     return JSON.parse(response);
   } catch (error) {
     console.error('Error in performSentimentAnalysis:', error);
@@ -269,6 +271,8 @@ Predict engagement patterns and recommend targeted interventions.`;
 
   try {
     const response = await callLiteLLM(prompt, systemPrompt);
+    console.log('Engagement prediction - Raw response length:', response.length);
+    console.log('Engagement prediction - Response preview:', response.substring(0, 200));
     return JSON.parse(response);
   } catch (error) {
     console.error('Error in performEngagementPrediction:', error);
@@ -340,6 +344,8 @@ Identify retention risks and recommend targeted retention strategies.`;
 
   try {
     const response = await callLiteLLM(prompt, systemPrompt);
+    console.log('Retention modeling - Raw response length:', response.length);
+    console.log('Retention modeling - Response preview:', response.substring(0, 200));
     return JSON.parse(response);
   } catch (error) {
     console.error('Error in performRetentionModeling:', error);
@@ -415,6 +421,8 @@ Identify early warning signals and recommend immediate interventions.`;
 
   try {
     const response = await callLiteLLM(prompt, systemPrompt);
+    console.log('Early warning - Raw response length:', response.length);
+    console.log('Early warning - Response preview:', response.substring(0, 200));
     return JSON.parse(response);
   } catch (error) {
     console.error('Error in performEarlyWarning:', error);
