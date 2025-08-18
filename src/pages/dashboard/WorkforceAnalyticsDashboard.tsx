@@ -1,126 +1,52 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AIWorkforceIntelligence } from "@/components/AIWorkforceIntelligence";
+import { useWorkforceAnalytics } from "@/hooks/useWorkforceAnalytics";
 import { PieChart, BarChart3, TrendingUp, Users, Brain, Target, Zap, Shield, Clock, Award } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LiteLLMTest } from "@/components/LiteLLMTest";
 
 const WorkforceAnalyticsDashboard = () => {
-  const [workforceAnalytics, setWorkforceAnalytics] = useState({
-    totalEmployees: 0,
-    activeEmployees: 0,
-    avgPerformanceRating: 0,
-    totalAssessments: 0,
-    totalRoles: 0,
-    departmentStats: [],
-    skillDistribution: []
-  });
-
-  useEffect(() => {
-    const fetchWorkforceAnalytics = async () => {
-      try {
-        // Fetch employee data
-        const { data: employees, count: totalEmployees } = await supabase
-          .from('xlsmart_employees')
-          .select('*', { count: 'exact' });
-
-        const activeEmployees = employees?.filter(emp => emp.is_active).length || 0;
-
-        // Fetch assessments
-        const { count: totalAssessments } = await supabase
-          .from('xlsmart_skill_assessments')
-          .select('*', { count: 'exact', head: true });
-
-        // Fetch roles
-        const { count: totalRoles } = await supabase
-          .from('xlsmart_standard_roles')
-          .select('*', { count: 'exact', head: true });
-
-        // Calculate average performance rating
-        const avgRating = employees?.length > 0 
-          ? employees.reduce((sum, emp) => sum + (emp.performance_rating || 0), 0) / employees.length 
-          : 0;
-
-        // Calculate department statistics
-        const departmentStats = employees?.reduce((acc: Record<string, {count: number, totalSalary: number}>, emp) => {
-          const dept = emp.current_department || 'Unassigned';
-          if (!acc[dept]) {
-            acc[dept] = { count: 0, totalSalary: 0 };
-          }
-          acc[dept].count++;
-          acc[dept].totalSalary += emp.salary || 0;
-          return acc;
-        }, {}) || {};
-
-        setWorkforceAnalytics({
-          totalEmployees: totalEmployees || 0,
-          activeEmployees,
-          avgPerformanceRating: Math.round(avgRating * 10) / 10,
-          totalAssessments: totalAssessments || 0,
-          totalRoles: totalRoles || 0,
-          departmentStats: Object.entries(departmentStats).map(([dept, stats]) => ({
-            department: dept,
-            employees: stats.count,
-            avgSalary: Math.round(stats.totalSalary / stats.count) || 0
-          })),
-          skillDistribution: []
-        });
-      } catch (error) {
-        console.error('Error fetching workforce analytics:', error);
-      }
-    };
-
-    fetchWorkforceAnalytics();
-  }, []);
+  const { metrics: workforceAnalytics, loading, error } = useWorkforceAnalytics();
 
   const analyticsStats = [
     { 
-      value: workforceAnalytics.totalEmployees || "...", 
+      value: loading ? "..." : workforceAnalytics?.totalEmployees || 0, 
       label: "Total Workforce", 
       icon: Users, 
       color: "text-primary",
       description: "All employees"
     },
     { 
-      value: workforceAnalytics.totalAssessments || "...", 
+      value: loading ? "..." : workforceAnalytics?.skillGaps.totalAssessments || 0, 
       label: "AI Assessments", 
       icon: Brain, 
       color: "text-secondary",
       description: "Completed assessments"
     },
     { 
-      value: `${workforceAnalytics.avgPerformanceRating}/5`, 
+      value: loading ? "..." : `${workforceAnalytics?.performanceMetrics.averageRating || 0}/5`, 
       label: "Avg Performance", 
       icon: Award, 
       color: "text-accent",
       description: "Performance rating"
     },
     { 
-      value: workforceAnalytics.totalRoles || "...", 
-      label: "Standard Roles", 
+      value: loading ? "..." : Object.keys(workforceAnalytics?.roleDistribution || {}).length, 
+      label: "Role Types", 
       icon: Target, 
       color: "text-muted-foreground",
-      description: "Defined roles"
+      description: "Different roles"
     }
   ];
 
   // Hardcoded insights data - in a real app, this would come from database analytics
   const departmentInsights = [
-    { department: "Engineering", employees: Math.floor(workforceAnalytics.totalEmployees * 0.4), utilization: "94%", satisfaction: "4.2/5" },
-    { department: "Sales", employees: Math.floor(workforceAnalytics.totalEmployees * 0.18), utilization: "89%", satisfaction: "4.0/5" },
-    { department: "Marketing", employees: Math.floor(workforceAnalytics.totalEmployees * 0.12), utilization: "92%", satisfaction: "4.1/5" },
-    { department: "Operations", employees: Math.floor(workforceAnalytics.totalEmployees * 0.15), utilization: "91%", satisfaction: "3.9/5" },
-    { department: "Support", employees: Math.floor(workforceAnalytics.totalEmployees * 0.15), utilization: "88%", satisfaction: "4.3/5" },
-  ];
-
-  // Note: In a production app, skills distribution would come from actual skill assessments
-  const skillDistribution = [
-    { skill: "Technical Skills", percentage: Math.min(78, Math.floor(workforceAnalytics.totalAssessments * 0.6)), color: "bg-blue-500" },
-    { skill: "Leadership", percentage: Math.min(45, Math.floor(workforceAnalytics.totalAssessments * 0.3)), color: "bg-green-500" },
-    { skill: "Communication", percentage: Math.min(89, Math.floor(workforceAnalytics.totalAssessments * 0.7)), color: "bg-purple-500" },
-    { skill: "Project Management", percentage: Math.min(62, Math.floor(workforceAnalytics.totalAssessments * 0.5)), color: "bg-orange-500" },
-    { skill: "Data Analysis", percentage: Math.min(54, Math.floor(workforceAnalytics.totalAssessments * 0.4)), color: "bg-pink-500" },
+    { department: "Engineering", employees: Math.floor((workforceAnalytics?.totalEmployees || 0) * 0.4), utilization: "94%", satisfaction: "4.2/5" },
+    { department: "Sales", employees: Math.floor((workforceAnalytics?.totalEmployees || 0) * 0.18), utilization: "89%", satisfaction: "4.0/5" },
+    { department: "Marketing", employees: Math.floor((workforceAnalytics?.totalEmployees || 0) * 0.12), utilization: "92%", satisfaction: "4.1/5" },
+    { department: "Operations", employees: Math.floor((workforceAnalytics?.totalEmployees || 0) * 0.15), utilization: "91%", satisfaction: "3.9/5" },
+    { department: "Support", employees: Math.floor((workforceAnalytics?.totalEmployees || 0) * 0.15), utilization: "88%", satisfaction: "4.3/5" },
   ];
 
   return (
@@ -138,7 +64,7 @@ const WorkforceAnalyticsDashboard = () => {
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-foreground mb-2">Real-time Workforce Metrics</h2>
           <p className="text-muted-foreground">
-            Live analytics from {workforceAnalytics.totalEmployees} employees across your organization
+            Live analytics from {workforceAnalytics?.totalEmployees || 0} employees across your organization
           </p>
         </div>
         
@@ -198,7 +124,82 @@ const WorkforceAnalyticsDashboard = () => {
         </TabsList>
 
         <TabsContent value="ai-intelligence" className="space-y-6 mt-6">
-          <AIWorkforceIntelligence />
+          {loading ? (
+            <div className="text-center py-8">Loading workforce analytics...</div>
+          ) : error ? (
+            <div className="text-center py-8 text-destructive">Error: {error}</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="h-5 w-5 text-primary" />
+                    <span>Employee Distribution</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {Object.entries(workforceAnalytics?.departmentBreakdown || {}).slice(0, 5).map(([dept, count]) => (
+                      <div key={dept} className="flex justify-between items-center">
+                        <span className="text-sm font-medium">{dept}</span>
+                        <span className="text-sm text-muted-foreground">{count} employees</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Target className="h-5 w-5 text-secondary" />
+                    <span>Skills Assessment</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm">Total Assessments</span>
+                      <span className="font-medium">{workforceAnalytics?.skillGaps.totalAssessments || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Avg Match %</span>
+                      <span className="font-medium">{workforceAnalytics?.skillGaps.averageMatchPercentage || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Critical Gaps</span>
+                      <span className="font-medium text-destructive">{workforceAnalytics?.skillGaps.criticalGaps || 0}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <TrendingUp className="h-5 w-5 text-accent" />
+                    <span>Training Metrics</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-sm">Total Trainings</span>
+                      <span className="font-medium">{workforceAnalytics?.trainingMetrics.totalTrainings || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Completion Rate</span>
+                      <span className="font-medium">{workforceAnalytics?.trainingMetrics.completionRate || 0}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm">Avg Hours</span>
+                      <span className="font-medium">{workforceAnalytics?.trainingMetrics.averageHours || 0}h</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-6 mt-6">
@@ -304,26 +305,24 @@ const WorkforceAnalyticsDashboard = () => {
                       <th className="text-left py-3 px-4 font-semibold">Trend</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {workforceAnalytics.departmentStats.length > 0 ? (
-                      workforceAnalytics.departmentStats.map((dept, index) => (
-                        <tr key={index} className="border-b hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-4 font-medium">{dept.department}</td>
-                          <td className="py-3 px-4">{dept.employees}</td>
-                          <td className="py-3 px-4">
-                            <span className="font-medium">
-                              {dept.avgSalary > 0 ? `IDR ${dept.avgSalary.toLocaleString()}` : 'N/A'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-primary font-medium">4.2/5</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-primary">↗ +2.3%</span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
+                   <tbody>
+                     {Object.entries(workforceAnalytics?.departmentBreakdown || {}).length > 0 ? (
+                       Object.entries(workforceAnalytics?.departmentBreakdown || {}).map(([dept, count], index) => (
+                         <tr key={index} className="border-b hover:bg-muted/30 transition-colors">
+                           <td className="py-3 px-4 font-medium">{dept}</td>
+                           <td className="py-3 px-4">{count}</td>
+                           <td className="py-3 px-4">
+                             <span className="font-medium text-muted-foreground">N/A</span>
+                           </td>
+                           <td className="py-3 px-4">
+                             <span className="text-primary font-medium">4.2/5</span>
+                           </td>
+                           <td className="py-3 px-4">
+                             <span className="text-primary">↗ +2.3%</span>
+                           </td>
+                         </tr>
+                       ))
+                     ) : (
                       departmentInsights.map((dept, index) => (
                         <tr key={index} className="border-b hover:bg-muted/30 transition-colors">
                           <td className="py-3 px-4 font-medium">{dept.department}</td>
@@ -546,21 +545,21 @@ const WorkforceAnalyticsDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {workforceAnalytics.departmentStats.slice(0, 5).map((dept, index) => (
-                    <div key={index} className="flex justify-between items-center p-2 border-l-4 border-primary pl-4">
-                      <span className="text-sm font-medium">{dept.department}</span>
-                      <span className="text-sm text-primary font-bold">
-                        {Math.round(Math.random() * 30 + 70)}% high performers
-                      </span>
-                    </div>
-                  ))}
-                  {workforceAnalytics.departmentStats.length === 0 && (
-                    <p className="text-muted-foreground text-center py-4">
-                      Performance data will appear here once employee data is uploaded.
-                    </p>
-                  )}
-                </div>
+                 <div className="space-y-3">
+                   {Object.entries(workforceAnalytics?.departmentBreakdown || {}).slice(0, 5).map(([dept, count], index) => (
+                     <div key={index} className="flex justify-between items-center p-2 border-l-4 border-primary pl-4">
+                       <span className="text-sm font-medium">{dept}</span>
+                       <span className="text-sm text-primary font-bold">
+                         {Math.round(Math.random() * 30 + 70)}% high performers
+                       </span>
+                     </div>
+                   ))}
+                   {Object.keys(workforceAnalytics?.departmentBreakdown || {}).length === 0 && (
+                     <p className="text-muted-foreground text-center py-4">
+                       Performance data will appear here once employee data is uploaded.
+                     </p>
+                   )}
+                 </div>
               </CardContent>
             </Card>
           </div>
