@@ -24,7 +24,6 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   const [fixingJobs, setFixingJobs] = useState<Set<string>>(new Set());
   const [pastResults, setPastResults] = useState<any[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string>('');
-  const [isComponentMounted, setIsComponentMounted] = useState(false);
 
   const analysisTypes = [
     { value: 'jd_optimization', label: 'JD Optimization', icon: Target },
@@ -35,12 +34,15 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
 
   React.useEffect(() => {
     console.log('🧠 Component mounted, fetching past results...');
-    setIsComponentMounted(true);
-    fetchPastResults();
+    fetchPastResults().catch(error => {
+      console.error('Failed to fetch past results:', error);
+      // Don't prevent component from rendering if this fails
+    });
   }, []);
 
   const fetchPastResults = async () => {
     try {
+      console.log('🧠 Fetching past analysis results...');
       const { data, error } = await supabase
         .from('ai_analysis_results')
         .select('*')
@@ -48,10 +50,17 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
         .order('created_at', { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching past results:', error);
+        throw error;
+      }
+      
+      console.log('🧠 Found past results:', data?.length || 0);
       setPastResults(data || []);
     } catch (error) {
-      console.error('Error fetching past results:', error);
+      console.error('Failed to fetch past results:', error);
+      // Set empty array on error to prevent infinite loading
+      setPastResults([]);
     }
   };
 
@@ -472,15 +481,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
     </div>
   );
 
-  console.log('🧠 Rendering component. isComponentMounted:', isComponentMounted, 'results:', !!results);
-
-  if (!isComponentMounted) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-muted-foreground">Loading intelligence tools...</div>
-      </div>
-    );
-  }
+  console.log('🧠 Rendering component. results:', !!results);
 
   return (
     <div className="space-y-6">
