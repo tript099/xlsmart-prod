@@ -17,7 +17,12 @@ serve(async (req) => {
   }
 
   try {
-    const { sessionId } = await req.json();
+    const body = await req.json();
+    const { sessionId } = body;
+    
+    if (!sessionId) {
+      throw new Error('Session ID is required');
+    }
     
     console.log('Starting AI role standardization for session:', sessionId);
 
@@ -26,9 +31,14 @@ serve(async (req) => {
       .from('xlsmart_upload_sessions')
       .select('*')
       .eq('id', sessionId)
-      .single();
+      .maybeSingle();
 
-    if (sessionError || !session) {
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      throw new Error(`Database error: ${sessionError.message}`);
+    }
+
+    if (!session) {
       throw new Error('Upload session not found');
     }
 
@@ -63,13 +73,15 @@ serve(async (req) => {
 
     if (xlError && smartError) {
       console.error('Error fetching role data:', { xlError, smartError });
-      throw new Error('Failed to fetch role data from both sources');
+      throw new Error(`Failed to fetch role data: XL error: ${xlError?.message}, Smart error: ${smartError?.message}`);
     }
 
     const sampleData = [...(xlData || []), ...(smartData || [])];
+    console.log(`Found ${sampleData.length} role records for session ${sessionId}`);
+    
     if (sampleData.length === 0) {
       console.log('No role data found for session:', sessionId);
-      throw new Error('No role data found for this session');
+      throw new Error(`No role data found for session ${sessionId}. Please ensure data was uploaded correctly.`);
     }
 
     // Get existing standard roles from database for AI comparison
@@ -154,18 +166,25 @@ Respond with JSON:
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('LiteLLM API error:', errorText);
-      throw new Error(`LiteLLM API error: ${aiResponse.statusText} - ${errorText}`);
+      console.error('LiteLLM API error status:', aiResponse.status);
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error (${aiResponse.status}): ${errorText}`);
     }
 
     const aiData = await aiResponse.json();
     let analysis;
     
     try {
-      analysis = JSON.parse(aiData.choices[0].message.content);
+      const content = aiData.choices?.[0]?.message?.content;
+      if (!content) {
+        console.error('No content in AI response:', aiData);
+        throw new Error('AI response missing content');
+      }
+      analysis = JSON.parse(content);
     } catch (parseError) {
-      console.error('Failed to parse AI response:', aiData.choices[0].message.content);
-      throw new Error('Failed to parse AI response as JSON');
+      console.error('Failed to parse AI response:', parseError);
+      console.error('AI response content:', aiData.choices?.[0]?.message?.content);
+      throw new Error(`Failed to parse AI response as JSON: ${parseError.message}`);
     }
 
     console.log('AI Analysis:', analysis);
@@ -313,18 +332,30 @@ Respond with JSON:
 
   } catch (error) {
     console.error('Error in AI role standardization:', error);
+    console.error('Error stack:', error.stack);
     
-    // Update session with error
+    // Get sessionId from request body if available for error tracking
+    let sessionId = null;
     try {
-      await supabase
-        .from('xlsmart_upload_sessions')
-        .update({ 
-          status: 'failed',
-          error_message: error.message 
-        })
-        .eq('id', sessionId);
-    } catch (updateError) {
-      console.error('Failed to update session with error:', updateError);
+      const body = await req.clone().json();
+      sessionId = body.sessionId;
+    } catch (parseError) {
+      console.error('Could not parse request body for error tracking:', parseError);
+    }
+    
+    // Update session with error if sessionId is available
+    if (sessionId) {
+      try {
+        await supabase
+          .from('xlsmart_upload_sessions')
+          .update({ 
+            status: 'failed',
+            error_message: error.message 
+          })
+          .eq('id', sessionId);
+      } catch (updateError) {
+        console.error('Failed to update session with error:', updateError);
+      }
     }
 
     return new Response(JSON.stringify({ 
