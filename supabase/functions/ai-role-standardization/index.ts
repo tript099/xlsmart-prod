@@ -392,8 +392,10 @@ Respond with JSON:
 
     return new Response(JSON.stringify({
       success: true,
-      standardRolesCreated: standardRoles.length,
-      roleMappingsCreated: roleMappings.length,
+      standardizedRolesCreated: standardRoles.length,
+      mappingsCreated: roleMappings.length,
+      xlDataProcessed: sampleData.length,
+      smartDataProcessed: 0,
       message: 'AI role standardization completed successfully'
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
