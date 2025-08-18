@@ -217,7 +217,20 @@ Respond with JSON:
         console.error('No content in AI response:', aiData);
         throw new Error('AI response missing content');
       }
-      analysis = JSON.parse(content);
+      
+      console.log('AI response content:', content);
+      
+      // Clean markdown formatting from AI response
+      let cleanContent = content.trim();
+      if (cleanContent.startsWith('```json')) {
+        cleanContent = cleanContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanContent.startsWith('```')) {
+        cleanContent = cleanContent.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      console.log('Cleaned content for parsing:', cleanContent.substring(0, 200) + '...');
+      
+      analysis = JSON.parse(cleanContent);
     } catch (parseError) {
       console.error('Failed to parse AI response:', parseError);
       console.error('AI response content:', aiData.choices?.[0]?.message?.content);
