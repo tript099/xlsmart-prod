@@ -96,7 +96,7 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
         .from('xlsmart_standard_roles')
         .select('*')
         .eq('is_active', true)
-        .order('role_title');
+        .order('created_at', { ascending: false });
 
       if (rolesError) {
         console.error('Supabase error:', rolesError);
