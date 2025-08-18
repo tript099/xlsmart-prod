@@ -18,15 +18,12 @@ serve(async (req) => {
     // Basic environment check
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const litellmKey = Deno.env.get('LITELLM_API_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
       throw new Error('Missing Supabase credentials');
     }
 
-    if (!litellmKey) {
-      throw new Error('Missing LiteLLM API key');
-    }
+    console.log('Environment check passed - Supabase credentials available');
 
     console.log('Creating Supabase client...');
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
