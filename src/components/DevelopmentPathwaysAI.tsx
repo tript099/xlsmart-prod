@@ -112,18 +112,8 @@ export const DevelopmentPathwaysAI = () => {
 
       const { data, error } = await supabase.functions.invoke('development-pathways-bulk', {
         body: {
-          employees: employees.map(emp => ({
-            id: emp.id,
-            name: `${emp.first_name} ${emp.last_name}`,
-            current_position: emp.current_position,
-            department: emp.current_department,
-            level: emp.current_level,
-            experience: emp.years_of_experience,
-            skills: emp.skills,
-            certifications: emp.certifications,
-            performance_rating: emp.performance_rating
-          })),
-          standard_roles: standardRoles
+          pathwayType: 'company',
+          identifier: 'xl'  // Analyzing xl company employees
         }
       });
 
