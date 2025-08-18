@@ -15,8 +15,15 @@ serve(async (req) => {
   try {
     console.log('Testing LiteLLM proxy connection...');
 
-    // Get the API key from Supabase secrets
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    // Get the API key from Supabase secrets - try both old and new
+    let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    }
+    
+    console.log('All environment variables:', Object.keys(Deno.env.toObject()));
+    console.log('API key found:', !!openAIApiKey);
+    
     if (!openAIApiKey) {
       throw new Error('OPENAI_API_KEY not found in environment variables');
     }
