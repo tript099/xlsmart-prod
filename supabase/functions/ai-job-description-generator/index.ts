@@ -68,7 +68,7 @@ serve(async (req) => {
     console.log('API key found, proceeding with AI generation...');
 
     // Build AI prompt
-    const aiPrompt = `You are an expert HR professional and job description writer specializing in telecommunications companies.
+    const aiPrompt = `You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Based on the provided inputs, generate a complete job description that is clear, professional, and aligned with telecom industry standards. ⚙️ Output Requirements: Always respond in valid JSON format. Ensure the output is concise, realistic, and directly usable by XLSMART's HR system.
 
 Create a comprehensive, engaging job description for the following role:
 
@@ -130,12 +130,12 @@ Respond in JSON format:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert HR professional and job description writer for large telecommunications companies. Always respond with valid JSON.' 
+            content: 'You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Based on the provided inputs, generate a complete job description that is clear, professional, and aligned with telecom industry standards. ⚙️ Output Requirements: Always respond in valid JSON format. Ensure the output is concise, realistic, and directly usable by XLSMART\'s HR system.' 
           },
           { role: 'user', content: aiPrompt }
         ],
         temperature: 0.7,
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
       }),
     });
 
