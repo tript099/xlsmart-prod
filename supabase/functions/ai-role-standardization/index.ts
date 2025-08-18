@@ -47,9 +47,17 @@ serve(async (req) => {
       throw new Error('Upload session not found');
     }
 
-    const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
+    // Check for API key - try multiple environment variables
+    let liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
     if (!liteLLMApiKey) {
-      throw new Error('LiteLLM API key not configured');
+      liteLLMApiKey = Deno.env.get('OPENAI_API_KEY');
+    }
+    if (!liteLLMApiKey) {
+      liteLLMApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    }
+    if (!liteLLMApiKey) {
+      console.error('No API key found. Available env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('API')));
+      throw new Error('No LiteLLM or OpenAI API key configured. Please set LITELLM_API_KEY, OPENAI_API_KEY, or OPENAI_API_KEY_NEW');
     }
 
     // Update session status
@@ -158,23 +166,28 @@ Respond with JSON:
 `;
 
     console.log('Making request to LiteLLM API...');
+    const requestBody = {
+      model: 'azure/gpt-4.1',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'You are an expert HR data analyst specializing in telecommunications role standardization. Analyze role data carefully and normalize against existing standards. Always respond with valid JSON.' 
+        },
+        { role: 'user', content: aiPrompt }
+      ],
+      temperature: 0.7,
+      max_completion_tokens: 4000,
+    };
+    
+    console.log('API request payload:', JSON.stringify(requestBody, null, 2));
+    
     const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${liteLLMApiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: 'azure/gpt-4.1',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert HR data analyst specializing in telecommunications role standardization. Analyze role data carefully and normalize against existing standards. Always respond with valid JSON.' 
-          },
-          { role: 'user', content: aiPrompt }
-        ],
-        max_tokens: 4000,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     console.log('LiteLLM API response status:', aiResponse.status);
@@ -348,12 +361,19 @@ Respond with JSON:
   } catch (error) {
     console.error('Error in AI role standardization:', error);
     console.error('Error stack:', error.stack);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
     
     // Get sessionId from request body if available for error tracking
     let sessionId = null;
     try {
-      const body = await req.clone().json();
-      sessionId = body.sessionId;
+      // Don't clone the request if it's already consumed
+      if (req.bodyUsed) {
+        console.log('Request body already consumed, cannot extract sessionId for error tracking');
+      } else {
+        const body = await req.clone().json();
+        sessionId = body.sessionId;
+      }
     } catch (parseError) {
       console.error('Could not parse request body for error tracking:', parseError);
     }
