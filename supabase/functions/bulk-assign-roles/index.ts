@@ -43,20 +43,10 @@ serve(async (req) => {
 
     console.log(`Found ${employees?.length || 0} unassigned employees`);
 
-    console.log('Fetching standard roles with job descriptions...');
+    console.log('Fetching standard roles...');
     const { data: standardRoles, error: rolesError } = await supabaseClient
       .from('xlsmart_standard_roles')
-      .select(`
-        *,
-        job_descriptions:xlsmart_job_descriptions(
-          title,
-          summary,
-          responsibilities,
-          required_qualifications,
-          required_skills,
-          experience_level
-        )
-      `)
+      .select('*')
       .eq('is_active', true);
 
     if (rolesError) {
@@ -86,31 +76,27 @@ serve(async (req) => {
     const employee = employees[0];
     console.log(`Testing with employee: ${employee.first_name} ${employee.last_name}`);
 
-    // Enhanced role matching with job descriptions
+    // Enhanced role matching
     let assignedRoleId = null;
     
-    console.log(`Analyzing employee: ${employee.current_position} with skills: ${employee.skills}`);
+    console.log(`Analyzing employee: ${employee.current_position} with skills: ${JSON.stringify(employee.skills)}`);
     
-    // Enhanced matching considering job descriptions
+    // Simplified matching without job descriptions
     const findBestMatch = (employee: any, roles: any[]) => {
       let bestMatch = null;
       let bestScore = 0;
       
       for (const role of roles) {
         let score = 0;
-        const jd = role.job_descriptions?.[0];
         
-        // Job title similarity (30%)
+        // Job title similarity (40%)
         if (role.role_title.toLowerCase().includes(employee.current_position.toLowerCase()) ||
             employee.current_position.toLowerCase().includes(role.role_title.toLowerCase())) {
-          score += 0.3;
+          score += 0.4;
         }
         
-        // Skills match with job description (40%)
-        const roleSkills = [
-          ...(Array.isArray(role.required_skills) ? role.required_skills : []),
-          ...(Array.isArray(jd?.required_skills) ? jd.required_skills : [])
-        ];
+        // Skills match (40%)
+        const roleSkills = Array.isArray(role.required_skills) ? role.required_skills : [];
         const employeeSkills = Array.isArray(employee.skills) ? employee.skills : [];
         
         const skillMatches = employeeSkills.filter(skill => 
