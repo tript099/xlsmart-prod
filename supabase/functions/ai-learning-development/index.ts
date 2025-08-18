@@ -109,36 +109,57 @@ ${employeeId ? `Focus on employee: ${employeeId}` : ''}
 ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
   }
 
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 3000,
-      temperature: 0.7,
-    }),
-  });
+  console.log('=== LiteLLM API Call Started ===');
+  console.log('OpenAI API Key exists:', !!openAIApiKey);
+  console.log('System prompt length:', systemPrompt.length);
+  console.log('Prompt length:', prompt.length);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('LiteLLM API error:', errorText);
-    throw new Error(`LiteLLM API error: ${response.statusText}`);
-  }
+  const requestBody = {
+    model: 'azure/gpt-4.1',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    max_completion_tokens: 3000,
+  };
 
-  const data = await response.json();
-  const content = data.choices[0].message.content;
+  console.log('Making request to LiteLLM proxy...');
   
   try {
-    return JSON.parse(content);
+    const startTime = Date.now();
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+    
+    const endTime = Date.now();
+    console.log(`API call took ${endTime - startTime}ms`);
+    console.log('LiteLLM proxy response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Response content length:', data.choices?.[0]?.message?.content?.length || 0);
+    console.log('LiteLLM response received successfully');
+    
+    const content = data.choices[0].message.content;
+    
+    // Clean up any markdown code blocks before JSON parsing
+    const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    console.log('Analysis completed successfully');
+    return JSON.parse(cleanContent);
   } catch (parseError) {
-    console.error('Failed to parse AI response:', content);
+    console.error('Failed to parse AI response as JSON, using fallback');
+    console.error('Parse error:', parseError);
+    console.error('Content that failed to parse:', cleanContent?.substring(0, 500) || 'No content');
     // Return a fallback response
     return {
       personalizedPlans: employees?.slice(0, 3).map((emp, index) => ({
