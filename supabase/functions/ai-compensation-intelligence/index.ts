@@ -221,7 +221,7 @@ async function performPayEquityAnalysis(employees: any[], standardRoles: any[], 
     filteredEmployees = filteredEmployees.filter(emp => emp.current_position === roleFilter);
   }
 
-  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in pay equity analysis and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in pay equity analysis and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate). ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return analysis in JSON format:
 {
@@ -321,7 +321,7 @@ async function performMarketBenchmarking(employees: any[], standardRoles: any[],
     ? employees.filter(emp => emp.current_department === departmentFilter)
     : employees;
 
-  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in market benchmarking and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in market benchmarking and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate). ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return analysis in JSON format:
 {
@@ -407,7 +407,7 @@ async function performPromotionReadinessAnalysis(employees: any[], standardRoles
     ? employees.filter(emp => emp.current_department === departmentFilter)
     : employees;
 
-  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in promotion readiness and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in promotion readiness and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate). ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return analysis in JSON format:
 {
@@ -485,7 +485,7 @@ Provide comprehensive promotion readiness analysis focusing on:
 }
 
 async function performCompensationOptimization(employees: any[], standardRoles: any[], jobDescriptions: any[]) {
-  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in compensation optimization and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate).
+  const systemPrompt = `You are an AI compensation analyst for XLSMART, one of Indonesia's largest telecom companies. Specialize in compensation optimization and analyze employee compensation data to: Detect inequities, gaps, or misalignments. Provide structured insights with metrics (percentages, salary ranges, benchmarks). Recommend fair, transparent, and competitive adjustments aligned with XLSMART's HR policies and telecom industry standards. Always present findings in a clear, professional format (tables, charts, or bullet points where appropriate). ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return analysis in JSON format:
 {
