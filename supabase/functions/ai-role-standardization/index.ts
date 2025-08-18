@@ -32,9 +32,9 @@ serve(async (req) => {
       throw new Error('Upload session not found');
     }
 
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
+    if (!liteLLMApiKey) {
+      throw new Error('LiteLLM API key not configured');
     }
 
     // Update session status
@@ -138,11 +138,11 @@ Respond with JSON:
       const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openAIApiKey}`,
+          'Authorization': `Bearer ${liteLLMApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4.1-2025-04-14',
+          model: 'azure/gpt-4.1',
           messages: [
             { 
               role: 'system', 
@@ -150,7 +150,7 @@ Respond with JSON:
             },
             { role: 'user', content: aiPrompt }
           ],
-          max_completion_tokens: 4000,
+          max_tokens: 4000,
         }),
       });
 
