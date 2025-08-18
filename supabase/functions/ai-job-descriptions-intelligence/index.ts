@@ -12,13 +12,19 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 serve(async (req) => {
+  console.log('=== AI Job Descriptions Intelligence Function Started ===');
+  console.log('Request method:', req.method);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('Parsing request body...');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { analysisType, departmentFilter, roleFilter } = await req.json();
+    
+    console.log('Request parameters:', { analysisType, departmentFilter, roleFilter });
 
     console.log(`Starting job descriptions analysis: ${analysisType}`);
     console.log(`Filters - Department: ${departmentFilter}, Role: ${roleFilter}`);
@@ -43,11 +49,28 @@ serve(async (req) => {
 
     if (!jobDescriptions || jobDescriptions.length === 0) {
       console.log('No job descriptions found, returning empty results');
-      return new Response(JSON.stringify({
+      const emptyResult = {
         summary: { totalAnalyzed: 0, averageCompleteness: 0, averageClarity: 0, improvementOpportunities: 0 },
         optimizationRecommendations: [],
-        message: 'No job descriptions found for analysis'
-      }), {
+        message: 'No job descriptions found for analysis. Please ensure job descriptions exist in the database.'
+      };
+      
+      // Still save empty result to database
+      try {
+        await supabase
+          .from('ai_analysis_results')
+          .insert({
+            analysis_type: analysisType,
+            function_name: 'ai-job-descriptions-intelligence',
+            input_parameters: { analysisType, departmentFilter, roleFilter },
+            analysis_result: emptyResult,
+            status: 'completed'
+          });
+      } catch (saveError) {
+        console.error('Error saving empty result:', saveError);
+      }
+      
+      return new Response(JSON.stringify(emptyResult), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -111,8 +134,15 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Error in ai-job-descriptions-intelligence function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error('=== Error in ai-job-descriptions-intelligence function ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      details: 'Check edge function logs for more information'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -120,13 +150,30 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  console.log('Getting API key for LiteLLM...');
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+  
   if (!openAIApiKey) {
-    openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    console.error('OPENAI_API_KEY_NEW not found');
+    console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('API')));
+    throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY_NEW');
   }
-  if (!openAIApiKey) {
-    throw new Error('OpenAI API key not configured');
-  }
+  
+  console.log('API key found, length:', openAIApiKey.length);
+
+  console.log('Making request to LiteLLM proxy...');
+  console.log('Prompt length:', prompt.length);
+  console.log('System prompt length:', systemPrompt.length);
+  
+  const requestBody = {
+    model: 'azure/gpt-4.1',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.7,
+    max_completion_tokens: 2000,
+  };
 
   const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
@@ -134,21 +181,23 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
       'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'azure/gpt-4.1',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_completion_tokens: 2000,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
+  console.log('LiteLLM response status:', response.status);
+  
   const data = await response.json();
+  console.log('LiteLLM response data keys:', Object.keys(data));
+  
   if (!response.ok) {
-    console.error('LiteLLM API error:', data);
-    throw new Error(`LiteLLM API error: ${data.error?.message || response.statusText}`);
+    console.error('LiteLLM API error status:', response.status);
+    console.error('LiteLLM API error data:', data);
+    throw new Error(`LiteLLM API error (${response.status}): ${data.error?.message || response.statusText}`);
+  }
+  
+  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+    console.error('Invalid LiteLLM response structure:', data);
+    throw new Error('Invalid response structure from LiteLLM API');
   }
   
   return data.choices[0].message.content;
