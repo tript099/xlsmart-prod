@@ -83,6 +83,8 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(employees: any[], analysisType: string, employeeId?: string, departmentFilter?: string, openAIApiKey?: string) {
+  console.log('callLiteLLM - API key exists:', !!openAIApiKey);
+  console.log('callLiteLLM - API key length:', openAIApiKey?.length || 0);
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
