@@ -141,26 +141,27 @@ serve(async (req) => {
 });
 
 async function callOpenAI(prompt: string, systemPrompt: string) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'azure/gpt-4.1',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
+      temperature: 0.7,
     }),
   });
 
   const data = await response.json();
   if (!response.ok) {
-    console.error('OpenAI API error:', data);
-    throw new Error(`OpenAI API error: ${data.error?.message || 'Unknown error'}`);
+    console.error('LiteLLM API error:', data);
+    throw new Error(`LiteLLM API error: ${data.error?.message || 'Unknown error'}`);
   }
   
   return data.choices[0].message.content;
