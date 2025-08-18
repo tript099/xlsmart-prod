@@ -154,7 +154,7 @@ serve(async (req) => {
         ).join('\n')}`
       : '';
 
-    const aiPrompt = `You are an AI HR analyst specializing in skills assessment and career development for XLSMART, one of Indonesia's largest telecom companies. Based on employee data and role requirements, perform a ${assessmentType} analysis to: Measure alignment between employee skills and role expectations. Identify gaps and strengths. Provide actionable, structured recommendations for HR and employee development. ⚙️ Output Requirements: Always return results in valid JSON format. Ensure the output is concise, measurable, and machine-readable, ready for integration into XLSMART's HR application.
+    const aiPrompt = `You are an AI HR analyst specializing in skills assessment and career development for XLSMART, one of Indonesia's largest telecom companies. Based on employee data and role requirements, perform a ${assessmentType} analysis to: Measure alignment between employee skills and role expectations. Identify gaps and strengths. Provide actionable, structured recommendations for HR and employee development. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Analyze this employee's fit for the target role and provide comprehensive insights:
 
@@ -237,7 +237,7 @@ Respond in JSON format:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an AI HR analyst specializing in skills assessment and career development for XLSMART, one of Indonesia\'s largest telecom companies. Based on employee data and role requirements, perform analysis to: Measure alignment between employee skills and role expectations. Identify gaps and strengths. Provide actionable, structured recommendations for HR and employee development. ⚙️ Output Requirements: Always return results in valid JSON format. Ensure the output is concise, measurable, and machine-readable, ready for integration into XLSMART\'s HR application.' 
+            content: 'You are an AI HR analyst specializing in skills assessment and career development for XLSMART, one of Indonesia\'s largest telecom companies. Based on employee data and role requirements, perform analysis to: Measure alignment between employee skills and role expectations. Identify gaps and strengths. Provide actionable, structured recommendations for HR and employee development. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART\'s HR systems.' 
           },
           { role: 'user', content: aiPrompt }
         ],

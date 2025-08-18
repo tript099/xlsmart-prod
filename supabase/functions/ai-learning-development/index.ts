@@ -91,7 +91,7 @@ async function callLiteLLM(employees: any[], analysisType: string, employeeId?: 
     throw new Error('OpenAI API key not configured');
   }
 
-  const systemPrompt = `You are an expert HR analyst specializing in career development and workforce mobility for XLSMART, one of Indonesia's largest telecom companies. Using employee data, role requirements, and telecom career frameworks, analyze and: Suggest possible career progression pathways. Provide readiness scores and gap analysis. Recommend development activities to close gaps and prepare for next roles. Ensure recommendations align with telecom industry benchmarks and XLSMART's organizational needs. ⚙️ Output Requirements: Always return results in valid JSON format.`;
+  const systemPrompt = `You are an expert HR analyst specializing in career development and workforce mobility for XLSMART, one of Indonesia's largest telecom companies. Using employee data, role requirements, and telecom career frameworks, analyze and: Suggest possible career progression pathways. Provide readiness scores and gap analysis. Recommend development activities to close gaps and prepare for next roles. Ensure recommendations align with telecom industry benchmarks and XLSMART's organizational needs. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.`;
 
   let prompt = '';
   if (analysisType === 'personalized_plans') {

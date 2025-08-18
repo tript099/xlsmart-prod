@@ -323,7 +323,7 @@ Focus on actionable insights and realistic assessments.`;
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert HR analyst specializing in skills assessment and career development. Always respond with valid JSON.' 
+            content: 'You are an expert HR analyst specializing in skills assessment and career development for XLSMART, one of Indonesia\'s largest telecom companies. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART\'s HR systems.' 
           },
           { role: 'user', content: prompt }
         ],

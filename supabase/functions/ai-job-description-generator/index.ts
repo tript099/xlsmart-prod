@@ -130,7 +130,7 @@ Respond in JSON format:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Based on the provided inputs, generate a complete job description that is clear, professional, and aligned with telecom industry standards. ⚙️ Output Requirements: Always respond in valid JSON format. Ensure the output is concise, realistic, and directly usable by XLSMART\'s HR system.' 
+            content: 'You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Based on the provided inputs, generate a complete job description that is clear, professional, and aligned with telecom industry standards. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART\'s HR systems.' 
           },
           { role: 'user', content: aiPrompt }
         ],
