@@ -52,16 +52,19 @@ serve(async (req) => {
       throw new Error('Upload session not found');
     }
 
-    // Use OPENAI_API_KEY_NEW for LiteLLM proxy
+    // Use OPENAI_API_KEY for LiteLLM proxy (try both possible keys)
     console.log('Checking for API key...');
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    let openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    if (!openAIApiKey) {
+      openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    }
     console.log('API key exists:', !!openAIApiKey);
     console.log('API key length:', openAIApiKey?.length || 0);
     
     if (!openAIApiKey) {
-      console.error('OPENAI_API_KEY_NEW not found');
+      console.error('No OpenAI API key found');
       console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('API')));
-      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY_NEW');
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY or OPENAI_API_KEY_NEW');
     }
 
     // Update session status
