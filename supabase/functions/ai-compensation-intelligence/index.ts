@@ -9,7 +9,6 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -142,6 +141,11 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    throw new Error('OpenAI API key not configured');
+  }
+
   console.log('=== LiteLLM API Call Started ===');
   console.log('OpenAI API Key exists:', !!openAIApiKey);
   console.log('System prompt length:', systemPrompt.length);
