@@ -9,7 +9,6 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -165,16 +164,18 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
+  let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+  }
+  if (!openAIApiKey) {
+    throw new Error('OpenAI API key not configured');
+  }
+
   console.log('=== LiteLLM API Call Started ===');
   console.log('Prompt length:', prompt.length);
   console.log('System prompt length:', systemPrompt.length);
   console.log('OpenAI API Key exists:', !!openAIApiKey);
-  console.log('OpenAI API Key length:', openAIApiKey?.length || 0);
-  
-  if (!openAIApiKey) {
-    console.error('CRITICAL: OpenAI API Key is missing!');
-    throw new Error('OpenAI API key is not configured');
-  }
   
   try {
     console.log('Making request to LiteLLM proxy...');
@@ -184,11 +185,9 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.7,
-      max_completion_tokens: 3000, // Use max_completion_tokens for newer models
+      max_completion_tokens: 3000,
     };
     console.log('Request body prepared, model:', requestBody.model);
-    console.log('Using max_completion_tokens:', requestBody.max_completion_tokens);
     
     const startTime = Date.now();
     const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
