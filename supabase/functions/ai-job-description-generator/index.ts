@@ -126,7 +126,7 @@ Respond in JSON format:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'azure/gpt-4.1',
+        model: 'gpt-4o-mini',
         messages: [
           { 
             role: 'system', 
