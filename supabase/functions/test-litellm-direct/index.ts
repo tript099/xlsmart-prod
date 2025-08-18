@@ -35,6 +35,7 @@ serve(async (req) => {
         { role: 'user', content: 'Say "Hello, this is a test response" and nothing else.' }
       ],
       max_completion_tokens: 50,
+      temperature: 0.7,
     };
 
     console.log('Making test request to LiteLLM...');
