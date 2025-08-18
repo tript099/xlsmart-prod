@@ -141,7 +141,10 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+  }
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
