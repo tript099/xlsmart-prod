@@ -134,13 +134,12 @@ OUTPUT FORMAT (JSON only):
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'azure/gpt-4.1',
           messages: [
             { role: 'system', content: 'You are an expert in telecommunications role standardization. Return only valid JSON.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.1,
-          max_tokens: 4000
+          max_completion_tokens: 4000
         }),
       });
 

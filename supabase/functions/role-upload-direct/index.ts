@@ -100,13 +100,12 @@ Return JSON with this structure:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'azure/gpt-4.1',
           messages: [
             { role: 'system', content: 'Return only valid JSON for telecommunications role standardization.' },
             { role: 'user', content: prompt }
           ],
-          temperature: 0.1,
-          max_tokens: 3000
+          max_completion_tokens: 3000
         }),
       });
 

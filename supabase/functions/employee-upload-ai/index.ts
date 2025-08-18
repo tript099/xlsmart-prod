@@ -198,13 +198,12 @@ Return only the role_title of the best matching standard role, or "NO_MATCH" if 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           { role: 'system', content: 'You are an expert HR system that assigns employees to the most appropriate standard roles based on their profile.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.1,
-        max_tokens: 100
+        max_completion_tokens: 100
       }),
     });
 

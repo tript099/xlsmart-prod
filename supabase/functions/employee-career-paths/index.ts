@@ -114,7 +114,7 @@ Focus on realistic career progression based on industry standards and the employ
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           { 
             role: 'system', 
@@ -122,8 +122,7 @@ Focus on realistic career progression based on industry standards and the employ
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 1500
+        max_completion_tokens: 1500
       }),
     });
 

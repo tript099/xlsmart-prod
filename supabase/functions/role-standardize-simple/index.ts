@@ -68,13 +68,12 @@ Create 5-8 standardized telecommunications roles based on this data. Return JSON
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'azure/gpt-4.1',
         messages: [
           { role: 'system', content: 'You are an expert HR analyst. Create standardized role definitions. Respond only with valid JSON.' },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.3,
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
       }),
     });
 
