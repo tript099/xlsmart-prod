@@ -18,11 +18,16 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
+    console.log('Request body:', JSON.stringify(body));
+    
     const { sessionId } = body;
     
     if (!sessionId) {
+      console.error('Missing sessionId in request');
       throw new Error('Session ID is required');
     }
+    
+    console.log('Processing session ID:', sessionId);
     
     console.log('Starting AI role standardization for session:', sessionId);
 
@@ -59,17 +64,22 @@ serve(async (req) => {
     console.log('Starting AI role standardization for session:', sessionId);
 
     // Fetch data from xl_roles_data and smart_roles_data tables
+    console.log('Fetching XL roles data...');
     const { data: xlData, error: xlError } = await supabase
       .from('xl_roles_data')
       .select('*')
       .eq('session_id', sessionId)
       .limit(10);
 
+    console.log('Fetching Smart roles data...');
     const { data: smartData, error: smartError } = await supabase
       .from('smart_roles_data')
       .select('*')
       .eq('session_id', sessionId)
       .limit(10);
+
+    console.log('XL data result:', { count: xlData?.length, error: xlError?.message });
+    console.log('Smart data result:', { count: smartData?.length, error: smartError?.message });
 
     if (xlError && smartError) {
       console.error('Error fetching role data:', { xlError, smartError });
@@ -85,6 +95,7 @@ serve(async (req) => {
     }
 
     // Get existing standard roles from database for AI comparison
+    console.log('Fetching existing standard roles...');
     const { data: existingRoles, error: rolesError } = await supabase
       .from('xlsmart_standard_roles')
       .select('id, role_title, department, job_family, role_level, standard_description')
@@ -92,10 +103,11 @@ serve(async (req) => {
 
     if (rolesError) {
       console.error('Error fetching existing roles:', rolesError);
+      // Don't throw error, just log it and continue with empty array
     }
 
-    console.log('Sample role data:', sampleData.slice(0, 3));
-    console.log('Existing standard roles:', existingRoles?.length || 0);
+    console.log('Sample role data:', sampleData.slice(0, 2));
+    console.log('Existing standard roles count:', existingRoles?.length || 0);
 
     // Use AI to analyze uploaded roles and normalize against existing standards
     const aiPrompt = `
@@ -145,6 +157,7 @@ Respond with JSON:
 }
 `;
 
+    console.log('Making request to LiteLLM API...');
     const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -163,6 +176,8 @@ Respond with JSON:
         max_tokens: 4000,
       }),
     });
+
+    console.log('LiteLLM API response status:', aiResponse.status);
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
