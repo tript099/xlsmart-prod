@@ -247,7 +247,36 @@ const Login = () => {
                           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           Create Account
                         </Button>
+                        
+                        {/* Quick test login button */}
+                        <Button 
+                          type="button"
+                          variant="outline"
+                          className="w-full h-11 mt-2" 
+                          onClick={() => {
+                            setEmail('test@xlsmart.com');
+                            setPassword('test123456');
+                          }}
+                        >
+                          Fill Test Credentials
+                        </Button>
                       </form>
+                      
+                      <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                        <p className="text-sm text-green-700 text-center mb-2">
+                          <strong>Testing the Job Description Intelligence:</strong>
+                        </p>
+                        <ol className="text-xs text-green-600 text-left space-y-1">
+                          <li>1. Click "Fill Test Credentials" above</li>
+                          <li>2. Click "Create Account" (or "Sign In" if account exists)</li>
+                          <li>3. Navigate to "Job Descriptions" in the sidebar</li>
+                          <li>4. Click the "Intelligence" tab</li>
+                          <li>5. Select an analysis type and click "Analyze"</li>
+                        </ol>
+                        <p className="text-xs text-green-600 text-center mt-2">
+                          Database contains 34 job descriptions ready for analysis.
+                        </p>
+                      </div>
                     </TabsContent>
                   </Tabs>
                 </CardContent>
