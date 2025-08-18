@@ -105,21 +105,21 @@ ${employeeId ? `Focus on employee: ${employeeId}` : ''}
 ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
   }
 
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
-      body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 3000,
-        temperature: 0.7,
-      }),
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 3000,
+      temperature: 0.7,
+    }),
   });
 
   if (!response.ok) {
