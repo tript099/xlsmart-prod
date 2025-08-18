@@ -90,6 +90,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
+    temperature: 0.7,
     max_completion_tokens: 3000,
   };
 
@@ -135,7 +136,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 }
 
 async function performBiasDetection(employees: any[], standardRoles: any[], jobDescriptions: any[]) {
-  const systemPrompt = `You are an expert in diversity, equity, inclusion, and bias detection in HR processes. Analyze data patterns to identify potential bias in hiring, promotion, and compensation decisions.
+  const systemPrompt = `You are an AI expert in diversity, equity, inclusion, and bias detection for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze HR and organizational data to: Detect patterns of bias or underrepresentation. Provide quantitative metrics (representation scores, fairness ratios, diversity gaps). Assess inclusion sentiment from qualitative inputs (surveys, text feedback). Recommend practical, actionable strategies to improve fairness, representation, and employee experience. Always present insights in a clear, structured, and professional format (tables, percentages, and bullet points where appropriate) tailored to XLSMART's HR context.
 
 Return a JSON object with this structure:
 {
@@ -227,7 +228,7 @@ Detect bias patterns and recommend bias mitigation strategies.`;
 }
 
 async function performDiversityMetrics(employees: any[], departmentFilter?: string) {
-  const systemPrompt = `You are an expert in diversity analytics and workforce representation analysis. Calculate comprehensive diversity metrics and identify areas for improvement.
+  const systemPrompt = `You are an AI expert in diversity, equity, inclusion, and bias detection for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze HR and organizational data to: Detect patterns of bias or underrepresentation. Provide quantitative metrics (representation scores, fairness ratios, diversity gaps). Assess inclusion sentiment from qualitative inputs (surveys, text feedback). Recommend practical, actionable strategies to improve fairness, representation, and employee experience. Always present insights in a clear, structured, and professional format (tables, percentages, and bullet points where appropriate) tailored to XLSMART's HR context.
 
 Return a JSON object with this structure:
 {
@@ -308,7 +309,7 @@ Calculate diversity metrics and identify representation gaps across all organiza
 }
 
 async function performInclusionSentiment(employees: any[], metricType?: string) {
-  const systemPrompt = `You are an expert in inclusion analysis and organizational culture assessment. Analyze inclusion indicators and sentiment patterns across the workforce.
+  const systemPrompt = `You are an AI expert in diversity, equity, inclusion, and bias detection for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze HR and organizational data to: Detect patterns of bias or underrepresentation. Provide quantitative metrics (representation scores, fairness ratios, diversity gaps). Assess inclusion sentiment from qualitative inputs (surveys, text feedback). Recommend practical, actionable strategies to improve fairness, representation, and employee experience. Always present insights in a clear, structured, and professional format (tables, percentages, and bullet points where appropriate) tailored to XLSMART's HR context.
 
 Return a JSON object with this structure:
 {
@@ -387,7 +388,7 @@ Assess inclusion levels and identify strategies to improve belonging and equity.
 }
 
 async function performPayEquityAnalysis(employees: any[], departmentFilter?: string) {
-  const systemPrompt = `You are an expert in pay equity analysis and compensation fairness. Analyze compensation patterns to identify and address pay equity gaps.
+  const systemPrompt = `You are an AI expert in diversity, equity, inclusion, and bias detection for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze HR and organizational data to: Detect patterns of bias or underrepresentation. Provide quantitative metrics (representation scores, fairness ratios, diversity gaps). Assess inclusion sentiment from qualitative inputs (surveys, text feedback). Recommend practical, actionable strategies to improve fairness, representation, and employee experience. Always present insights in a clear, structured, and professional format (tables, percentages, and bullet points where appropriate) tailored to XLSMART's HR context.
 
 Return a JSON object with this structure:
 {
