@@ -169,9 +169,18 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 function cleanJsonResponse(text: string): string {
   console.log('Raw AI response length:', text.length);
   console.log('Raw AI response preview:', text.substring(0, 500));
+  console.log('Raw AI response contains opening brace at:', text.indexOf('{'));
+  console.log('Raw AI response contains closing brace at:', text.lastIndexOf('}'));
   
   // Remove markdown code blocks first
   let cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  
+  // If text starts with explanation, try to find just the JSON part
+  const jsonStart = cleaned.search(/\{[\s\S]*"personalizedPlans"/);
+  if (jsonStart !== -1) {
+    cleaned = cleaned.substring(jsonStart);
+    console.log('Found JSON starting at position:', jsonStart);
+  }
   
   // Find the JSON object boundaries more carefully
   const firstBrace = cleaned.indexOf('{');
@@ -195,19 +204,29 @@ function cleanJsonResponse(text: string): string {
   }
   
   if (lastBrace === -1) {
-    console.warn('No matching closing brace found, returning minimal response');
-    return '{"personalizedPlans":[],"learningRecommendations":{"immediateActions":[],"quarterlyGoals":[],"annualTargets":[],"budgetEstimate":0}}';
+    console.warn('No matching closing brace found. Brace count at end:', braceCount);
+    console.warn('Text after last opening brace:', cleaned.substring(Math.max(0, cleaned.length - 200)));
+    
+    // Try to find the last closing brace even if unmatched
+    const lastCloseBrace = cleaned.lastIndexOf('}');
+    if (lastCloseBrace > firstBrace) {
+      console.log('Using last closing brace found at position:', lastCloseBrace);
+      lastBrace = lastCloseBrace;
+    } else {
+      return '{"personalizedPlans":[],"learningRecommendations":{"immediateActions":[],"quarterlyGoals":[],"annualTargets":[],"budgetEstimate":0}}';
+    }
   }
   
   cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  console.log('Extracted JSON length:', cleaned.length);
   
   // Try to parse as-is first
   try {
     const parsed = JSON.parse(cleaned);
-    console.log('JSON parsed successfully');
+    console.log('JSON parsed successfully on first attempt');
     return cleaned;
   } catch (e) {
-    console.log('JSON needs cleaning, attempting fixes...');
+    console.log('JSON needs cleaning, attempting fixes. Error:', e.message);
     
     // Remove trailing commas
     cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
@@ -221,11 +240,12 @@ function cleanJsonResponse(text: string): string {
     // Try parsing again
     try {
       const parsed = JSON.parse(cleaned);
-      console.log('JSON fixed and parsed successfully');
+      console.log('JSON fixed and parsed successfully after cleaning');
       return cleaned;
     } catch (e2) {
-      console.error('Could not fix JSON after cleaning attempts:', e2.message);
-      console.error('Problematic JSON snippet:', cleaned.substring(0, 1000));
+      console.error('Could not fix JSON after cleaning attempts. Final error:', e2.message);
+      console.error('Problematic JSON snippet (first 1000 chars):', cleaned.substring(0, 1000));
+      console.error('Problematic JSON snippet (last 500 chars):', cleaned.substring(Math.max(0, cleaned.length - 500)));
       return '{"personalizedPlans":[],"learningRecommendations":{"immediateActions":[],"quarterlyGoals":[],"annualTargets":[],"budgetEstimate":0}}';
     }
   }
