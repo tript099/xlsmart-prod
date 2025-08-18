@@ -28,14 +28,27 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== Function Start - Environment Check ===');
+    console.log('SUPABASE_URL present:', !!Deno.env.get('SUPABASE_URL'));
+    console.log('SUPABASE_SERVICE_ROLE_KEY present:', !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
+    console.log('OPENAI_API_KEY present:', !!Deno.env.get('OPENAI_API_KEY'));
+    console.log('OPENAI_API_KEY length:', Deno.env.get('OPENAI_API_KEY')?.length || 0);
+    
     // Validate environment variables first
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    
     if (!supabaseUrl) {
+      console.error('SUPABASE_URL environment variable is not set');
       throw new Error('SUPABASE_URL environment variable is not set');
     }
     if (!supabaseServiceKey) {
+      console.error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set');
       throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set');
     }
     if (!openAIApiKey) {
+      console.error('OPENAI_API_KEY environment variable is not set');
       throw new Error('OPENAI_API_KEY environment variable is not set');
     }
 
@@ -52,114 +65,142 @@ serve(async (req) => {
     console.log('Starting learning & development analysis:', { analysisType, employeeId, departmentFilter });
 
     // Fetch employee data with skills
-    console.log('Fetching employees from xlsmart_employees...');
-    const { data: employees, error: empError } = await supabase
-      .from('xlsmart_employees')
-      .select('*')
-      .eq('is_active', true);
+    console.log('=== Database Query 1: Fetching employees ===');
+    try {
+      const { data: employees, error: empError } = await supabase
+        .from('xlsmart_employees')
+        .select('*')
+        .eq('is_active', true);
 
-    console.log('Employee query completed. Error:', empError);
-    console.log('Employees found:', employees?.length || 0);
+      console.log('Employee query completed. Error:', empError);
+      console.log('Employees found:', employees?.length || 0);
 
-    if (empError) {
-      console.error('Error fetching employees:', empError);
-      throw new Error(`Failed to fetch employees: ${empError.message}`);
+      if (empError) {
+        console.error('Error fetching employees:', empError);
+        throw new Error(`Failed to fetch employees: ${empError.message}`);
+      }
+
+      console.log('=== Database Query 2: Fetching skill assessments ===');
+      // Fetch skill assessments
+      const { data: skillAssessments, error: skillError } = await supabase
+        .from('xlsmart_skill_assessments')
+        .select('*');
+
+      console.log('Skill assessments query completed. Error:', skillError);
+      console.log('Skill assessments found:', skillAssessments?.length || 0);
+
+      if (skillError) {
+        console.error('Error fetching skill assessments:', skillError);
+        throw skillError;
+      }
+
+      console.log('=== Database Query 3: Fetching employee skills ===');
+      // Fetch employee skills
+      const { data: employeeSkills, error: empSkillsError } = await supabase
+        .from('employee_skills')
+        .select(`
+          *,
+          skill_id,
+          employee_id
+        `);
+
+      if (empSkillsError) {
+        console.error('Error fetching employee skills:', empSkillsError);
+        throw empSkillsError;
+      }
+
+      console.log('=== Database Query 4: Fetching skills master ===');
+      // Fetch skills master
+      const { data: skillsMaster, error: skillsMasterError } = await supabase
+        .from('skills_master')
+        .select('*');
+
+      if (skillsMasterError) {
+        console.error('Error fetching skills master:', skillsMasterError);
+        throw skillsMasterError;
+      }
+
+      console.log('=== Database Query 5: Fetching trainings ===');
+      // Fetch training records
+      const { data: trainings, error: trainingError } = await supabase
+        .from('employee_trainings')
+        .select('*');
+
+      if (trainingError) {
+        console.error('Error fetching trainings:', trainingError);
+        throw trainingError;
+      }
+
+      console.log('=== Database Query 6: Fetching certifications ===');
+      // Fetch certifications
+      const { data: certifications, error: certError } = await supabase
+        .from('employee_certifications')
+        .select('*');
+
+      if (certError) {
+        console.error('Error fetching certifications:', certError);
+        throw certError;
+      }
+
+      console.log('=== Database Query 7: Fetching standard roles ===');
+      // Fetch standard roles for requirements
+      const { data: standardRoles, error: rolesError } = await supabase
+        .from('xlsmart_standard_roles')
+        .select('*');
+
+      if (rolesError) {
+        console.error('Error fetching standard roles:', rolesError);
+        throw rolesError;
+      }
+
+      console.log('=== All database queries completed successfully ===');
+      console.log('Data summary:', {
+        employees: employees?.length,
+        skillAssessments: skillAssessments?.length,
+        employeeSkills: employeeSkills?.length,
+        skillsMaster: skillsMaster?.length,
+        trainings: trainings?.length,
+        certifications: certifications?.length,
+        standardRoles: standardRoles?.length
+      });
+
+      let analysisResult;
+
+      console.log('=== Starting AI Analysis ===');
+      switch (analysisType) {
+        case 'personalized_learning':
+          analysisResult = await performPersonalizedLearningAnalysis(
+            employees, skillAssessments, employeeSkills, skillsMaster, trainings, standardRoles, employeeId
+          );
+          break;
+        case 'skills_development':
+          analysisResult = await performSkillsDevelopmentAnalysis(
+            employees, skillAssessments, employeeSkills, skillsMaster, standardRoles, departmentFilter
+          );
+          break;
+        case 'training_effectiveness':
+          analysisResult = await performTrainingEffectivenessAnalysis(
+            employees, trainings, certifications, skillAssessments, employeeSkills
+          );
+          break;
+        case 'learning_strategy':
+          analysisResult = await performLearningStrategyAnalysis(
+            employees, skillAssessments, trainings, standardRoles, departmentFilter
+          );
+          break;
+        default:
+          throw new Error('Invalid analysis type');
+      }
+
+      console.log('=== AI Analysis completed successfully ===');
+      return new Response(JSON.stringify(analysisResult), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
+    } catch (dbError) {
+      console.error('Database operation failed:', dbError);
+      throw new Error(`Database operation failed: ${dbError.message}`);
     }
-
-    // Fetch skill assessments
-    const { data: skillAssessments, error: skillError } = await supabase
-      .from('xlsmart_skill_assessments')
-      .select('*');
-
-    if (skillError) {
-      console.error('Error fetching skill assessments:', skillError);
-      throw skillError;
-    }
-
-    // Fetch employee skills
-    const { data: employeeSkills, error: empSkillsError } = await supabase
-      .from('employee_skills')
-      .select(`
-        *,
-        skill_id,
-        employee_id
-      `);
-
-    if (empSkillsError) {
-      console.error('Error fetching employee skills:', empSkillsError);
-      throw empSkillsError;
-    }
-
-    // Fetch skills master
-    const { data: skillsMaster, error: skillsMasterError } = await supabase
-      .from('skills_master')
-      .select('*');
-
-    if (skillsMasterError) {
-      console.error('Error fetching skills master:', skillsMasterError);
-      throw skillsMasterError;
-    }
-
-    // Fetch training records
-    const { data: trainings, error: trainingError } = await supabase
-      .from('employee_trainings')
-      .select('*');
-
-    if (trainingError) {
-      console.error('Error fetching trainings:', trainingError);
-      throw trainingError;
-    }
-
-    // Fetch certifications
-    const { data: certifications, error: certError } = await supabase
-      .from('employee_certifications')
-      .select('*');
-
-    if (certError) {
-      console.error('Error fetching certifications:', certError);
-      throw certError;
-    }
-
-    // Fetch standard roles for requirements
-    const { data: standardRoles, error: rolesError } = await supabase
-      .from('xlsmart_standard_roles')
-      .select('*');
-
-    if (rolesError) {
-      console.error('Error fetching standard roles:', rolesError);
-      throw rolesError;
-    }
-
-    let analysisResult;
-
-    switch (analysisType) {
-      case 'personalized_learning':
-        analysisResult = await performPersonalizedLearningAnalysis(
-          employees, skillAssessments, employeeSkills, skillsMaster, trainings, standardRoles, employeeId
-        );
-        break;
-      case 'skills_development':
-        analysisResult = await performSkillsDevelopmentAnalysis(
-          employees, skillAssessments, employeeSkills, skillsMaster, standardRoles, departmentFilter
-        );
-        break;
-      case 'training_effectiveness':
-        analysisResult = await performTrainingEffectivenessAnalysis(
-          employees, trainings, certifications, skillAssessments, employeeSkills
-        );
-        break;
-      case 'learning_strategy':
-        analysisResult = await performLearningStrategyAnalysis(
-          employees, skillAssessments, trainings, standardRoles, departmentFilter
-        );
-        break;
-      default:
-        throw new Error('Invalid analysis type');
-    }
-
-    return new Response(JSON.stringify(analysisResult), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
 
   } catch (error) {
     console.error('Error in learning & development analysis:', error);
