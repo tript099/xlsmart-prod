@@ -195,22 +195,10 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
     };
 
     console.log('Returning mock response for analysis type:', analysisType);
-    
-    return new Response(JSON.stringify(mockResponse), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return mockResponse;
 
   } catch (error) {
-    console.error('Function error:', error);
-    console.error('Error stack:', error.stack);
-    
-    return new Response(JSON.stringify({ 
-      error: error.message,
-      details: 'AI Learning Development analysis failed',
-      timestamp: new Date().toISOString()
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Parse error in callLiteLLM:', error);
+    throw new Error('Failed to parse AI response');
   }
 });
