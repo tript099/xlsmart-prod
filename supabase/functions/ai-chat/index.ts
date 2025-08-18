@@ -15,9 +15,11 @@ serve(async (req) => {
   try {
     const { message, context = "hr_assistant" } = await req.json();
     
-    // You can configure LiteLLM to use different providers
-    // For now, we'll use OpenAI but you can easily switch to other models
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    // Get the API key from Supabase secrets - try both old and new
+    let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    }
     
     if (!openAIApiKey) {
       throw new Error('OpenAI API key not configured');
