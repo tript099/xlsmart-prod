@@ -105,7 +105,7 @@ ${employeeId ? `Focus on employee: ${employeeId}` : ''}
 ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${openAIApiKey}`,
