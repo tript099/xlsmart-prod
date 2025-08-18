@@ -7,30 +7,63 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY')!;
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
+console.log('Environment check:');
+console.log('SUPABASE_URL exists:', !!supabaseUrl);
+console.log('SUPABASE_SERVICE_ROLE_KEY exists:', !!supabaseServiceKey);
+console.log('OPENAI_API_KEY exists:', !!openAIApiKey);
+console.log('OPENAI_API_KEY length:', openAIApiKey?.length || 0);
 
 serve(async (req) => {
+  console.log('=== AI Learning Development Function Started ===');
+  console.log('Request method:', req.method);
+  console.log('Request URL:', req.url);
+  
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Validate environment variables first
+    if (!supabaseUrl) {
+      throw new Error('SUPABASE_URL environment variable is not set');
+    }
+    if (!supabaseServiceKey) {
+      throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is not set');
+    }
+    if (!openAIApiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+
+    console.log('Initializing Supabase client...');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { analysisType, employeeId, departmentFilter } = await req.json();
+    console.log('Supabase client initialized successfully');
+    
+    console.log('Parsing request body...');
+    const requestBody = await req.json();
+    console.log('Request body received:', JSON.stringify(requestBody, null, 2));
+    
+    const { analysisType, employeeId, departmentFilter } = requestBody;
 
     console.log('Starting learning & development analysis:', { analysisType, employeeId, departmentFilter });
 
     // Fetch employee data with skills
+    console.log('Fetching employees from xlsmart_employees...');
     const { data: employees, error: empError } = await supabase
       .from('xlsmart_employees')
       .select('*')
       .eq('is_active', true);
 
+    console.log('Employee query completed. Error:', empError);
+    console.log('Employees found:', employees?.length || 0);
+
     if (empError) {
       console.error('Error fetching employees:', empError);
-      throw empError;
+      throw new Error(`Failed to fetch employees: ${empError.message}`);
     }
 
     // Fetch skill assessments
