@@ -239,7 +239,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 }
 
 async function performLeadershipPipeline(employees: any[], standardRoles: any[], positionLevel?: string) {
-  const systemPrompt = `You are an expert in leadership development and succession planning. Analyze the leadership pipeline and identify development opportunities and gaps.
+  const systemPrompt = `You are an AI specialist in succession planning and leadership development for XLSMART, one of Indonesia's largest telecom companies. Analyze workforce data to: Map leadership pipelines and assess succession depth. Identify critical gaps and risk areas for future leadership. Generate succession chains for key positions. Recommend development actions to strengthen the pipeline. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure outputs are structured, concise, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -352,7 +352,7 @@ Please provide a comprehensive leadership pipeline analysis based on the actual 
 }
 
 async function performSuccessionReadiness(employees: any[], skillAssessments: any[]) {
-  const systemPrompt = `You are an expert in succession planning and leadership readiness assessment. Evaluate employee readiness for leadership roles and succession opportunities.
+  const systemPrompt = `You are an AI specialist in succession planning and leadership development for XLSMART, one of Indonesia's largest telecom companies. Analyze workforce data to: Map leadership pipelines and assess succession depth. Identify critical gaps and risk areas for future leadership. Generate succession chains for key positions. Recommend development actions to strengthen the pipeline. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure outputs are structured, concise, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -432,7 +432,7 @@ Evaluate readiness for advancement and create succession strategies based on the
 }
 
 async function performHighPotentialIdentification(employees: any[], skillAssessments: any[]) {
-  const systemPrompt = `You are an expert in talent identification and high-potential employee assessment. Identify high-potential employees for leadership development and succession planning.
+  const systemPrompt = `You are an AI specialist in succession planning and leadership development for XLSMART, one of Indonesia's largest telecom companies. Analyze workforce data to: Map leadership pipelines and assess succession depth. Identify critical gaps and risk areas for future leadership. Generate succession chains for key positions. Recommend development actions to strengthen the pipeline. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure outputs are structured, concise, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -557,7 +557,7 @@ Identify high-potential talent based on performance ratings (3.0+), experience l
 }
 
 async function performLeadershipGapAnalysis(employees: any[], standardRoles: any[], departmentFilter?: string) {
-  const systemPrompt = `You are an expert in organizational leadership analysis and workforce planning. Analyze leadership gaps and recommend solutions for building leadership capability.
+  const systemPrompt = `You are an AI specialist in succession planning and leadership development for XLSMART, one of Indonesia's largest telecom companies. Analyze workforce data to: Map leadership pipelines and assess succession depth. Identify critical gaps and risk areas for future leadership. Generate succession chains for key positions. Recommend development actions to strengthen the pipeline. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure outputs are structured, concise, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
