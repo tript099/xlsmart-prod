@@ -201,4 +201,4 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
     console.error('Parse error in callLiteLLM:', error);
     throw new Error('Failed to parse AI response');
   }
-});
+}
