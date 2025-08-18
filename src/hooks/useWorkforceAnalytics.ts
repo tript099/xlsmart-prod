@@ -214,10 +214,10 @@ export const useWorkforceAnalytics = () => {
 
       // AI insights summary
       const roleOptimizations = aiAnalyses.filter(analysis => 
-        analysis.analysis_type === 'role_optimization' || analysis.function_name === 'ai-workforce-intelligence'
+        analysis.analysis_type === 'mobility_plan' || analysis.function_name === 'employee-mobility-planning-bulk'
       ).length;
       const skillRecommendations = aiAnalyses.filter(analysis => 
-        analysis.analysis_type === 'skills_assessment' || analysis.function_name === 'ai-skills-assessment'
+        analysis.analysis_type === 'career_path' || analysis.function_name === 'employee-career-paths-bulk'
       ).length;
 
       const calculatedMetrics: WorkforceMetrics = {
