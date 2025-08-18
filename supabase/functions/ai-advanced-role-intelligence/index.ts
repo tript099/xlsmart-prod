@@ -84,18 +84,6 @@ serve(async (req) => {
 });
 
 async function callLiteLLM(prompt: string, systemPrompt: string) {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-  
-  console.log('OpenAI API Key check:', {
-    exists: !!openAIApiKey,
-    length: openAIApiKey?.length || 0,
-    firstChars: openAIApiKey?.substring(0, 10) || 'None'
-  });
-  
-  if (!openAIApiKey) {
-    throw new Error('OPENAI_API_KEY not found in environment variables');
-  }
-
   const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -108,12 +96,8 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      max_completion_tokens: 2000,
-      temperature: 0.7,
     }),
   });
-
-  console.log('LiteLLM response status:', response.status);
 
   const data = await response.json();
   if (!response.ok) {
