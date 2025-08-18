@@ -196,9 +196,6 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
 
     console.log('Returning mock response for analysis type:', analysisType);
     return mockResponse;
-
-  } catch (error) {
-    console.error('Parse error in callLiteLLM:', error);
-    throw new Error('Failed to parse AI response');
   }
+}
 }
