@@ -198,4 +198,3 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
     return mockResponse;
   }
 }
-}
