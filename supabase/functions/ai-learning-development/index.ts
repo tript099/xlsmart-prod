@@ -18,14 +18,20 @@ serve(async (req) => {
     console.log('Checking environment variables...');
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     
     console.log('Environment check:', {
       supabaseUrl: !!supabaseUrl,
-      supabaseServiceKey: !!supabaseServiceKey
+      supabaseServiceKey: !!supabaseServiceKey,
+      openAIApiKey: !!openAIApiKey
     });
 
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Missing required environment variables');
+    }
+
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key not configured');
     }
 
     console.log('Parsing request body...');
@@ -40,7 +46,7 @@ serve(async (req) => {
       .from('xlsmart_employees')
       .select('*')
       .eq('is_active', true)
-      .limit(5); // Limit to avoid large payloads
+      .limit(5);
 
     if (empError) {
       console.error('Employee fetch error:', empError);
@@ -49,14 +55,8 @@ serve(async (req) => {
 
     console.log(`Found ${employees?.length || 0} employees`);
 
-    // Get OpenAI API key
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
     // Call LiteLLM for AI analysis
-    const aiResponse = await callLiteLLM(employees, analysisType, employeeId, departmentFilter);
+    const aiResponse = await callLiteLLM(employees, analysisType, employeeId, departmentFilter, openAIApiKey);
     
     console.log('Returning AI response for analysis type:', analysisType);
     
@@ -79,8 +79,7 @@ serve(async (req) => {
   }
 });
 
-async function callLiteLLM(employees: any[], analysisType: string, employeeId?: string, departmentFilter?: string) {
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+async function callLiteLLM(employees: any[], analysisType: string, employeeId?: string, departmentFilter?: string, openAIApiKey?: string) {
   if (!openAIApiKey) {
     throw new Error('OpenAI API key not configured');
   }
@@ -134,7 +133,7 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
   } catch (parseError) {
     console.error('Failed to parse AI response:', content);
     // Return a fallback response
-    const mockResponse = {
+    return {
       personalizedPlans: employees?.slice(0, 3).map((emp, index) => ({
         employeeId: emp.id,
         currentProfile: {
@@ -193,8 +192,5 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
         budgetEstimate: 50000000
       }
     };
-
-    console.log('Returning mock response for analysis type:', analysisType);
-    return mockResponse;
   }
 }
