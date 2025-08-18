@@ -14,8 +14,12 @@ serve(async (req) => {
   try {
     const { currentContent, updateRequest } = await req.json();
     
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
+      openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    }
+    if (!openAIApiKey) {
+      console.error('Neither OPENAI_API_KEY nor OPENAI_API_KEY_NEW found in environment');
       throw new Error('OpenAI API key not configured');
     }
 
@@ -44,7 +48,7 @@ Return the updated content in a natural, readable format suitable for a job post
           { role: 'user', content: prompt }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
       }),
     });
 
