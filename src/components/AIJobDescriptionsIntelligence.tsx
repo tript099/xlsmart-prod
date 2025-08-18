@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,7 +32,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
     { value: 'compliance_analysis', label: 'Compliance Analysis', icon: Shield }
   ];
 
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('🧠 Component mounted, fetching past results...');
     fetchPastResults().catch(error => {
       console.error('Failed to fetch past results:', error);
