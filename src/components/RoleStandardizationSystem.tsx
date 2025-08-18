@@ -238,7 +238,7 @@ export const RoleStandardizationSystem = () => {
       setCurrentStep("🧠 AI standardizing roles...");
       setProgress(50);
 
-      const { data: result, error } = await supabase.functions.invoke('standardize-uploaded-roles', {
+      const { data: result, error } = await supabase.functions.invoke('ai-role-standardization', {
         body: { sessionId }
       });
 

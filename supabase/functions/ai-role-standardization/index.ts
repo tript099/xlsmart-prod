@@ -50,69 +50,88 @@ serve(async (req) => {
     for (const tempTableName of session.temp_table_names) {
       console.log('Processing temporary table:', tempTableName);
 
-      // Get sample data from temporary table to understand structure
-      const { data: sampleData, error: sampleError } = await supabase
-        .rpc('execute_sql', {
-          query: `SELECT * FROM ${tempTableName} LIMIT 10`
-        });
+      // Fetch data from xl_roles_data and smart_roles_data tables instead of temp tables
+      const { data: xlData, error: xlError } = await supabase
+        .from('xl_roles_data')
+        .select('*')
+        .eq('session_id', sessionId)
+        .limit(10);
 
-      if (sampleError) {
-        console.error('Error fetching sample data:', sampleError);
+      const { data: smartData, error: smartError } = await supabase
+        .from('smart_roles_data')
+        .select('*')
+        .eq('session_id', sessionId)
+        .limit(10);
+
+      if (xlError && smartError) {
+        console.error('Error fetching role data:', { xlError, smartError });
         continue;
       }
 
-      // Get column information
-      const { data: columns, error: columnsError } = await supabase
-        .rpc('execute_sql', {
-          query: `
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = '${tempTableName}' 
-            AND column_name NOT IN ('id', 'original_row_number', 'source_file')
-            ORDER BY ordinal_position
-          `
-        });
-
-      if (columnsError) {
-        console.error('Error fetching columns:', columnsError);
+      const sampleData = [...(xlData || []), ...(smartData || [])];
+      if (sampleData.length === 0) {
+        console.log('No sample data found');
         continue;
       }
 
-      const columnNames = columns.map((col: any) => col.column_name);
-      console.log('Table columns:', columnNames);
+      // Get existing standard roles from database for AI comparison
+      const { data: existingRoles, error: rolesError } = await supabase
+        .from('xlsmart_standard_roles')
+        .select('id, role_title, department, job_family, role_level, standard_description')
+        .eq('is_active', true);
 
-      // Use AI to analyze table structure and create standard roles
+      if (rolesError) {
+        console.error('Error fetching existing roles:', rolesError);
+      }
+
+      console.log('Sample role data:', sampleData.slice(0, 3));
+      console.log('Existing standard roles:', existingRoles?.length || 0);
+
+      // Use AI to analyze uploaded roles and normalize against existing standards
       const aiPrompt = `
-Analyze this temporary role data table and create standardized roles.
+You are an expert HR data analyst. Analyze the uploaded role data and normalize it against existing standard roles.
 
-Table: ${tempTableName}
-Columns: ${columnNames.join(', ')}
-Sample Data: ${JSON.stringify(sampleData?.slice(0, 5) || [])}
+UPLOADED ROLE DATA (sample):
+${JSON.stringify(sampleData.slice(0, 5), null, 2)}
 
-Your task:
-1. Identify the role title column (likely contains role names/titles)
-2. Identify department, level, and other key columns
-3. Create standardized role definitions
-4. Map original roles to standard roles
+EXISTING STANDARD ROLES IN DATABASE:
+${JSON.stringify(existingRoles?.slice(0, 10) || [], null, 2)}
+
+Your tasks:
+1. **NORMALIZE AGAINST EXISTING**: First check if uploaded roles can be mapped to existing standard roles
+2. **CREATE NEW STANDARDS**: Only create new standard roles if uploaded roles don't match existing ones
+3. **PROPER MAPPING**: Map each uploaded role to the best matching standard role (existing or new)
+
+IMPORTANT RULES:
+- If an uploaded role matches an existing standard role (similar title, department, skills), map to the existing one
+- Only create new standard roles when uploaded roles are genuinely different
+- Use consistent naming and categorization
+- Focus on telecommunications industry standards
 
 Respond with JSON:
 {
-  "titleColumn": "detected_title_column_name",
-  "departmentColumn": "detected_department_column_name", 
-  "levelColumn": "detected_level_column_name",
-  "standardRoles": [
+  "analysis": "Brief analysis of the uploaded roles vs existing standards",
+  "existingMatches": [
     {
-      "role_title": "Standardized Role Name",
-      "job_family": "Technology/Sales/Operations/etc",
+      "uploaded_role_title": "Original Role Title",
+      "standard_role_id": "existing_role_uuid",
+      "confidence": 0.85,
+      "reasoning": "Why this mapping makes sense"
+    }
+  ],
+  "newStandardRoles": [
+    {
+      "role_title": "New Standardized Role Name",
+      "job_family": "Engineering/Operations/Sales/etc",
       "role_level": "Junior/Mid/Senior/Lead/Manager",
       "department": "Department Name",
-      "standard_description": "Role description",
+      "standard_description": "Clear role description",
       "core_responsibilities": ["responsibility1", "responsibility2"],
       "required_skills": ["skill1", "skill2"],
       "keywords": ["keyword1", "keyword2"]
     }
   ],
-  "mappingInstructions": "How to map original roles to standard roles"
+  "mappingInstructions": "How to map uploaded roles to standards (both existing and new)"
 }
 `;
 
@@ -123,16 +142,15 @@ Respond with JSON:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'azure/gpt-4.1',
+          model: 'gpt-4.1-2025-04-14',
           messages: [
             { 
               role: 'system', 
-              content: 'You are an expert HR data analyst. Analyze role data and create standardized role definitions. Always respond with valid JSON.' 
+              content: 'You are an expert HR data analyst specializing in telecommunications role standardization. Analyze role data carefully and normalize against existing standards. Always respond with valid JSON.' 
             },
             { role: 'user', content: aiPrompt }
           ],
-          temperature: 0.3,
-          max_tokens: 4000,
+          max_completion_tokens: 4000,
         }),
       });
 
@@ -152,19 +170,21 @@ Respond with JSON:
 
       console.log('AI Analysis:', analysis);
 
-      // Create standard roles in database
-      for (const standardRole of analysis.standardRoles || []) {
+      // Create NEW standard roles only (existing ones are already in database)
+      for (const standardRole of analysis.newStandardRoles || []) {
         const { data: createdRole, error: roleError } = await supabase
           .from('xlsmart_standard_roles')
           .insert({
             role_title: standardRole.role_title,
             job_family: standardRole.job_family,
             role_level: standardRole.role_level,
+            role_category: 'Technical',
             department: standardRole.department,
             standard_description: standardRole.standard_description,
             core_responsibilities: standardRole.core_responsibilities || [],
             required_skills: standardRole.required_skills || [],
             keywords: standardRole.keywords || [],
+            created_by: session.created_by,
             industry_alignment: 'Telecommunications'
           })
           .select()
@@ -178,40 +198,81 @@ Respond with JSON:
         standardRoles.push(createdRole);
       }
 
-      // Now create mappings from temporary table data to standard roles
-      const titleColumn = analysis.titleColumn;
-      if (titleColumn) {
-        const { data: allRoleData, error: allDataError } = await supabase
-          .rpc('execute_sql', {
-            query: `SELECT * FROM ${tempTableName}`
-          });
+      // Create a role catalog entry
+      const { data: catalogData, error: catalogError } = await supabase
+        .from('xlsmart_role_catalogs')
+        .insert({
+          source_company: 'AI Standardized Upload',
+          file_name: 'AI Analysis',
+          file_format: 'json',
+          upload_status: 'processing',
+          total_roles: sampleData.length,
+          uploaded_by: session.created_by
+        })
+        .select()
+        .single();
 
-        if (!allDataError && allRoleData) {
-          for (const row of allRoleData) {
-            const originalTitle = row[titleColumn];
-            if (!originalTitle) continue;
+      if (catalogError) {
+        console.error('Error creating catalog:', catalogError);
+        continue;
+      }
 
-            // Find best matching standard role using simple text matching for now
-            const bestMatch = standardRoles.find(sr => 
-              sr.role_title.toLowerCase().includes(originalTitle.toLowerCase()) ||
-              originalTitle.toLowerCase().includes(sr.role_title.toLowerCase())
-            ) || standardRoles[0]; // Fallback to first standard role
+      // Get all uploaded role data for this session
+      const { data: allXlData } = await supabase
+        .from('xl_roles_data')
+        .select('*')
+        .eq('session_id', sessionId);
 
-            if (bestMatch) {
-              roleMappings.push({
-                original_role_title: originalTitle,
-                original_department: row[analysis.departmentColumn] || null,
-                original_level: row[analysis.levelColumn] || null,
-                standardized_role_title: bestMatch.role_title,
-                standardized_department: bestMatch.department,
-                standardized_level: bestMatch.role_level,
-                job_family: bestMatch.job_family,
-                standard_role_id: bestMatch.id,
-                mapping_confidence: 75, // Default confidence
-                mapping_status: 'auto_mapped'
-              });
-            }
+      const { data: allSmartData } = await supabase
+        .from('smart_roles_data')
+        .select('*')
+        .eq('session_id', sessionId);
+
+      const allUploadedRoles = [...(allXlData || []), ...(allSmartData || [])];
+
+      // Create mappings using AI analysis
+      for (const uploadedRole of allUploadedRoles) {
+        if (!uploadedRole.role_title) continue;
+
+        let bestMatch = null;
+        let confidence = 0;
+
+        // First check if AI found an existing match
+        const existingMatch = analysis.existingMatches?.find(
+          (match: any) => match.uploaded_role_title.toLowerCase() === uploadedRole.role_title.toLowerCase()
+        );
+
+        if (existingMatch) {
+          // Use existing standard role
+          const existingRole = existingRoles?.find(role => role.id === existingMatch.standard_role_id);
+          if (existingRole) {
+            bestMatch = existingRole;
+            confidence = existingMatch.confidence || 0.8;
           }
+        } else {
+          // Map to newly created standard role
+          bestMatch = standardRoles.find(sr => 
+            sr.role_title.toLowerCase().includes(uploadedRole.role_title.toLowerCase()) ||
+            uploadedRole.role_title.toLowerCase().includes(sr.role_title.toLowerCase())
+          );
+          confidence = 0.75;
+        }
+
+        if (bestMatch) {
+          roleMappings.push({
+            original_role_title: uploadedRole.role_title,
+            original_department: uploadedRole.department,
+            original_level: uploadedRole.seniority_band,
+            standardized_role_title: bestMatch.role_title,
+            standardized_department: bestMatch.department,
+            standardized_level: bestMatch.role_level,
+            job_family: bestMatch.job_family,
+            standard_role_id: bestMatch.id,
+            mapping_confidence: confidence * 100,
+            mapping_status: 'ai_mapped',
+            requires_manual_review: confidence < 0.8,
+            catalog_id: catalogData.id
+          });
         }
       }
     }
