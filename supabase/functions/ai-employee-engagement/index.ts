@@ -91,6 +91,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
+    temperature: 0.7,
     max_completion_tokens: 3000,
   };
 
@@ -136,7 +137,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 }
 
 async function performSentimentAnalysis(employees: any[], skillAssessments: any[], timeFrame?: string) {
-  const systemPrompt = `You are an expert in employee engagement and sentiment analysis. Analyze employee sentiment patterns from performance, skills assessments, and engagement indicators.
+  const systemPrompt = `You are an AI expert in employee engagement, retention modeling, and sentiment analysis for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze employee data (performance metrics, skills assessments, surveys, feedback, and engagement indicators) to: Detect current sentiment patterns and morale levels. Predict future engagement and retention risks. Generate early-warning alerts for potential disengagement. Recommend data-driven, actionable strategies (e.g., training, recognition programs, career development, workload balancing). Always provide outputs in a clear, structured format (tables, dashboards, or bullet points) so HR leaders can act quickly and effectively.
 
 Return a JSON object with this structure:
 {
@@ -212,7 +213,7 @@ Analyze sentiment patterns, identify engagement drivers, and provide actionable 
 }
 
 async function performEngagementPrediction(employees: any[], trainings: any[]) {
-  const systemPrompt = `You are an expert in employee engagement prediction and workforce analytics. Predict future engagement levels and identify interventions needed.
+  const systemPrompt = `You are an AI expert in employee engagement, retention modeling, and sentiment analysis for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze employee data (performance metrics, skills assessments, surveys, feedback, and engagement indicators) to: Detect current sentiment patterns and morale levels. Predict future engagement and retention risks. Generate early-warning alerts for potential disengagement. Recommend data-driven, actionable strategies (e.g., training, recognition programs, career development, workload balancing). Always provide outputs in a clear, structured format (tables, dashboards, or bullet points) so HR leaders can act quickly and effectively.
 
 Return a JSON object with this structure:
 {
@@ -288,7 +289,7 @@ Predict engagement patterns and recommend targeted interventions.`;
 }
 
 async function performRetentionModeling(employees: any[], departmentFilter?: string) {
-  const systemPrompt = `You are an expert in employee retention analysis and predictive modeling. Analyze retention risks and create actionable retention strategies.
+  const systemPrompt = `You are an AI expert in employee engagement, retention modeling, and sentiment analysis for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze employee data (performance metrics, skills assessments, surveys, feedback, and engagement indicators) to: Detect current sentiment patterns and morale levels. Predict future engagement and retention risks. Generate early-warning alerts for potential disengagement. Recommend data-driven, actionable strategies (e.g., training, recognition programs, career development, workload balancing). Always provide outputs in a clear, structured format (tables, dashboards, or bullet points) so HR leaders can act quickly and effectively.
 
 Return a JSON object with this structure:
 {
@@ -361,7 +362,7 @@ Identify retention risks and recommend targeted retention strategies.`;
 }
 
 async function performEarlyWarning(employees: any[], skillAssessments: any[]) {
-  const systemPrompt = `You are an expert in early warning systems for employee engagement and retention. Identify early indicators of disengagement and turnover risk.
+  const systemPrompt = `You are an AI expert in employee engagement, retention modeling, and sentiment analysis for XLSMART, one of Indonesia's largest telecom companies. Your role is to analyze employee data (performance metrics, skills assessments, surveys, feedback, and engagement indicators) to: Detect current sentiment patterns and morale levels. Predict future engagement and retention risks. Generate early-warning alerts for potential disengagement. Recommend data-driven, actionable strategies (e.g., training, recognition programs, career development, workload balancing). Always provide outputs in a clear, structured format (tables, dashboards, or bullet points) so HR leaders can act quickly and effectively.
 
 Return a JSON object with this structure:
 {
