@@ -91,7 +91,7 @@ export const SkillsAnalyticsDashboard = ({ metrics }: SkillsAnalyticsProps) => {
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">{skill}</span>
                       <div className="flex items-center space-x-2">
-                        <span className="text-sm text-muted-foreground">{count} employees</span>
+                        <span className="text-sm text-muted-foreground">{count as number} employees</span>
                         <Badge variant="outline">{percentage}%</Badge>
                       </div>
                     </div>

@@ -178,7 +178,7 @@ export const TalentAnalyticsDashboard = ({ metrics }: TalentAnalyticsProps) => {
                   <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                     <div>
                       <span className="font-medium">{dept}</span>
-                      <p className="text-sm text-muted-foreground">{count} employees</p>
+                      <p className="text-sm text-muted-foreground">{count as number} employees</p>
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-primary">{perfScore.toFixed(1)}</div>
