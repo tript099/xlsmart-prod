@@ -174,6 +174,12 @@ serve(async (req) => {
 });
 
 async function callOpenAI(prompt: string, systemPrompt: string) {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  
+  if (!openAIApiKey) {
+    throw new Error('OPENAI_API_KEY not configured');
+  }
+
   const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
     method: 'POST',
     headers: {
