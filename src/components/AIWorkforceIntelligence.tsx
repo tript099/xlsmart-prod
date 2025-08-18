@@ -52,22 +52,6 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
   ];
 
   const handleAnalysis = async () => {
-    // Check if we have recent results for this analysis type (within 24 hours)
-    const recentResult = pastResults.find(
-      result => result.analysis_type === selectedAnalysis && 
-      new Date(result.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
-    );
-
-    if (recentResult && !selectedResultId) {
-      setAnalysisResult(recentResult.analysis_result);
-      setSelectedResultId(recentResult.id);
-      toast({
-        title: "Loaded Recent Analysis",
-        description: "Displaying cached analysis results from the last 24 hours.",
-      });
-      return;
-    }
-
     setIsAnalyzing(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-workforce-intelligence', {
@@ -100,6 +84,27 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
       });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleAnalysisTypeChange = async (newAnalysisType: string) => {
+    setSelectedAnalysis(newAnalysisType);
+    
+    // Check if we have cached results for this analysis type
+    const cachedResult = pastResults.find(
+      result => result.analysis_type === newAnalysisType
+    );
+
+    if (cachedResult) {
+      setAnalysisResult(cachedResult.analysis_result);
+      setSelectedResultId(cachedResult.id);
+      toast({
+        title: "Cached Result Loaded",
+        description: "Loaded previous analysis result from database.",
+      });
+    } else {
+      setAnalysisResult(null);
+      setSelectedResultId('');
     }
   };
 
@@ -357,7 +362,7 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
               <label className="text-sm font-medium mb-2 block">Analysis Type</label>
-              <Select value={selectedAnalysis} onValueChange={setSelectedAnalysis}>
+              <Select value={selectedAnalysis} onValueChange={handleAnalysisTypeChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select analysis type" />
                 </SelectTrigger>

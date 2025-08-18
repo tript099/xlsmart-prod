@@ -51,28 +51,11 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   };
 
   const handleAnalysis = async () => {
-    // Check if we have recent results for this analysis type
-    const recentResult = pastResults.find(
-      result => result.analysis_type === selectedAnalysis && 
-      new Date(result.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000) // Within 24 hours
-    );
-
-    if (recentResult && !selectedResultId) {
-      setResults(recentResult.analysis_result);
-      setSelectedResultId(recentResult.id);
-      toast.success('Loaded recent analysis results');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-job-descriptions-intelligence', {
         body: {
           analysisType: selectedAnalysis,
-          // Note: Department filtering not supported yet as xlsmart_job_descriptions 
-          // table doesn't have department column
-          // departmentFilter: departmentFilter || undefined,
-          // roleFilter: roleFilter || undefined
         }
       });
 
@@ -90,6 +73,24 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
       toast.error('Failed to complete analysis');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAnalysisTypeChange = async (newAnalysisType: string) => {
+    setSelectedAnalysis(newAnalysisType);
+    
+    // Check if we have cached results for this analysis type
+    const cachedResult = pastResults.find(
+      result => result.analysis_type === newAnalysisType
+    );
+
+    if (cachedResult) {
+      setResults(cachedResult.analysis_result);
+      setSelectedResultId(cachedResult.id);
+      toast.success('Loaded cached analysis results');
+    } else {
+      setResults(null);
+      setSelectedResultId('');
     }
   };
 
@@ -469,7 +470,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4">
-        <Select value={selectedAnalysis} onValueChange={setSelectedAnalysis}>
+        <Select value={selectedAnalysis} onValueChange={handleAnalysisTypeChange}>
           <SelectTrigger className="w-full sm:w-64">
             <SelectValue placeholder="Select analysis type" />
           </SelectTrigger>

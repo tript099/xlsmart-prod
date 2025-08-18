@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +19,29 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
   const [selectedAnalysis, setSelectedAnalysis] = useState<string>('personalized_learning');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
   const [employeeId, setEmployeeId] = useState<string>('');
+  const [pastResults, setPastResults] = useState<any[]>([]);
+  const [selectedResultId, setSelectedResultId] = useState<string>('');
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    fetchPastResults();
+  }, []);
+
+  const fetchPastResults = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ai_analysis_results')
+        .select('*')
+        .eq('function_name', 'ai-learning-development')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setPastResults(data || []);
+    } catch (error) {
+      console.error('Error fetching past learning results:', error);
+    }
+  };
 
   const analysisTypes = [
     { value: 'personalized_learning', label: 'Personalized Learning', icon: BookOpen },
@@ -31,7 +53,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
   const handleAnalysis = async () => {
     setIsAnalyzing(true);
     try {
-      console.log('Starting AI development analysis for 51 employees');
+      console.log('Starting AI development analysis');
       
       const { data, error } = await supabase.functions.invoke('ai-learning-development', {
         body: {
@@ -53,12 +75,16 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
       }
 
       setAnalysisResult(data);
+      setSelectedResultId(''); // Clear selected result ID for new analysis
       onAnalysisComplete?.(data);
       
       toast({
         title: "Analysis Complete",
         description: "AI learning & development analysis has been completed successfully.",
       });
+
+      // Refresh past results to include the new one
+      await fetchPastResults();
     } catch (error) {
       console.error('Development analysis error:', error);
       toast({
@@ -68,6 +94,40 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
       });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleAnalysisTypeChange = async (newAnalysisType: string) => {
+    setSelectedAnalysis(newAnalysisType);
+    
+    // Check if we have cached results for this analysis type
+    const cachedResult = pastResults.find(
+      result => result.analysis_type === newAnalysisType
+    );
+
+    if (cachedResult) {
+      setAnalysisResult(cachedResult.analysis_result);
+      setSelectedResultId(cachedResult.id);
+      toast({
+        title: "Cached Result Loaded",
+        description: "Loaded previous learning analysis result from database.",
+      });
+    } else {
+      setAnalysisResult(null);
+      setSelectedResultId('');
+    }
+  };
+
+  const handleLoadPastResult = (resultId: string) => {
+    const result = pastResults.find(r => r.id === resultId);
+    if (result) {
+      setAnalysisResult(result.analysis_result);
+      setSelectedResultId(resultId);
+      setSelectedAnalysis(result.analysis_type);
+      toast({
+        title: "Past Result Loaded",
+        description: "Loaded previous learning analysis result.",
+      });
     }
   };
 
@@ -373,7 +433,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
               <label className="text-sm font-medium mb-2 block">Analysis Type</label>
-              <Select value={selectedAnalysis} onValueChange={setSelectedAnalysis}>
+              <Select value={selectedAnalysis} onValueChange={handleAnalysisTypeChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select analysis type" />
                 </SelectTrigger>
@@ -384,6 +444,22 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
                         <type.icon className="h-4 w-4" />
                         <span>{type.label}</span>
                       </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Load Past Result</label>
+              <Select value={selectedResultId} onValueChange={handleLoadPastResult}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select past analysis" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pastResults.map((result) => (
+                    <SelectItem key={result.id} value={result.id}>
+                      {result.analysis_type} - {new Date(result.created_at).toLocaleDateString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -439,6 +515,14 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
               </Button>
             </div>
           </div>
+          
+          {selectedResultId && (
+            <div className="bg-muted p-3 rounded-lg mb-4">
+              <p className="text-sm text-muted-foreground">
+                Showing cached result from {new Date(pastResults.find(r => r.id === selectedResultId)?.created_at || '').toLocaleString()}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
