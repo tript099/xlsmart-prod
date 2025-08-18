@@ -17,8 +17,13 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== AI Role Standardization Function Started ===');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    console.log('Headers:', Object.fromEntries(req.headers.entries()));
+    
     const body = await req.json();
-    console.log('Request body:', JSON.stringify(body));
+    console.log('Request body:', JSON.stringify(body, null, 2));
     
     const { sessionId } = body;
     
@@ -48,9 +53,14 @@ serve(async (req) => {
     }
 
     // Use OPENAI_API_KEY_NEW for LiteLLM proxy
+    console.log('Checking for API key...');
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    console.log('API key exists:', !!openAIApiKey);
+    console.log('API key length:', openAIApiKey?.length || 0);
+    
     if (!openAIApiKey) {
       console.error('OPENAI_API_KEY_NEW not found');
+      console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('API')));
       throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY_NEW');
     }
 
@@ -175,6 +185,10 @@ Respond with JSON:
     
     console.log('API request payload:', JSON.stringify(requestBody, null, 2));
     
+    console.log('Making request to LiteLLM proxy...');
+    console.log('Request URL: https://proxyllm.ximplify.id/v1/chat/completions');
+    console.log('Request payload size:', JSON.stringify(requestBody).length);
+    
     const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -184,13 +198,14 @@ Respond with JSON:
       body: JSON.stringify(requestBody),
     });
 
-    console.log('LiteLLM API response status:', aiResponse.status);
+    console.log('LiteLLM proxy response status:', aiResponse.status);
+    console.log('LiteLLM proxy response headers:', Object.fromEntries(aiResponse.headers.entries()));
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('LiteLLM API error status:', aiResponse.status);
-      console.error('LiteLLM API error response:', errorText);
-      throw new Error(`LiteLLM API error (${aiResponse.status}): ${errorText}`);
+      console.error('LiteLLM proxy error status:', aiResponse.status);
+      console.error('LiteLLM proxy error response:', errorText);
+      throw new Error(`LiteLLM proxy error (${aiResponse.status}): ${errorText}`);
     }
 
     const aiData = await aiResponse.json();
