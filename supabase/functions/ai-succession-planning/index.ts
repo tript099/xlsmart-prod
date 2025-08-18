@@ -185,6 +185,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
+      temperature: 0.7,
       max_completion_tokens: 3000,
     };
     console.log('Request body prepared, model:', requestBody.model);

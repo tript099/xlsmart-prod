@@ -203,6 +203,7 @@ Return only the role_title of the best matching standard role, or "NO_MATCH" if 
           { role: 'system', content: 'You are an expert HR system that assigns employees to the most appropriate standard roles based on their profile.' },
           { role: 'user', content: prompt }
         ],
+        temperature: 0.7,
         max_completion_tokens: 100
       }),
     });

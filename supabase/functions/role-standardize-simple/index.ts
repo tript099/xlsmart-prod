@@ -73,6 +73,7 @@ Create 5-8 standardized telecommunications roles based on this data. Return JSON
           { role: 'system', content: 'You are an expert HR analyst. Create standardized role definitions. Respond only with valid JSON.' },
           { role: 'user', content: prompt }
         ],
+        temperature: 0.7,
         max_completion_tokens: 3000,
       }),
     });
