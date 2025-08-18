@@ -47,17 +47,11 @@ serve(async (req) => {
       throw new Error('Upload session not found');
     }
 
-    // Check for API key - try multiple environment variables
-    let liteLLMApiKey = Deno.env.get('LITELLM_API_KEY');
-    if (!liteLLMApiKey) {
-      liteLLMApiKey = Deno.env.get('OPENAI_API_KEY');
-    }
-    if (!liteLLMApiKey) {
-      liteLLMApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
-    }
-    if (!liteLLMApiKey) {
-      console.error('No API key found. Available env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('API')));
-      throw new Error('No LiteLLM or OpenAI API key configured. Please set LITELLM_API_KEY, OPENAI_API_KEY, or OPENAI_API_KEY_NEW');
+    // Use OPENAI_API_KEY_NEW for LiteLLM proxy
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
+    if (!openAIApiKey) {
+      console.error('OPENAI_API_KEY_NEW not found');
+      throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY_NEW');
     }
 
     // Update session status
@@ -184,7 +178,7 @@ Respond with JSON:
     const aiResponse = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${liteLLMApiKey}`,
+        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
