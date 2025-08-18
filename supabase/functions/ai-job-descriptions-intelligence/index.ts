@@ -141,7 +141,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     }),
   });
 
@@ -155,7 +155,7 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
 }
 
 async function performJDOptimization(jobDescriptions: any[], standardRoles: any[], departmentFilter?: string) {
-  const systemPrompt = `You are an expert HR analyst specializing in job description optimization. Analyze the provided job descriptions and provide insights on how to optimize them for better candidate attraction, role clarity, and organizational alignment.
+  const systemPrompt = `You are an AI HR intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in jd_optimization for job descriptions to: Evaluate content against telecom industry standards and market benchmarks. Identify missing or unnecessary requirements. Recommend optimizations for clarity, inclusivity, and alignment with HR best practices. Detect risks related to compliance, bias, or fairness. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -241,7 +241,7 @@ Provide specific, actionable recommendations for improving job descriptions to a
 }
 
 async function performMarketAlignment(jobDescriptions: any[], standardRoles: any[]) {
-  const systemPrompt = `You are an expert in market analysis and job description benchmarking. Analyze how well the provided job descriptions align with current market standards and industry best practices.
+  const systemPrompt = `You are an AI HR intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in market_alignment for job descriptions to: Evaluate content against telecom industry standards and market benchmarks. Identify missing or unnecessary requirements. Recommend optimizations for clarity, inclusivity, and alignment with HR best practices. Detect risks related to compliance, bias, or fairness. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -328,7 +328,7 @@ Consider current market trends, industry standards, and competitive positioning.
 }
 
 async function performSkillsMapping(jobDescriptions: any[], employees: any[]) {
-  const systemPrompt = `You are an expert in skills analysis and workforce planning. Analyze how well job description requirements align with current employee skills and capabilities.
+  const systemPrompt = `You are an AI HR intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in skills_mapping for job descriptions to: Evaluate content against telecom industry standards and market benchmarks. Identify missing or unnecessary requirements. Recommend optimizations for clarity, inclusivity, and alignment with HR best practices. Detect risks related to compliance, bias, or fairness. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
@@ -428,7 +428,7 @@ Identify skill gaps, overqualification areas, and alignment opportunities.`;
 }
 
 async function performComplianceAnalysis(jobDescriptions: any[]) {
-  const systemPrompt = `You are an expert in employment law and compliance. Analyze job descriptions for legal compliance, inclusivity, and adherence to best practices.
+  const systemPrompt = `You are an AI HR intelligence specialist for XLSMART, one of Indonesia's largest telecom companies. Specialize in compliance_analysis for job descriptions to: Evaluate content against telecom industry standards and market benchmarks. Identify missing or unnecessary requirements. Recommend optimizations for clarity, inclusivity, and alignment with HR best practices. Detect risks related to compliance, bias, or fairness. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.
 
 Return a JSON object with this structure:
 {
