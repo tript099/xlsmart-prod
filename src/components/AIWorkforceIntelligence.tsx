@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +19,29 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
   const [selectedAnalysis, setSelectedAnalysis] = useState<string>('role_optimization');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
   const [employeeId, setEmployeeId] = useState<string>('');
+  const [pastResults, setPastResults] = useState<any[]>([]);
+  const [selectedResultId, setSelectedResultId] = useState<string>('');
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    fetchPastResults();
+  }, []);
+
+  const fetchPastResults = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ai_analysis_results')
+        .select('*')
+        .eq('function_name', 'ai-workforce-intelligence')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      setPastResults(data || []);
+    } catch (error) {
+      console.error('Error fetching past workforce results:', error);
+    }
+  };
 
   const analysisTypes = [
     { value: 'role_optimization', label: 'Role Optimization', icon: Target },
@@ -30,6 +52,22 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
   ];
 
   const handleAnalysis = async () => {
+    // Check if we have recent results for this analysis type (within 24 hours)
+    const recentResult = pastResults.find(
+      result => result.analysis_type === selectedAnalysis && 
+      new Date(result.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
+
+    if (recentResult && !selectedResultId) {
+      setAnalysisResult(recentResult.analysis_result);
+      setSelectedResultId(recentResult.id);
+      toast({
+        title: "Loaded Recent Analysis",
+        description: "Displaying cached analysis results from the last 24 hours.",
+      });
+      return;
+    }
+
     setIsAnalyzing(true);
     try {
       const { data, error } = await supabase.functions.invoke('ai-workforce-intelligence', {
@@ -43,12 +81,16 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
       if (error) throw error;
 
       setAnalysisResult(data);
+      setSelectedResultId(''); // Clear selected result ID for new analysis
       onAnalysisComplete?.(data);
       
       toast({
         title: "Analysis Complete",
         description: "AI workforce intelligence analysis has been completed successfully.",
       });
+
+      // Refresh past results to include the new one
+      await fetchPastResults();
     } catch (error) {
       console.error('Analysis error:', error);
       toast({
@@ -58,6 +100,19 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
       });
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleLoadPastResult = (resultId: string) => {
+    const result = pastResults.find(r => r.id === resultId);
+    if (result) {
+      setAnalysisResult(result.analysis_result);
+      setSelectedResultId(resultId);
+      setSelectedAnalysis(result.analysis_type);
+      toast({
+        title: "Past Result Loaded",
+        description: "Loaded previous analysis result.",
+      });
     }
   };
 
@@ -299,7 +354,7 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div>
               <label className="text-sm font-medium mb-2 block">Analysis Type</label>
               <Select value={selectedAnalysis} onValueChange={setSelectedAnalysis}>
@@ -313,6 +368,22 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
                         <type.icon className="h-4 w-4" />
                         <span>{type.label}</span>
                       </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Load Past Result</label>
+              <Select value={selectedResultId} onValueChange={handleLoadPastResult}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select past analysis" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pastResults.map((result) => (
+                    <SelectItem key={result.id} value={result.id}>
+                      {result.analysis_type} - {new Date(result.created_at).toLocaleDateString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -356,6 +427,14 @@ export function AIWorkforceIntelligence({ onAnalysisComplete }: WorkforceIntelli
               </Button>
             </div>
           </div>
+          
+          {selectedResultId && (
+            <div className="bg-muted p-3 rounded-lg mb-4">
+              <p className="text-sm text-muted-foreground">
+                Showing cached result from {new Date(pastResults.find(r => r.id === selectedResultId)?.created_at || '').toLocaleString()}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
