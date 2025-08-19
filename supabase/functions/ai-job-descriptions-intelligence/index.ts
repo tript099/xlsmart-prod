@@ -30,9 +30,9 @@ serve(async (req) => {
     console.log(`Filters - Department: ${departmentFilter}, Role: ${roleFilter}`);
 
     // Fetch job descriptions data - get all active JDs for now
-    console.log('About to query jobs table with service role');
+    console.log('About to query xlsmart_job_descriptions with service role');
     const { data: jobDescriptions, error: jdError } = await supabase
-      .from('jobs')
+      .from('xlsmart_job_descriptions')
       .select('*');
 
     console.log('Query completed');
