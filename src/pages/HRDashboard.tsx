@@ -49,7 +49,7 @@ const HRDashboard = () => {
               alt="XLSMART Logo" 
               className="h-10 w-auto"
             />
-            <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by XLSMART</p>
+            <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by SimplifyAI</p>
           </div>
           
           <div className="flex items-center gap-3">

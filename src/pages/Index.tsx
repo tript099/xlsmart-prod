@@ -146,7 +146,7 @@ const Index = () => {
                     alt="XLSMART Logo" 
                     className="h-16 w-auto"
                   />
-                  <p className="text-white/90 text-lg font-medium text-center">AI-Powered HR Platform by XLSMART</p>
+                  <p className="text-white/90 text-lg font-medium text-center">AI-Powered HR Platform by SimplifyAI</p>
                 </div>
               </div>
               
