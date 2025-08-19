@@ -41,7 +41,7 @@ const AnalyticsDashboard = () => {
     {
       id: 'upload',
       title: 'Bulk Role Upload & Standardization',
-      description: 'Upload role catalogs and auto-map to Simplify Standard Roles with industry-aligned job families.',
+      description: 'Upload role catalogs and auto-map to XLSMART Standard Roles with industry-aligned job families.',
       icon: Upload,
       badge: 'Core',
       dialogContent: 'upload'
@@ -115,7 +115,7 @@ const AnalyticsDashboard = () => {
     <div className="space-y-8">
       {/* Header */}
       <div className="space-y-4">
-        <h1 className="text-3xl font-bold text-foreground">Analytics Dashboard</h1>
+        <h1 className="text-3xl font-bold text-foreground">XLSMART Analytics Dashboard</h1>
         <p className="text-muted-foreground text-lg">
           Monitor your HR platform performance and access key features
         </p>

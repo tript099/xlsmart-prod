@@ -63,7 +63,7 @@ const Index = () => {
     {
       id: 'upload',
       title: 'Bulk Role Upload & Standardization',
-      description: 'Upload role catalogs and auto-map to Simplify Standard Roles with industry-aligned job families.',
+      description: 'Upload role catalogs and auto-map to XLSMART Standard Roles with industry-aligned job families.',
       icon: Upload,
       badge: 'Core',
       dialogContent: 'upload'
@@ -142,11 +142,11 @@ const Index = () => {
               <div className="flex items-center space-x-4">
                 <div className="flex flex-col items-center space-y-3">
                   <img 
-                    src="/lovable-uploads/9c45cc31-9297-438e-9548-addecf32096c.png" 
-                    alt="Simplify Logo" 
+                    src="/lovable-uploads/e834148d-7641-45fc-aeb6-a30c9881eecd.png" 
+                    alt="XLSMART Logo" 
                     className="h-16 w-auto"
                   />
-                  <p className="text-white/90 text-lg font-medium text-center">AI-Powered HR Platform by Simplify</p>
+                  <p className="text-white/90 text-lg font-medium text-center">AI-Powered HR Platform by XLSMART</p>
                 </div>
               </div>
               
@@ -172,7 +172,7 @@ const Index = () => {
                 Revolutionizing HR with <span className="font-bold text-white">Artificial Intelligence</span>
               </h2>
               <p className="text-white/80 text-xl max-w-3xl leading-relaxed">
-                Streamline role standardization, skill assessment, and career development with Simplify's AI-powered platform built for the telecommunications industry.
+                Streamline role standardization, skill assessment, and career development with XLSMART's AI-powered platform built for the telecommunications industry.
               </p>
             </div>
           </div>
@@ -343,7 +343,7 @@ const Index = () => {
             <div>
               <h2 className="text-4xl font-bold mb-6">Ready to Transform Your HR?</h2>
               <p className="text-white/90 text-xl max-w-3xl mx-auto leading-relaxed">
-                Join the future of human resources with Simplify's AI-powered role standardization, skills assessment, and career development planning.
+                Join the future of human resources with XLSMART's AI-powered role standardization, skills assessment, and career development planning.
               </p>
             </div>
             

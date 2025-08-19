@@ -45,11 +45,11 @@ const HRDashboard = () => {
           
           <div className="flex flex-col items-center space-y-1">
             <img 
-              src="/lovable-uploads/9c45cc31-9297-438e-9548-addecf32096c.png" 
-              alt="Simplify" 
+              src="/lovable-uploads/e834148d-7641-45fc-aeb6-a30c9881eecd.png" 
+              alt="XLSMART Logo" 
               className="h-10 w-auto"
             />
-            <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by Simplify</p>
+            <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by XLSMART</p>
           </div>
           
           <div className="flex items-center gap-3">
