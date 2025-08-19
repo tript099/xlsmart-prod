@@ -142,7 +142,7 @@ const Index = () => {
               <div className="flex items-center space-x-4">
                 <div className="flex flex-col items-center space-y-3">
                   <img 
-                    src="/lovable-uploads/e834148d-7641-45fc-aeb6-a30c9881eecd.png" 
+                    src="/xlsmart-logo.svg" 
                     alt="XLSMART Logo" 
                     className="h-16 w-auto"
                   />

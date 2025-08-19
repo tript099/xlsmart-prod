@@ -45,7 +45,7 @@ const HRDashboard = () => {
           
           <div className="flex flex-col items-center space-y-1">
             <img 
-              src="/lovable-uploads/e834148d-7641-45fc-aeb6-a30c9881eecd.png" 
+              src="/xlsmart-logo.svg" 
               alt="XLSMART Logo" 
               className="h-10 w-auto"
             />
