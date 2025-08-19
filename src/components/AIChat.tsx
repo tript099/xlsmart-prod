@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageCircle, Send, Bot, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useLanguage } from "@/contexts/LanguageContext";
+
 
 interface Message {
   id: string;
@@ -20,11 +20,10 @@ interface AIChatProps {
 }
 
 export const AIChat = ({ context = 'hr_assistant', title = "HR AI Assistant" }: AIChatProps) => {
-  const { t } = useLanguage();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm your XLSMART HR AI assistant. I can help you with role standardization, job descriptions, employee assessments, and career development. How can I assist you today?",
+      content: "Hello! I'm your Simplify HR AI assistant. I can help you with role standardization, job descriptions, employee assessments, and career development. How can I assist you today?",
       sender: 'ai',
       timestamp: new Date()
     }

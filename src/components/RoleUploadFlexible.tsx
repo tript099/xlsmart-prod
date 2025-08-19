@@ -9,10 +9,7 @@ import { Upload, FileSpreadsheet, Brain, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import * as XLSX from 'xlsx';
-import { useLanguage } from "@/contexts/LanguageContext";
-
 export const RoleUploadFlexible = () => {
-  const { t } = useLanguage();
   const { toast } = useToast();
   const [xlFile, setXlFile] = useState<File | null>(null);
   const [smartFile, setSmartFile] = useState<File | null>(null);

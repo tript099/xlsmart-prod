@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileText, CheckCircle, Eye, ThumbsUp, ThumbsDown, Zap, MousePointer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useLanguage } from "@/contexts/LanguageContext";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
@@ -38,7 +38,6 @@ const LARGE_DATASET_THRESHOLD = 500; // Threshold for large dataset handling
 const DEFAULT_PAGE_SIZE = 10; // Default items per page
 
 export const RoleUpload = () => {
-  const { t } = useLanguage();
   const { toast } = useToast();
   const [xlFile, setXlFile] = useState<File | null>(null);
   const [smartFile, setSmartFile] = useState<File | null>(null);

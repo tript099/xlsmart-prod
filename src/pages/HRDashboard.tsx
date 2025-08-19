@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { HRSidebar } from "@/components/HRSidebar";
 import { useAuth } from "@/contexts/AuthContext";
-import { LanguageToggle } from "@/components/LanguageToggle";
+
 import { LiteLLMTest } from "@/components/LiteLLMTest";
 import { ComprehensiveApplicationTester } from "@/components/ComprehensiveApplicationTester";
 import { Button } from "@/components/ui/button";
@@ -45,11 +45,11 @@ const HRDashboard = () => {
           
           <div className="flex flex-col items-center space-y-1">
             <img 
-              src="/xlsmart-logo.svg" 
-              alt="XLSMART" 
+              src="/lovable-uploads/9c45cc31-9297-438e-9548-addecf32096c.png" 
+              alt="Simplify" 
               className="h-10 w-auto"
             />
-            <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by SimplifyAI</p>
+            <p className="text-white/90 text-sm font-medium">AI-Powered HR Platform by Simplify</p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -78,8 +78,6 @@ const HRDashboard = () => {
                 <ComprehensiveApplicationTester />
               </DialogContent>
             </Dialog>
-            
-            <LanguageToggle />
           </div>
         </header>
 

@@ -31,29 +31,27 @@ import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlannin
 import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
 import BulkRoleAssignment from "@/components/BulkRoleAssignment";
 import ApplicationTester from "@/components/ApplicationTester";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
 
 const AnalyticsDashboard = () => {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
-  const { t } = useLanguage();
   const aiStats = useAIStats();
 
   const features = [
     {
       id: 'upload',
-      title: t('feature.upload.title'),
-      description: t('feature.upload.description'),
+      title: 'Bulk Role Upload & Standardization',
+      description: 'Upload role catalogs and auto-map to Simplify Standard Roles with industry-aligned job families.',
       icon: Upload,
-      badge: t('feature.upload.badge'),
+      badge: 'Core',
       dialogContent: 'upload'
     },
     {
       id: 'jd-generator',
-      title: t('feature.jd.title'),
-      description: t('feature.jd.description'),
+      title: 'AI-Powered JD Generator',
+      description: 'Generate job descriptions for every standardized role with in-app chatbot to tweak tone and requirements.',
       icon: FileText,
-      badge: t('feature.jd.badge'),
+      badge: 'AI',
       dialogContent: null
     },
     {
@@ -66,18 +64,18 @@ const AnalyticsDashboard = () => {
     },
     {
       id: 'assessment',
-      title: t('feature.assessment.title'),
-      description: t('feature.assessment.description'),
+      title: 'Employee Skill Assessment',
+      description: 'Upload employees, match % vs target JD, skill gaps, next role recommendations.',
       icon: Brain,
-      badge: t('feature.assessment.badge'),
+      badge: 'Analytics',
       dialogContent: null
     },
     {
       id: 'chat',
-      title: t('feature.chat.title'),
-      description: t('feature.chat.description'),
+      title: 'HR AI Assistant',
+      description: 'In-app chatbot for HR/editors to tweak job descriptions and get personalized recommendations.',
       icon: MessageCircle,
-      badge: t('feature.chat.badge'),
+      badge: 'AI',
       dialogContent: 'chat'
     },
     {
@@ -90,27 +88,27 @@ const AnalyticsDashboard = () => {
     },
     {
       id: 'mobility',
-      title: t('feature.mobility.title'),
-      description: t('feature.mobility.description'),
+      title: 'Employee Mobility & Planning',
+      description: 'Level fit analysis, rotation/churn risk assessment, and personalized development plans.',
       icon: Target,
-      badge: t('feature.mobility.badge'),
+      badge: 'Planning',
       dialogContent: null
     },
     {
       id: 'development',
-      title: t('feature.development.title'),
-      description: t('feature.development.description'),
+      title: 'Development Pathways',
+      description: 'Personalized development plans with courses, certifications, and projects for career growth.',
       icon: Brain,
-      badge: t('feature.development.badge'),
+      badge: 'Growth',
       dialogContent: null
     }
   ];
 
   const stats = [
-    { value: aiStats.loading ? "..." : aiStats.employees, label: t('stats.employees'), icon: Users, color: "text-blue-600" },
-    { value: aiStats.loading ? "..." : aiStats.roles, label: t('stats.roles'), icon: Target, color: "text-cyan-600" },
-    { value: aiStats.loading ? "..." : aiStats.accuracy, label: t('stats.accuracy'), icon: Zap, color: "text-blue-600" },
-    { value: aiStats.loading ? "..." : aiStats.skills, label: t('stats.skills'), icon: BarChart3, color: "text-cyan-600" }
+    { value: aiStats.loading ? "..." : aiStats.employees, label: 'Total Employees', icon: Users, color: "text-blue-600" },
+    { value: aiStats.loading ? "..." : aiStats.roles, label: 'Standardized Roles', icon: Target, color: "text-cyan-600" },
+    { value: aiStats.loading ? "..." : aiStats.accuracy, label: 'Mapping Accuracy', icon: Zap, color: "text-blue-600" },
+    { value: aiStats.loading ? "..." : aiStats.skills, label: 'Skills Identified', icon: BarChart3, color: "text-cyan-600" }
   ];
 
   return (
@@ -126,9 +124,9 @@ const AnalyticsDashboard = () => {
       {/* Statistics Dashboard */}
       <section className="bg-muted/50 rounded-xl p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">{t('stats.title')}</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Dashboard Overview</h2>
           <p className="text-muted-foreground">
-            {t('stats.subtitle')}
+            Real-time insights for HR transformation
           </p>
         </div>
         
@@ -169,9 +167,9 @@ const AnalyticsDashboard = () => {
       {/* Platform Features */}
       <section>
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-foreground mb-2">{t('features.title')}</h2>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Platform Features</h2>
           <p className="text-muted-foreground">
-            {t('features.subtitle')}
+            Comprehensive solutions for modernizing HR operations
           </p>
         </div>
       
@@ -207,7 +205,7 @@ const AnalyticsDashboard = () => {
                   <Dialog open={activeDialog === feature.id} onOpenChange={(open) => setActiveDialog(open ? feature.id : null)}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="w-full">
-                        {feature.id === 'upload' ? t('feature.upload.button') : t('feature.chat.button')}
+                        {feature.id === 'upload' ? 'Upload Role Catalog' : 'Open Assistant'}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </DialogTrigger>
@@ -222,7 +220,7 @@ const AnalyticsDashboard = () => {
                   <Dialog open={activeDialog === feature.id} onOpenChange={(open) => setActiveDialog(open ? feature.id : null)}>
                     <DialogTrigger asChild>
                       <Button variant="outline" size="sm" className="w-full">
-                        {t('button.learn_more')}
+                        Learn More
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
                     </DialogTrigger>

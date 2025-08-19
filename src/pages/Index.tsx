@@ -32,10 +32,8 @@ import { EmployeeUploadTwoStep } from "@/components/EmployeeUploadTwoStep";
 import { EmployeeCareerPathsEnhanced } from "@/components/EmployeeCareerPathsEnhanced";
 import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlanningAI";
 import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import BulkRoleAssignment from "@/components/BulkRoleAssignment";
 import ApplicationTester from "@/components/ApplicationTester";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useAIStats } from "@/components/AIStatsProvider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,7 +42,6 @@ import { useEffect } from "react";
 
 const Index = () => {
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
-  const { t } = useLanguage();
   const aiStats = useAIStats();
   const { toast } = useToast();
   const { user, signOut } = useAuth();
@@ -65,18 +62,18 @@ const Index = () => {
   const features = [
     {
       id: 'upload',
-      title: t('feature.upload.title'),
-      description: t('feature.upload.description'),
+      title: 'Bulk Role Upload & Standardization',
+      description: 'Upload role catalogs and auto-map to Simplify Standard Roles with industry-aligned job families.',
       icon: Upload,
-      badge: t('feature.upload.badge'),
+      badge: 'Core',
       dialogContent: 'upload'
     },
     {
       id: 'jd-generator',
-      title: t('feature.jd.title'),
-      description: t('feature.jd.description'),
+      title: 'AI-Powered JD Generator',
+      description: 'Generate job descriptions for every standardized role with in-app chatbot to tweak tone and requirements.',
       icon: FileText,
-      badge: t('feature.jd.badge'),
+      badge: 'AI',
       dialogContent: null
     },
     {
@@ -89,18 +86,18 @@ const Index = () => {
     },
     {
       id: 'assessment',
-      title: t('feature.assessment.title'),
-      description: t('feature.assessment.description'),
+      title: 'Employee Skill Assessment',
+      description: 'Upload employees, match % vs target JD, skill gaps, next role recommendations.',
       icon: Brain,
-      badge: t('feature.assessment.badge'),
+      badge: 'Analytics',
       dialogContent: null
     },
     {
       id: 'chat',
-      title: t('feature.chat.title'),
-      description: t('feature.chat.description'),
+      title: 'HR AI Assistant',
+      description: 'In-app chatbot for HR/editors to tweak job descriptions and get personalized recommendations.',
       icon: MessageCircle,
-      badge: t('feature.chat.badge'),
+      badge: 'AI',
       dialogContent: 'chat'
     },
     {
@@ -113,27 +110,27 @@ const Index = () => {
     },
     {
       id: 'mobility',
-      title: t('feature.mobility.title'),
-      description: t('feature.mobility.description'),
+      title: 'Employee Mobility & Planning',
+      description: 'Level fit analysis, rotation/churn risk assessment, and personalized development plans.',
       icon: Target,
-      badge: t('feature.mobility.badge'),
+      badge: 'Planning',
       dialogContent: null
     },
     {
       id: 'development',
-      title: t('feature.development.title'),
-      description: t('feature.development.description'),
+      title: 'Development Pathways',
+      description: 'Personalized development plans with courses, certifications, and projects for career growth.',
       icon: Brain,
-      badge: t('feature.development.badge'),
+      badge: 'Growth',
       dialogContent: null
     }
   ];
 
   const stats = [
-    { value: aiStats.loading ? "..." : aiStats.employees, label: t('stats.employees'), icon: Users, color: "text-blue-600" },
-    { value: aiStats.loading ? "..." : aiStats.roles, label: t('stats.roles'), icon: Target, color: "text-cyan-600" },
-    { value: aiStats.loading ? "..." : aiStats.accuracy, label: t('stats.accuracy'), icon: Zap, color: "text-blue-600" },
-    { value: aiStats.loading ? "..." : aiStats.skills, label: t('stats.skills'), icon: BarChart3, color: "text-cyan-600" }
+    { value: aiStats.loading ? "..." : aiStats.employees, label: 'Total Employees', icon: Users, color: "text-blue-600" },
+    { value: aiStats.loading ? "..." : aiStats.roles, label: 'Standardized Roles', icon: Target, color: "text-cyan-600" },
+    { value: aiStats.loading ? "..." : aiStats.accuracy, label: 'Mapping Accuracy', icon: Zap, color: "text-blue-600" },
+    { value: aiStats.loading ? "..." : aiStats.skills, label: 'Skills Identified', icon: BarChart3, color: "text-cyan-600" }
   ];
 
   return (
@@ -145,16 +142,15 @@ const Index = () => {
               <div className="flex items-center space-x-4">
                 <div className="flex flex-col items-center space-y-3">
                   <img 
-                    src="/xlsmart-logo.svg" 
-                    alt="XLSMART Logo" 
+                    src="/lovable-uploads/9c45cc31-9297-438e-9548-addecf32096c.png" 
+                    alt="Simplify Logo" 
                     className="h-16 w-auto"
                   />
-                  <p className="text-white/90 text-lg font-medium text-center">AI-Powered HR Platform by SimplifyAI</p>
+                  <p className="text-white/90 text-lg font-medium text-center">AI-Powered HR Platform by Simplify</p>
                 </div>
               </div>
               
               <div className="flex items-center gap-4">
-                <LanguageToggle />
                 <div className="flex items-center space-x-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
                     <User className="h-4 w-4 text-white" />
@@ -176,7 +172,7 @@ const Index = () => {
                 Revolutionizing HR with <span className="font-bold text-white">Artificial Intelligence</span>
               </h2>
               <p className="text-white/80 text-xl max-w-3xl leading-relaxed">
-                Streamline role standardization, skill assessment, and career development with SimplifyAI's AI-powered platform built for the telecommunications industry.
+                Streamline role standardization, skill assessment, and career development with Simplify's AI-powered platform built for the telecommunications industry.
               </p>
             </div>
           </div>
@@ -187,9 +183,9 @@ const Index = () => {
         {/* Features Grid */}
           <section>
             <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('features.title')}</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Platform Features</h2>
               <p className="text-gray-600 text-lg max-w-3xl mx-auto">
-                {t('features.subtitle')}
+                Comprehensive solutions for modernizing HR operations through AI-driven insights
               </p>
             </div>
           
@@ -229,7 +225,7 @@ const Index = () => {
                     <Dialog open={activeDialog === feature.id} onOpenChange={(open) => setActiveDialog(open ? feature.id : null)}>
                       <DialogTrigger asChild>
                         <Button variant="outline" className="w-full group-hover:xlsmart-primary-gradient group-hover:text-white group-hover:border-transparent transition-all duration-300 shadow-sm hover:shadow-md">
-                          {feature.id === 'upload' ? t('feature.upload.button') : t('feature.chat.button')}
+                          {feature.id === 'upload' ? 'Upload Role Catalog' : 'Open Assistant'}
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </DialogTrigger>
@@ -247,7 +243,7 @@ const Index = () => {
                           variant="outline" 
                           className="w-full group-hover:xlsmart-primary-gradient group-hover:text-white group-hover:border-transparent transition-all duration-300 shadow-sm hover:shadow-md"
                         >
-                          {t('button.learn_more')}
+                          Learn More
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </DialogTrigger>
@@ -278,9 +274,9 @@ const Index = () => {
         {/* Statistics Dashboard */}
         <section className="bg-gray-50 rounded-2xl p-8">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('stats.title')}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
             <p className="text-gray-600">
-              {t('stats.subtitle')}
+              Real-time insights for HR transformation
             </p>
           </div>
           
@@ -347,7 +343,7 @@ const Index = () => {
             <div>
               <h2 className="text-4xl font-bold mb-6">Ready to Transform Your HR?</h2>
               <p className="text-white/90 text-xl max-w-3xl mx-auto leading-relaxed">
-                Join the future of human resources with SimplifyAI's AI-powered role standardization, skills assessment, and career development planning.
+                Join the future of human resources with Simplify's AI-powered role standardization, skills assessment, and career development planning.
               </p>
             </div>
             
