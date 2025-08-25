@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SUCCESS_MESSAGES, ERROR_MESSAGES } from "@/lib/constants";
+import { validateEmployee } from "@/lib/validations";
+import { employeeApi } from "@/lib/api";
 
 interface Employee {
   id: string;
@@ -48,30 +50,28 @@ export const EditEmployeeDialog = ({
   const handleSave = async () => {
     if (!employee || !formData.email) return;
 
+    // Validate data using validation schema
+    const validation = validateEmployee(formData);
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.issues[0]?.message || ERROR_MESSAGES.VALIDATION_FAILED,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('xlsmart_employees')
-        .update({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          current_position: formData.current_position,
-          current_department: formData.current_department,
-          current_location: formData.current_location,
-          email: formData.email,
-          phone: formData.phone,
-          hire_date: formData.hire_date,
-          salary: formData.salary,
-          years_of_experience: formData.years_of_experience,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', employee.id);
-
-      if (error) throw error;
+      const result = await employeeApi.update(employee.id, validation.data);
+      
+      if (!result.success) {
+        throw new Error(result.error || ERROR_MESSAGES.GENERIC);
+      }
 
       toast({
         title: "Success",
-        description: "Employee updated successfully",
+        description: SUCCESS_MESSAGES.DATA_SAVED,
       });
       
       onSave();
@@ -79,7 +79,7 @@ export const EditEmployeeDialog = ({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update employee",
+        description: error.message || ERROR_MESSAGES.GENERIC,
         variant: "destructive",
       });
     } finally {

@@ -7,14 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileText, CheckCircle, Eye, ThumbsUp, ThumbsDown, Zap, MousePointer } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { AlertCircle, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RoleMappingDetails } from "@/components/RoleMappingDetails";
 import { RoleMappingPagination } from "@/components/RoleMappingPagination";
+import { FILE_UPLOAD, PAGINATION, SUCCESS_MESSAGES, ERROR_MESSAGES } from "@/lib/constants";
+import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from 'xlsx';
 
 interface RoleMappingResult {
@@ -35,7 +35,7 @@ interface RoleMappingResult {
 }
 
 const LARGE_DATASET_THRESHOLD = 500; // Threshold for large dataset handling
-const DEFAULT_PAGE_SIZE = 10; // Default items per page
+const DEFAULT_PAGE_SIZE = PAGINATION.DEFAULT_PAGE_SIZE; // Default items per page
 
 export const RoleUpload = () => {
   const { toast } = useToast();
@@ -53,7 +53,7 @@ export const RoleUpload = () => {
   const [selectedMapping, setSelectedMapping] = useState<RoleMappingResult | null>(null);
   const [showMappingDetails, setShowMappingDetails] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [totalMappings, setTotalMappings] = useState(0);
   const [isLargeDataset, setIsLargeDataset] = useState(false);
   const [processingBatch, setProcessingBatch] = useState<{ current: number; total: number } | null>(null);
@@ -517,7 +517,12 @@ export const RoleUpload = () => {
                   type="file"
                   id="xl-file-upload"
                   className="hidden"
-                  accept=".xlsx,.csv,.json"
+                   accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                     if (type.includes('spreadsheetml')) return '.xlsx';
+                     if (type.includes('ms-excel')) return '.xls';
+                     if (type.includes('csv')) return '.csv';
+                     return '';
+                   }).join(',')}
                   onChange={(e) => handleFileSelect(e, 'xl')}
                 />
                 <label htmlFor="xl-file-upload" className="cursor-pointer flex flex-col items-center space-y-2">
@@ -537,7 +542,12 @@ export const RoleUpload = () => {
                   type="file"
                   id="smart-file-upload"
                   className="hidden"
-                  accept=".xlsx,.csv,.json"
+                   accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                     if (type.includes('spreadsheetml')) return '.xlsx';
+                     if (type.includes('ms-excel')) return '.xls';
+                     if (type.includes('csv')) return '.csv';
+                     return '';
+                   }).join(',')}
                   onChange={(e) => handleFileSelect(e, 'smart')}
                 />
                 <label htmlFor="smart-file-upload" className="cursor-pointer flex flex-col items-center space-y-2">

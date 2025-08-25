@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { SUCCESS_MESSAGES, ERROR_MESSAGES, ROLE } from "@/lib/constants";
+import { validateRole } from "@/lib/validations";
+import { roleApi } from "@/lib/api";
 
 interface StandardizedRole {
   id: string;
@@ -59,25 +61,36 @@ export const EditRoleDialog = ({
   const handleSave = async () => {
     if (!role || !formData.role_title) return;
 
+    // Validate data using validation schema
+    const roleData = {
+      ...formData,
+      required_skills: skills,
+      role_category: formData.department || ROLE.CATEGORIES[0],
+      job_family: formData.role_title,
+      role_level: formData.role_level || ROLE.SENIORITY_LEVELS[0]
+    };
+
+    const validation = validateRole(roleData);
+    if (!validation.success) {
+      toast({
+        title: "Validation Error", 
+        description: validation.error.issues[0]?.message || ERROR_MESSAGES.VALIDATION_FAILED,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('xlsmart_standard_roles')
-        .update({
-          role_title: formData.role_title,
-          role_level: formData.role_level,
-          department: formData.department,
-          standard_description: formData.standard_description,
-          required_skills: skills,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', role.id);
-
-      if (error) throw error;
+      const result = await roleApi.update(role.id, validation.data);
+      
+      if (!result.success) {
+        throw new Error(result.error || ERROR_MESSAGES.GENERIC);
+      }
 
       toast({
         title: "Success",
-        description: "Role updated successfully",
+        description: SUCCESS_MESSAGES.DATA_SAVED,
       });
       
       onSave();
@@ -85,7 +98,7 @@ export const EditRoleDialog = ({
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update role",
+        description: error.message || ERROR_MESSAGES.GENERIC,
         variant: "destructive",
       });
     } finally {

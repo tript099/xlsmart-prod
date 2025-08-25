@@ -41,7 +41,7 @@ export const useAIStats = (): AIStats => {
         // Calculate average accuracy from mappings
         const mappings = mappingsResult.data || [];
         const averageAccuracy = mappings.length > 0 
-          ? Math.round(mappings.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / mappings.length)
+          ? Math.round(mappings.reduce((sum: number, m: any) => sum + (m.mapping_confidence || 0), 0) / mappings.length)
           : 0;
 
         setStats({

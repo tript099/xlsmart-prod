@@ -6,11 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Upload, Users, CheckCircle, AlertCircle, Loader2, Brain, ArrowRight, UserCheck } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmployeeRoleAssignmentReview } from "@/components/EmployeeRoleAssignmentReview";
 import { EmployeeRoleAssignment } from "@/components/EmployeeRoleAssignment";
+import { FILE_UPLOAD, SUCCESS_MESSAGES, ERROR_MESSAGES } from "@/lib/constants";
+import { validateEmployeeData } from "@/lib/validations";
+import { api } from "@/lib/api";
+import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from 'xlsx';
 
 interface UploadProgress {
@@ -386,7 +389,12 @@ export const EmployeeUploadTwoStep = () => {
                   id="employee-files-upload-only"
                   type="file"
                   multiple
-                  accept=".xlsx,.xls"
+                  accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                    if (type.includes('spreadsheetml')) return '.xlsx';
+                    if (type.includes('ms-excel')) return '.xls';
+                    if (type.includes('csv')) return '.csv';
+                    return '';
+                  }).join(',')}
                   onChange={(e) => handleFileChange(e, 'upload-only')}
                   disabled={uploadOnlyUploading}
                 />
@@ -498,7 +506,12 @@ export const EmployeeUploadTwoStep = () => {
                     id="employee-files"
                     type="file"
                     multiple
-                    accept=".xlsx,.xls"
+                     accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                       if (type.includes('spreadsheetml')) return '.xlsx';
+                       if (type.includes('ms-excel')) return '.xls';
+                       if (type.includes('csv')) return '.csv';
+                       return '';
+                     }).join(',')}
                     onChange={(e) => handleFileChange(e, 'upload-assign')}
                     disabled={uploading}
                   />

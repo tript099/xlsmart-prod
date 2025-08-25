@@ -11,6 +11,7 @@ import { Upload, FileSpreadsheet, Brain, CheckCircle, AlertCircle, Zap, Database
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { FILE_UPLOAD, SUCCESS_MESSAGES, ERROR_MESSAGES } from "@/lib/constants";
 import * as XLSX from 'xlsx';
 
 interface ParsedFile {
@@ -344,7 +345,11 @@ export const RoleStandardizationSystem = () => {
                     <Input
                       id="xl-files-upload"
                       type="file"
-                      accept=".xlsx,.xls"
+                       accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                         if (type.includes('spreadsheetml')) return '.xlsx';
+                         if (type.includes('ms-excel')) return '.xls';
+                         return '';
+                       }).filter(Boolean).join(',')}
                       multiple
                       onChange={(e) => handleFileChange(e, 'xl', 'upload-only')}
                       disabled={isProcessing}
@@ -373,7 +378,11 @@ export const RoleStandardizationSystem = () => {
                     <Input
                       id="smart-files-upload"
                       type="file"
-                      accept=".xlsx,.xls"
+                       accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                         if (type.includes('spreadsheetml')) return '.xlsx';
+                         if (type.includes('ms-excel')) return '.xls';
+                         return '';
+                       }).filter(Boolean).join(',')}
                       multiple
                       onChange={(e) => handleFileChange(e, 'smart', 'upload-only')}
                       disabled={isProcessing}
@@ -450,7 +459,11 @@ export const RoleStandardizationSystem = () => {
                     <Input
                       id="xl-files-std"
                       type="file"
-                      accept=".xlsx,.xls"
+                       accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                         if (type.includes('spreadsheetml')) return '.xlsx';
+                         if (type.includes('ms-excel')) return '.xls';
+                         return '';
+                       }).filter(Boolean).join(',')}
                       multiple
                       onChange={(e) => handleFileChange(e, 'xl', 'standardize')}
                       disabled={isProcessing}
@@ -479,7 +492,11 @@ export const RoleStandardizationSystem = () => {
                     <Input
                       id="smart-files-std"
                       type="file"
-                      accept=".xlsx,.xls"
+                       accept={FILE_UPLOAD.ALLOWED_TYPES.map(type => {
+                         if (type.includes('spreadsheetml')) return '.xlsx';
+                         if (type.includes('ms-excel')) return '.xls';
+                         return '';
+                       }).filter(Boolean).join(',')}
                       multiple
                       onChange={(e) => handleFileChange(e, 'smart', 'standardize')}
                       disabled={isProcessing}
