@@ -25,12 +25,7 @@ const HRDashboard = () => {
     }
   }, [user, navigate]);
 
-  // Redirect to roles dashboard if on base dashboard route
-  useEffect(() => {
-    if (location.pathname === '/dashboard' || location.pathname === '/dashboard/') {
-      navigate('/dashboard/roles', { replace: true });
-    }
-  }, [location.pathname, navigate]);
+  // No need for manual redirect since we have an index route now
 
   if (!user) {
     return null;

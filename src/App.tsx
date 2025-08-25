@@ -35,6 +35,7 @@ const App = () => (
           <Route path="/" element={<Login />} />
           <Route path="/legacy-dashboard" element={<Index />} />
           <Route path="/dashboard" element={<HRDashboard />}>
+            <Route index element={<RolesDashboard />} />
             <Route path="analytics" element={<AnalyticsDashboard />} />
             <Route path="employees" element={<EmployeeDashboard />} />
             <Route path="bulk-role-assignment" element={<BulkRoleAssignmentDashboard />} />
