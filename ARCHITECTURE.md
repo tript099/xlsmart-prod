@@ -159,6 +159,58 @@ src/
 - Encrypted secrets in Supabase
 - Input validation and sanitization
 
+## Database Schema
+
+### Core Tables Overview
+
+The system uses PostgreSQL with the following core table categories:
+
+#### User Management  
+- **`profiles`** - User profiles with role-based access control
+- Links to Supabase Auth users with role hierarchy (super_admin, hr_manager, candidate, client)
+
+#### Employee Management
+- **`xlsmart_employees`** - Core employee data with role assignment tracking
+- **`employee_skills`** - Employee skill associations with proficiency levels
+- **`employee_certifications`** - Professional certifications and credentials  
+- **`employee_trainings`** - Training programs and completion records
+
+#### Role Management
+- **`xlsmart_standard_roles`** - Standardized role definitions and requirements
+- **`xlsmart_role_mappings`** - Mapping between original and standardized roles
+- **`skills_master`** - Master catalog of skills and competencies
+
+#### Analytics & AI
+- **`xlsmart_skill_assessments`** - Employee skill assessments and gap analysis
+- **`xlsmart_job_descriptions`** - AI-generated job descriptions with approval workflow
+- **`ai_analysis_results`** - Results from AI processing operations
+- **`xlsmart_upload_sessions`** - Upload session tracking and progress monitoring
+
+For complete database schema documentation, see **[DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)**.
+
+### Database Features
+- **Row Level Security**: All tables have RLS policies for secure data access
+- **JSONB Storage**: Flexible JSON storage for skills, requirements, analysis results
+- **Audit Trails**: Comprehensive tracking with created_at/updated_at timestamps
+- **Referential Integrity**: Foreign key constraints maintain data consistency
+- **Performance Optimization**: Strategic indexes for query performance
+
+### Data Flow Architecture
+
+```
+User Interaction
+       ↓
+React Components
+       ↓
+Custom Hooks (useQuery, useMutation)
+       ↓
+API Layer (src/lib/api.ts)
+       ↓
+Supabase Client
+       ↓
+PostgreSQL Database
+```
+
 ## Performance
 
 ### Code Splitting
