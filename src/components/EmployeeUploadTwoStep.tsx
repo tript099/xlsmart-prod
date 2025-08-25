@@ -30,6 +30,13 @@ interface UploadSession {
 }
 
 export const EmployeeUploadTwoStep = () => {
+  // Upload Only states
+  const [uploadOnlyFiles, setUploadOnlyFiles] = useState<FileList | null>(null);
+  const [uploadOnlyProgress, setUploadOnlyProgress] = useState<UploadProgress>({ total: 0, processed: 0, assigned: 0, errors: 0 });
+  const [uploadOnlyComplete, setUploadOnlyComplete] = useState(false);
+  const [uploadOnlyUploading, setUploadOnlyUploading] = useState(false);
+
+  // Upload & Assign states  
   const [files, setFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -43,11 +50,17 @@ export const EmployeeUploadTwoStep = () => {
   const [activeTab, setActiveTab] = useState("upload");
   const { toast } = useToast();
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>, mode: 'upload-only' | 'upload-assign') => {
     const selectedFiles = event.target.files;
-    setFiles(selectedFiles);
-    setUploadComplete(false);
-    setUploadProgress({ total: 0, processed: 0, assigned: 0, errors: 0 });
+    if (mode === 'upload-only') {
+      setUploadOnlyFiles(selectedFiles);
+      setUploadOnlyComplete(false);
+      setUploadOnlyProgress({ total: 0, processed: 0, assigned: 0, errors: 0 });
+    } else {
+      setFiles(selectedFiles);
+      setUploadComplete(false);
+      setUploadProgress({ total: 0, processed: 0, assigned: 0, errors: 0 });
+    }
   };
 
   const processExcelFiles = async (files: FileList) => {
@@ -86,6 +99,79 @@ export const EmployeeUploadTwoStep = () => {
     }
     
     return processedData;
+  };
+
+  const handleUploadOnlyData = async () => {
+    if (!uploadOnlyFiles || uploadOnlyFiles.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select Excel files to upload",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setUploadOnlyUploading(true);
+      
+      // Process Excel files
+      const employeeData = await processExcelFiles(uploadOnlyFiles);
+      setUploadOnlyProgress(prev => ({ ...prev, total: employeeData.length }));
+
+      toast({
+        title: "Processing employee data...",
+        description: `Found ${employeeData.length} employee records`
+      });
+
+      // Upload to Supabase function (Upload Only - no role assignment)
+      const { data, error } = await supabase.functions.invoke('employee-upload-data', {
+        body: {
+          employees: employeeData,
+          sessionName: `Employee Upload Only ${new Date().toISOString()}: ${Array.from(uploadOnlyFiles).map(f => f.name).join(', ')}`,
+          skipRoleAssignment: true
+        }
+      });
+
+      if (error) throw error;
+
+      // Poll for upload progress
+      const pollProgress = setInterval(async () => {
+        const { data: progressData } = await supabase.functions.invoke('employee-upload-progress', {
+          body: { sessionId: data.sessionId }
+        });
+
+        if (progressData) {
+          setUploadOnlyProgress(progressData.progress);
+          
+          if (progressData.status === 'completed') {
+            clearInterval(pollProgress);
+            setUploadOnlyComplete(true);
+            setUploadOnlyUploading(false);
+            toast({
+              title: "Upload Complete!",
+              description: `Successfully uploaded ${progressData.progress.processed} employee records without role assignment`
+            });
+          } else if (progressData.status === 'error') {
+            clearInterval(pollProgress);
+            setUploadOnlyUploading(false);
+            toast({
+              title: "Upload Failed",
+              description: progressData.error || "An error occurred during upload",
+              variant: "destructive"
+            });
+          }
+        }
+      }, 2000);
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      setUploadOnlyUploading(false);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload employee data",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleUploadData = async () => {
@@ -268,310 +354,309 @@ export const EmployeeUploadTwoStep = () => {
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          2-Step Employee Upload & AI Role Assignment
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Upload employee data first, then assign roles using AI analysis
+    <div className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold flex items-center justify-center gap-3">
+          <Users className="h-6 w-6 text-primary" />
+          Employee Management Options
+        </h2>
+        <p className="text-muted-foreground mt-2">
+          Choose how you want to process your employee data
         </p>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="upload" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Step 1: Upload Data
-            </TabsTrigger>
-            <TabsTrigger value="assign" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              Step 2: Generate Suggestions
-            </TabsTrigger>
-            <TabsTrigger value="review" className="flex items-center gap-2">
-              <UserCheck className="h-4 w-4" />
-              Step 3: Review & Assign
-            </TabsTrigger>
-            <TabsTrigger value="manage" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Manage Assignments
-            </TabsTrigger>
-          </TabsList>
+      </div>
 
-          {/* Step 1: Upload Data */}
-          <TabsContent value="upload" className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="employee-files">Upload Employee Data (Excel Files)</Label>
-              <Input
-                id="employee-files"
-                type="file"
-                multiple
-                accept=".xlsx,.xls"
-                onChange={handleFileChange}
-                disabled={uploading}
-              />
-              <p className="text-sm text-muted-foreground">
-                Upload Excel files with employee data in the specified format below.
-              </p>
+      {/* Option Selection */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+        {/* Option 1: Upload Only */}
+        <Card className="hover:shadow-lg transition-shadow duration-200">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <Upload className="h-6 w-6 text-blue-600" />
             </div>
-
-            {files && files.length > 0 && (
-              <div className="space-y-2">
-                <Label>Selected Files:</Label>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(files).map((file, index) => (
-                    <Badge key={index} variant="outline">
-                      {file.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <Button 
-              onClick={handleUploadData} 
-              disabled={!files || files.length === 0 || uploading}
-              className="w-full"
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading Data...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload Employee Data
-                </>
-              )}
-            </Button>
-
-            {uploading && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Upload Progress</span>
-                    <span>{getProgressPercentage(uploadProgress)}%</span>
-                  </div>
-                  <Progress value={getProgressPercentage(uploadProgress)} className="w-full" />
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{uploadProgress.total}</div>
-                    <div className="text-sm text-muted-foreground">Total</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-500">{uploadProgress.processed}</div>
-                    <div className="text-sm text-muted-foreground">Processed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-500">{uploadProgress.assigned}</div>
-                    <div className="text-sm text-muted-foreground">Uploaded</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-500">{uploadProgress.errors}</div>
-                    <div className="text-sm text-muted-foreground">Errors</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {uploadComplete && (
-              <div className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center gap-2 text-green-700">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">Data Upload Completed Successfully!</span>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Total Records:</span> {uploadProgress.total}
-                  </div>
-                  <div>
-                    <span className="font-medium">Successfully Uploaded:</span> {uploadProgress.processed}
-                  </div>
-                  <div>
-                    <span className="font-medium">Errors:</span> {uploadProgress.errors}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Ready for role assignment. Click "Step 2: Assign Roles" to continue.
-                  </p>
-                  <Button onClick={() => setActiveTab("assign")} size="sm" className="flex items-center gap-2">
-                    Next Step <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Step 2: Generate AI Suggestions */}
-          <TabsContent value="assign" className="space-y-6">
+            <CardTitle className="text-xl">Upload Only</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Upload employee data without AI role assignment (roles already assigned)
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label>Select Employee Upload Session for AI Analysis</Label>
-                <Button onClick={loadAvailableSessions} variant="outline" size="sm">
-                  Refresh Sessions
-                </Button>
+              <div>
+                <Label htmlFor="employee-files-upload-only">Employee Data Files</Label>
+                <Input
+                  id="employee-files-upload-only"
+                  type="file"
+                  multiple
+                  accept=".xlsx,.xls"
+                  onChange={(e) => handleFileChange(e, 'upload-only')}
+                  disabled={uploadOnlyUploading}
+                />
               </div>
               
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {availableSessions.map((session) => (
-                  <div 
-                    key={session.id}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedSessionForAssignment === session.id 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => setSelectedSessionForAssignment(session.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-sm">{session.session_name}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          {session.total_rows} employees • Status: {session.status}
-                        </p>
-                      </div>
-                      <Badge variant={selectedSessionForAssignment === session.id ? "default" : "outline"} className="text-xs">
-                        {selectedSessionForAssignment === session.id ? "Selected" : "Select"}
+              {uploadOnlyFiles && uploadOnlyFiles.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Selected Files:</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(uploadOnlyFiles).map((file, index) => (
+                      <Badge key={index} variant="outline">
+                        {file.name}
                       </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button
+                onClick={handleUploadOnlyData}
+                disabled={!uploadOnlyFiles || uploadOnlyFiles.length === 0 || uploadOnlyUploading}
+                className="w-full"
+                variant="outline"
+              >
+                {uploadOnlyUploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Employee Data
+                  </>
+                )}
+              </Button>
+
+              {uploadOnlyUploading && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Upload Progress</span>
+                      <span>{getProgressPercentage(uploadOnlyProgress)}%</span>
+                    </div>
+                    <Progress value={getProgressPercentage(uploadOnlyProgress)} className="w-full" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-primary">{uploadOnlyProgress.total}</div>
+                      <div className="text-sm text-muted-foreground">Total</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-blue-500">{uploadOnlyProgress.processed}</div>
+                      <div className="text-sm text-muted-foreground">Processed</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <Button 
-              onClick={handleAssignRoles} 
-              disabled={!selectedSessionForAssignment || assigning}
-              className="w-full"
-            >
-              {assigning ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating AI Role Suggestions...
-                </>
-              ) : (
-                <>
-                  <Brain className="mr-2 h-4 w-4" />
-                  Generate AI Role Suggestions
-                </>
+                </div>
               )}
-            </Button>
 
-            {assigning && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Analysis Progress</span>
-                    <span>{getProgressPercentage(assignmentProgress)}%</span>
+              {uploadOnlyComplete && (
+                <div className="space-y-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-medium">Upload Completed Successfully!</span>
                   </div>
-                  <Progress value={getProgressPercentage(assignmentProgress)} className="w-full" />
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{assignmentProgress.total}</div>
-                    <div className="text-sm text-muted-foreground">Total</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-500">{assignmentProgress.processed}</div>
-                    <div className="text-sm text-muted-foreground">Analyzed</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-500">{assignmentProgress.assigned}</div>
-                    <div className="text-sm text-muted-foreground">Suggestions</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-500">{assignmentProgress.errors}</div>
-                    <div className="text-sm text-muted-foreground">Errors</div>
+                  <div className="text-sm">
+                    <span className="font-medium">Records Uploaded:</span> {uploadOnlyProgress.processed}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {assignmentComplete && (
-              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center gap-2 text-blue-700">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">AI Analysis Completed!</span>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Total Employees:</span> {assignmentProgress.total}
-                  </div>
-                  <div>
-                    <span className="font-medium">AI Suggestions:</span> {assignmentProgress.assigned}
-                  </div>
-                  <div>
-                    <span className="font-medium">Errors:</span> {assignmentProgress.errors}
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    AI has generated role suggestions. Review and assign roles in the next step.
-                  </p>
-                  <Button onClick={() => setActiveTab("review")} size="sm" className="flex items-center gap-2">
-                    Review Assignments <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Step 3: Review & Assign Roles */}
-          <TabsContent value="review" className="space-y-6">
-            {selectedSessionForAssignment ? (
-              <EmployeeRoleAssignmentReview sessionId={selectedSessionForAssignment} />
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground">
-                  Please go back to Step 2 and select a session to review role assignments.
-                </p>
-                <Button 
-                  onClick={() => setActiveTab("assign")} 
-                  variant="outline" 
-                  className="mt-4"
-                >
-                  Go to Step 2
-                </Button>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Step 4: Manage All Assignments */}
-          <TabsContent value="manage" className="space-y-6">
-            <EmployeeRoleAssignment />
-          </TabsContent>
-        </Tabs>
-
-        {/* Expected Format Documentation */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <h4 className="font-medium text-blue-900 mb-2">Required Excel Format:</h4>
-          <div className="text-sm text-blue-800 space-y-1">
-            <p className="font-medium">Column Headers (exact names required):</p>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <div>• EmployeeID</div>
-              <div>• Name</div>
-              <div>• Telco</div>
-              <div>• CurrentRoleTitle</div>
-              <div>• Level</div>
-              <div>• Skills</div>
-              <div>• Certifications</div>
-              <div>• YearsExperience</div>
-              <div>• Location</div>
-              <div>• PerformanceRating</div>
-              <div>• Aspirations</div>
+              )}
             </div>
-            <p className="text-xs mt-2 text-blue-600">
-              Skills and Certifications should be comma-separated values
+          </CardContent>
+        </Card>
+
+        {/* Option 2: Upload & Assign */}
+        <Card className="hover:shadow-lg transition-shadow duration-200 border-primary/20">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/20 rounded-full flex items-center justify-center mb-4">
+              <Brain className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-xl">Upload & Assign</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Upload employee data and use AI to suggest role assignments
             </p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="upload" className="text-xs">
+                  <Upload className="h-3 w-3" />
+                </TabsTrigger>
+                <TabsTrigger value="assign" className="text-xs">
+                  <Brain className="h-3 w-3" />
+                </TabsTrigger>
+                <TabsTrigger value="review" className="text-xs">
+                  <UserCheck className="h-3 w-3" />
+                </TabsTrigger>
+                <TabsTrigger value="manage" className="text-xs">
+                  <Users className="h-3 w-3" />
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Step 1: Upload Data */}
+              <TabsContent value="upload" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="employee-files">Employee Data Files</Label>
+                  <Input
+                    id="employee-files"
+                    type="file"
+                    multiple
+                    accept=".xlsx,.xls"
+                    onChange={(e) => handleFileChange(e, 'upload-assign')}
+                    disabled={uploading}
+                  />
+                </div>
+
+                {files && files.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Selected Files:</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.from(files).map((file, index) => (
+                        <Badge key={index} variant="outline">
+                          {file.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleUploadData} 
+                  disabled={!files || files.length === 0 || uploading}
+                  className="w-full"
+                  size="sm"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-3 w-3" />
+                      Upload Data
+                    </>
+                  )}
+                </Button>
+
+                {uploading && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Upload Progress</span>
+                      <span>{getProgressPercentage(uploadProgress)}%</span>
+                    </div>
+                    <Progress value={getProgressPercentage(uploadProgress)} className="w-full" />
+                  </div>
+                )}
+
+                {uploadComplete && (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="font-medium text-sm">Upload Complete!</span>
+                    </div>
+                    <Button onClick={() => setActiveTab("assign")} size="sm" className="mt-2 w-full">
+                      Next: Assign Roles <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Step 2: Generate AI Suggestions */}
+              <TabsContent value="assign" className="space-y-4 mt-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Select Session</Label>
+                    <Button onClick={loadAvailableSessions} variant="outline" size="sm">
+                      Refresh
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {availableSessions.slice(0, 3).map((session) => (
+                      <div 
+                        key={session.id}
+                        className={`p-2 border rounded cursor-pointer text-sm ${
+                          selectedSessionForAssignment === session.id 
+                            ? 'border-primary bg-primary/5' 
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                        onClick={() => setSelectedSessionForAssignment(session.id)}
+                      >
+                        <div className="font-medium truncate">{session.session_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {session.total_rows} employees
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleAssignRoles} 
+                  disabled={!selectedSessionForAssignment || assigning}
+                  className="w-full"
+                  size="sm"
+                >
+                  {assigning ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Assigning...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="mr-2 h-3 w-3" />
+                      Generate AI Suggestions
+                    </>
+                  )}
+                </Button>
+
+                {assigning && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Assignment Progress</span>
+                      <span>{getProgressPercentage(assignmentProgress)}%</span>
+                    </div>
+                    <Progress value={getProgressPercentage(assignmentProgress)} className="w-full" />
+                  </div>
+                )}
+
+                {assignmentComplete && (
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="font-medium text-sm">AI Analysis Complete!</span>
+                    </div>
+                    <Button onClick={() => setActiveTab("review")} size="sm" className="mt-2 w-full">
+                      Review Suggestions <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Step 3: Review & Assign */}
+              <TabsContent value="review" className="mt-4">
+                {selectedSessionForAssignment ? (
+                  <EmployeeRoleAssignmentReview sessionId={selectedSessionForAssignment} />
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Please select a session first to review role assignments.
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* Manage Assignments */}
+              <TabsContent value="manage" className="mt-4">
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Manage existing role assignments for all employees.
+                  </p>
+                  <EmployeeRoleAssignment />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
