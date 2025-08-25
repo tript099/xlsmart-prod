@@ -137,7 +137,7 @@ serve(async (req) => {
     const { error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
       .update({
-        status: 'analyzing',
+        status: 'processing',
         total_rows: totalInserted,
         ai_analysis: {
           step: 'upload_complete',
