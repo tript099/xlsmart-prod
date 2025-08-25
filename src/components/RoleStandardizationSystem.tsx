@@ -283,168 +283,274 @@ export const RoleStandardizationSystem = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold flex items-center justify-center gap-3">
-          <Brain className="h-6 w-6 text-primary" />
-          XL & Smart Role Standardization
+          <Upload className="h-6 w-6 text-primary" />
+          Role Management Options
         </h2>
         <p className="text-muted-foreground mt-2">
-          Upload XL and Smart role catalogs for AI-powered standardization
+          Choose how you want to process your role data
         </p>
       </div>
-      
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardContent className="space-y-6 pt-6">
-        {/* File Upload Tabs */}
-        <Tabs defaultValue="xl" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="xl" className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
-              XL Roles
-            </TabsTrigger>
-            <TabsTrigger value="smart" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Smart Roles
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="xl" className="space-y-4">
-            <div>
-              <Label htmlFor="xl-files">XL Role Catalog Files</Label>
-              <Input
-                id="xl-files"
-                type="file"
-                accept=".xlsx,.xls"
-                multiple
-                onChange={(e) => handleFileChange(e, 'xl')}
-                disabled={isProcessing}
-              />
-            </div>
-            
-            {xlFiles.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Selected XL files:</p>
-                {xlFiles.map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded">
-                    <FileSpreadsheet className="h-4 w-4 text-blue-600" />
-                    <span>{file.name}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="smart" className="space-y-4">
-            <div>
-              <Label htmlFor="smart-files">Smart Role Catalog Files</Label>
-              <Input
-                id="smart-files"
-                type="file"
-                accept=".xlsx,.xls"
-                multiple
-                onChange={(e) => handleFileChange(e, 'smart')}
-                disabled={isProcessing}
-              />
-            </div>
-            
-            {smartFiles.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Selected Smart files:</p>
-                {smartFiles.map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded">
-                    <FileSpreadsheet className="h-4 w-4 text-green-600" />
-                    <span>{file.name}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {(file.size / 1024).toFixed(1)} KB
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
 
-        {/* Progress */}
-        {isProcessing && (
-          <div className="space-y-3">
+      {/* Option Selection */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+        {/* Option 1: Upload Only */}
+        <Card className="hover:shadow-lg transition-shadow duration-200">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <Database className="h-6 w-6 text-blue-600" />
+            </div>
+            <CardTitle className="text-xl">Upload Only</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Simply upload your role data to the system without AI processing
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <Tabs defaultValue="xl" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="xl" className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    XL Roles
+                  </TabsTrigger>
+                  <TabsTrigger value="smart" className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    Smart Roles
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="xl" className="space-y-3">
+                  <div>
+                    <Label htmlFor="xl-files-upload">XL Role Catalog Files</Label>
+                    <Input
+                      id="xl-files-upload"
+                      type="file"
+                      accept=".xlsx,.xls"
+                      multiple
+                      onChange={(e) => handleFileChange(e, 'xl')}
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  
+                  {xlFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Selected XL files:</p>
+                      {xlFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded">
+                          <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+                          <span>{file.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="smart" className="space-y-3">
+                  <div>
+                    <Label htmlFor="smart-files-upload">Smart Role Catalog Files</Label>
+                    <Input
+                      id="smart-files-upload"
+                      type="file"
+                      accept=".xlsx,.xls"
+                      multiple
+                      onChange={(e) => handleFileChange(e, 'smart')}
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  
+                  {smartFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Selected Smart files:</p>
+                      {smartFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded">
+                          <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                          <span>{file.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              <Button
+                onClick={uploadToDatabase}
+                disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
+                className="w-full"
+                variant="outline"
+              >
+                {isProcessing ? (
+                  <>
+                    <Database className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Database className="mr-2 h-4 w-4" />
+                    Upload to System
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Option 2: Upload and Standardize */}
+        <Card className="hover:shadow-lg transition-shadow duration-200 border-primary/20">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-primary/10 to-primary/20 rounded-full flex items-center justify-center mb-4">
+              <Brain className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-xl">Upload & Standardize</CardTitle>
+            <p className="text-muted-foreground text-sm">
+              Upload and let AI standardize your roles automatically
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-4">
+              <Tabs defaultValue="xl-std" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="xl-std" className="flex items-center gap-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    XL Roles
+                  </TabsTrigger>
+                  <TabsTrigger value="smart-std" className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    Smart Roles
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="xl-std" className="space-y-3">
+                  <div>
+                    <Label htmlFor="xl-files-std">XL Role Catalog Files</Label>
+                    <Input
+                      id="xl-files-std"
+                      type="file"
+                      accept=".xlsx,.xls"
+                      multiple
+                      onChange={(e) => handleFileChange(e, 'xl')}
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  
+                  {xlFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Selected XL files:</p>
+                      {xlFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded">
+                          <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+                          <span>{file.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="smart-std" className="space-y-3">
+                  <div>
+                    <Label htmlFor="smart-files-std">Smart Role Catalog Files</Label>
+                    <Input
+                      id="smart-files-std"
+                      type="file"
+                      accept=".xlsx,.xls"
+                      multiple
+                      onChange={(e) => handleFileChange(e, 'smart')}
+                      disabled={isProcessing}
+                    />
+                  </div>
+                  
+                  {smartFiles.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Selected Smart files:</p>
+                      {smartFiles.map((file, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded">
+                          <FileSpreadsheet className="h-4 w-4 text-green-600" />
+                          <span>{file.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+
+              <Button
+                onClick={async () => {
+                  await uploadToDatabase();
+                  if (sessionId) {
+                    await runStandardization();
+                  }
+                }}
+                disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
+                className="w-full"
+              >
+                {isProcessing ? (
+                  <>
+                    <Brain className="mr-2 h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="mr-2 h-4 w-4" />
+                    Upload & Standardize
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Progress */}
+      {isProcessing && (
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="space-y-3 pt-6">
             <div className="flex justify-between text-sm">
               <span>{currentStep}</span>
               <span>{progress}%</span>
             </div>
             <Progress value={progress} className="w-full" />
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Results */}
-        {results && (
-          <Alert className="bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">
-              <div className="space-y-2">
-                <p className="font-medium">Process completed successfully!</p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p>• XL Roles Processed: <strong>{results.xlDataProcessed || 0}</strong></p>
-                    <p>• Smart Roles Processed: <strong>{results.smartDataProcessed || 0}</strong></p>
-                  </div>
-                  <div>
-                    <p>• Standardized Roles Created: <strong>{results.standardizedRolesCreated || 0}</strong></p>
-                    <p>• Mappings Generated: <strong>{results.mappingsCreated || 0}</strong></p>
+      {/* Results */}
+      {results && (
+        <Card className="max-w-2xl mx-auto">
+          <CardContent className="pt-6">
+            <Alert className="bg-green-50 border-green-200">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                <div className="space-y-2">
+                  <p className="font-medium">Process completed successfully!</p>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p>• XL Roles Processed: <strong>{results.xlDataProcessed || 0}</strong></p>
+                      <p>• Smart Roles Processed: <strong>{results.smartDataProcessed || 0}</strong></p>
+                    </div>
+                    <div>
+                      <p>• Standardized Roles Created: <strong>{results.standardizedRolesCreated || 0}</strong></p>
+                      <p>• Mappings Generated: <strong>{results.mappingsCreated || 0}</strong></p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          {!uploadComplete ? (
-            <Button
-              onClick={uploadToDatabase}
-              disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
-              className="w-full h-12 text-lg"
-              size="lg"
-            >
-              {isProcessing ? (
-                <>
-                  <Database className="mr-2 h-5 w-5 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Database className="mr-2 h-5 w-5" />
-                  Step 1: Upload to Database
-                </>
-              )}
-            </Button>
-          ) : (
-            <Button
-              onClick={runStandardization}
-              disabled={!sessionId || isProcessing}
-              className="w-full h-12 text-lg"
-              size="lg"
-            >
-              {isProcessing ? (
-                <>
-                  <Brain className="mr-2 h-5 w-5 animate-spin" />
-                  Standardizing...
-                </>
-              ) : (
-                <>
-                  <Brain className="mr-2 h-5 w-5" />
-                  Step 2: AI Standardization
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
