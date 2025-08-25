@@ -23,8 +23,14 @@ interface ParsedFile {
 export const RoleStandardizationSystem = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  // Upload Only states
+  const [uploadOnlyXlFiles, setUploadOnlyXlFiles] = useState<File[]>([]);
+  const [uploadOnlySmartFiles, setUploadOnlySmartFiles] = useState<File[]>([]);
+  
+  // Upload & Standardize states
   const [xlFiles, setXlFiles] = useState<File[]>([]);
   const [smartFiles, setSmartFiles] = useState<File[]>([]);
+  
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState("");
@@ -61,17 +67,28 @@ export const RoleStandardizationSystem = () => {
     });
   }, []);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, type: 'xl' | 'smart') => {
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>, type: 'xl' | 'smart', mode: 'upload-only' | 'standardize') => {
     const selectedFiles = Array.from(e.target.files || []);
-    if (type === 'xl') {
-      setXlFiles(selectedFiles);
+    if (mode === 'upload-only') {
+      if (type === 'xl') {
+        setUploadOnlyXlFiles(selectedFiles);
+      } else {
+        setUploadOnlySmartFiles(selectedFiles);
+      }
     } else {
-      setSmartFiles(selectedFiles);
+      if (type === 'xl') {
+        setXlFiles(selectedFiles);
+      } else {
+        setSmartFiles(selectedFiles);
+      }
     }
   }, []);
 
-  const uploadToDatabase = async () => {
-    if (xlFiles.length === 0 && smartFiles.length === 0) {
+  const uploadToDatabase = async (mode: 'upload-only' | 'standardize' = 'upload-only') => {
+    const currentXlFiles = mode === 'upload-only' ? uploadOnlyXlFiles : xlFiles;
+    const currentSmartFiles = mode === 'upload-only' ? uploadOnlySmartFiles : smartFiles;
+    
+    if (currentXlFiles.length === 0 && currentSmartFiles.length === 0) {
       toast({
         title: "No files selected",
         description: "Please select at least one Excel file",
@@ -109,15 +126,15 @@ export const RoleStandardizationSystem = () => {
       setCurrentStep("📊 Parsing Excel files...");
       setProgress(20);
       
-      const allFiles = [...xlFiles, ...smartFiles];
+      const allFiles = [...currentXlFiles, ...currentSmartFiles];
       const parsedFiles: ParsedFile[] = [];
       
-      for (const file of xlFiles) {
+      for (const file of currentXlFiles) {
         const parsed = await parseExcelFile(file, 'xl');
         parsedFiles.push(parsed);
       }
       
-      for (const file of smartFiles) {
+      for (const file of currentSmartFiles) {
         const parsed = await parseExcelFile(file, 'smart');
         parsedFiles.push(parsed);
       }
@@ -329,15 +346,15 @@ export const RoleStandardizationSystem = () => {
                       type="file"
                       accept=".xlsx,.xls"
                       multiple
-                      onChange={(e) => handleFileChange(e, 'xl')}
+                      onChange={(e) => handleFileChange(e, 'xl', 'upload-only')}
                       disabled={isProcessing}
                     />
                   </div>
                   
-                  {xlFiles.length > 0 && (
+                  {uploadOnlyXlFiles.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Selected XL files:</p>
-                      {xlFiles.map((file, index) => (
+                      {uploadOnlyXlFiles.map((file, index) => (
                         <div key={index} className="flex items-center gap-2 text-sm p-2 bg-blue-50 rounded">
                           <FileSpreadsheet className="h-4 w-4 text-blue-600" />
                           <span>{file.name}</span>
@@ -358,15 +375,15 @@ export const RoleStandardizationSystem = () => {
                       type="file"
                       accept=".xlsx,.xls"
                       multiple
-                      onChange={(e) => handleFileChange(e, 'smart')}
+                      onChange={(e) => handleFileChange(e, 'smart', 'upload-only')}
                       disabled={isProcessing}
                     />
                   </div>
                   
-                  {smartFiles.length > 0 && (
+                  {uploadOnlySmartFiles.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Selected Smart files:</p>
-                      {smartFiles.map((file, index) => (
+                      {uploadOnlySmartFiles.map((file, index) => (
                         <div key={index} className="flex items-center gap-2 text-sm p-2 bg-green-50 rounded">
                           <FileSpreadsheet className="h-4 w-4 text-green-600" />
                           <span>{file.name}</span>
@@ -381,8 +398,8 @@ export const RoleStandardizationSystem = () => {
               </Tabs>
 
               <Button
-                onClick={uploadToDatabase}
-                disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
+                onClick={() => uploadToDatabase('upload-only')}
+                disabled={(uploadOnlyXlFiles.length === 0 && uploadOnlySmartFiles.length === 0) || !user || isProcessing}
                 className="w-full"
                 variant="outline"
               >
@@ -435,7 +452,7 @@ export const RoleStandardizationSystem = () => {
                       type="file"
                       accept=".xlsx,.xls"
                       multiple
-                      onChange={(e) => handleFileChange(e, 'xl')}
+                      onChange={(e) => handleFileChange(e, 'xl', 'standardize')}
                       disabled={isProcessing}
                     />
                   </div>
@@ -464,7 +481,7 @@ export const RoleStandardizationSystem = () => {
                       type="file"
                       accept=".xlsx,.xls"
                       multiple
-                      onChange={(e) => handleFileChange(e, 'smart')}
+                      onChange={(e) => handleFileChange(e, 'smart', 'standardize')}
                       disabled={isProcessing}
                     />
                   </div>
@@ -488,7 +505,7 @@ export const RoleStandardizationSystem = () => {
 
               <Button
                 onClick={async () => {
-                  await uploadToDatabase();
+                  await uploadToDatabase('standardize');
                   if (sessionId) {
                     await runStandardization();
                   }
