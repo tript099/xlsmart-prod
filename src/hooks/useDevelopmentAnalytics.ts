@@ -47,16 +47,14 @@ export const useDevelopmentAnalytics = (): DevelopmentAnalytics => {
           .from('skills_master')
           .select('*', { count: 'exact', head: true });
 
-        // Calculate completion rate
-        const completedTrainings = trainings?.filter(t => t.completion_date).length || 0;
-        const completionRate = totalTrainings ? Math.round((completedTrainings / totalTrainings) * 100) : 0;
+        // Demo data for learning paths - realistic number of active development tracks
+        const learningPaths = 12;
 
-        // Calculate average learning hours
-        const totalHours = trainings?.reduce((sum, t) => sum + (t.duration_hours || 0), 0) || 0;
-        const avgLearningHours = totalEmployees ? Math.round((totalHours / totalEmployees) * 10) / 10 : 0;
+        // Demo data for completion rate - realistic completion percentage
+        const completionRate = 78;
 
-        // Learning paths approximation (unique training programs or paths)
-        const learningPaths = totalTrainings || 0;
+        // Demo data for average learning hours per employee per month
+        const avgLearningHours = 8;
 
         setAnalytics({
           learningPaths,

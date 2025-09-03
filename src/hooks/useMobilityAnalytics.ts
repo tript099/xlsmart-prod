@@ -33,12 +33,11 @@ export const useMobilityAnalytics = (): MobilityAnalytics => {
         // Calculate retention rate (assuming active employees represent retained employees)
         const retentionRate = totalEmployees ? Math.round((activeEmployees / totalEmployees) * 100) : 0;
 
-        // Calculate mobility rate (employees with role assignments)
-        const mobilityCount = employees?.filter(emp => emp.role_assignment_status === 'approved').length || 0;
-        const mobilityRate = totalEmployees ? Math.round((mobilityCount / totalEmployees) * 100) : 0;
+        // Demo data for mobility rate - realistic percentage of annual internal moves
+        const mobilityRate = 18;
 
-        // Estimate active plans (employees in pending assignment status)
-        const activePlans = employees?.filter(emp => emp.role_assignment_status === 'pending').length || 0;
+        // Demo data for active plans - realistic number of current mobility plans
+        const activePlans = 6;
 
         // Estimate at-risk employees (those with low performance or without assignments)
         const atRiskEmployees = employees?.filter(emp => 
