@@ -21,7 +21,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
   const [employeeId, setEmployeeId] = useState<string>('');
   const [pastResults, setPastResults] = useState<any[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string>('');
-  const [debugInfo, setDebugInfo] = useState<string>('No analysis run yet');
+
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -53,16 +53,8 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
 
   const handleAnalysis = async () => {
     setIsAnalyzing(true);
-    setDebugInfo('Starting analysis...');
     
     try {
-      console.log('Starting AI development analysis');
-      console.log('Selected analysis:', selectedAnalysis);
-      console.log('Department filter:', departmentFilter);
-      console.log('Employee ID:', employeeId);
-      
-      setDebugInfo('Calling Supabase function...');
-      
       const { data, error } = await supabase.functions.invoke('ai-learning-development', {
         body: {
           analysisType: selectedAnalysis,
@@ -71,14 +63,8 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
         }
       });
 
-      console.log('Function response data:', data);
-      console.log('Function response error:', error);
-      
-      setDebugInfo(`Response received. Data: ${data ? 'YES' : 'NO'}, Error: ${error ? 'YES' : 'NO'}`);
-
       if (error) {
         console.error('Development analysis error:', error);
-        setDebugInfo(`ERROR: ${JSON.stringify(error)}`);
         throw error;
       }
 
@@ -86,17 +72,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
         throw new Error('No data returned from analysis');
       }
 
-      console.log('Analysis data received:', data);
-      setDebugInfo(`Analysis complete! Data keys: ${data ? Object.keys(data).join(', ') : 'none'}`);
-      
-      // Force immediate state update
-      setAnalysisResult(null); // Clear first
-      setTimeout(() => {
-        setAnalysisResult(data); // Then set new data
-        console.log('Analysis result set in state:', data);
-        setDebugInfo(`State updated with ${data ? Object.keys(data).length : 0} properties`);
-      }, 100);
-      
+      setAnalysisResult(data);
       setSelectedResultId(''); // Clear selected result ID for new analysis
       onAnalysisComplete?.(data);
       
@@ -684,15 +660,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
             </div>
           )}
           
-          {/* Debug Info */}
-          <div className="bg-blue-50 p-3 rounded-lg mb-4">
-            <p className="text-sm text-blue-700">
-              <strong>Debug:</strong> {debugInfo}
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Analysis Result: {analysisResult ? JSON.stringify(Object.keys(analysisResult)).substring(0, 100) + '...' : 'null'}
-            </p>
-          </div>
+
         </CardContent>
       </Card>
 

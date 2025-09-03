@@ -36,15 +36,97 @@ const CareerPathsDashboard = () => {
           .select('*', { count: 'exact' })
           .eq('plan_status', 'active');
 
-        // Fetch certifications
-        const { data: certifications, count: totalCertifications } = await supabase
-          .from('employee_certifications')
-          .select('*', { count: 'exact' });
+        // Get real career paths from AI analysis results
+        const { data: careerPathResults } = await supabase
+          .from('ai_analysis_results')
+          .select('*')
+          .in('function_name', ['employee-career-paths-bulk', 'employee-mobility-planning-bulk']);
 
-        // Fetch trainings
-        const { data: trainings, count: totalTrainings } = await supabase
-          .from('employee_trainings')
-          .select('*', { count: 'exact' });
+        const { data: learningResults } = await supabase
+          .from('ai_analysis_results')
+          .select('*')
+          .in('function_name', ['ai-learning-development', 'development-pathways-bulk']);
+
+        // Count unique employees with career paths (not individual records)
+        let activeCareerPathsFromAI = 0;
+        console.log('Analyzing career path results...');
+        
+        // Get unique employee count from most recent analysis runs
+        const uniqueEmployeesWithPaths = new Set();
+        const recentResults = careerPathResults?.filter(result => {
+          // Only count results from the last 90 days
+          const resultDate = new Date(result.created_at);
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          return resultDate > ninetyDaysAgo;
+        }) || [];
+        
+        recentResults.forEach((result, index) => {
+          console.log(`Sample result ${index + 1}:`, {
+            function_name: result.function_name,
+            analysis_type: result.analysis_type,
+            created_at: result.created_at,
+            analysis_result_keys: result.analysis_result ? Object.keys(result.analysis_result) : 'No analysis_result',
+            sample_data: result.analysis_result
+          });
+          
+          if (result.analysis_result) {
+            // Try different possible employee ID fields
+            const employeeId = result.analysis_result.employeeId || 
+                              result.analysis_result.employee_id ||
+                              result.analysis_result.id ||
+                              result.created_by;
+            
+            if (employeeId) {
+              uniqueEmployeesWithPaths.add(employeeId);
+            } else {
+              // If no employee ID, just count the record (each record = one employee)
+              uniqueEmployeesWithPaths.add(`record_${result.id}`);
+            }
+          }
+          
+          // Only log first few to avoid spam
+          if (index < 3) {
+            console.log('Employee ID found:', result.analysis_result?.employeeId || result.analysis_result?.employee_id || 'NONE');
+          }
+        });
+        
+        activeCareerPathsFromAI = uniqueEmployeesWithPaths.size;
+        
+        console.log('Total career path records found:', careerPathResults?.length || 0);
+        console.log('Recent results (last 90 days):', recentResults.length);
+        console.log('Unique employees with career paths:', activeCareerPathsFromAI);
+
+        // Count certifications and trainings (these might be 0 and that's OK)
+        let totalCertifications = 0;
+        let totalTrainings = 0;
+        
+        learningResults?.forEach(result => {
+          const analysisData = result.analysis_result;
+          if (analysisData?.employees) {
+            analysisData.employees.forEach(emp => {
+              if (emp.certificationRecommendations?.length) {
+                totalCertifications += emp.certificationRecommendations.length;
+              }
+              if (emp.trainingPrograms?.length) {
+                totalTrainings += emp.trainingPrograms.length;
+              }
+            });
+          }
+        });
+
+        // Get active training enrollments from the training system
+        console.log('Fetching active training enrollments...');
+        const { data: trainingEnrollments } = await supabase
+          .from('employee_training_enrollments')
+          .select('*')
+          .in('status', ['enrolled', 'in_progress']);
+        
+        console.log('Active training enrollments found:', trainingEnrollments?.length || 0);
+        const activeTrainingEnrollments = trainingEnrollments?.length || 0;
+        
+        // Use the higher value: AI-recommended trainings or actual enrollments
+        totalTrainings = Math.max(totalTrainings, activeTrainingEnrollments);
 
         // Calculate average performance rating
         const avgRating = employees?.length > 0 
@@ -53,15 +135,21 @@ const CareerPathsDashboard = () => {
 
         const analyticsData = {
           totalEmployees: totalEmployees || 0,
-          activeCareerPlans: activePlans || 0,
+          activeCareerPlans: Math.max(activePlans || 0, activeCareerPathsFromAI),
           totalCertifications: totalCertifications || 0,
           totalTrainings: totalTrainings || 0,
           avgPerformanceRating: Math.round(avgRating * 10) / 10,
-          recentCertifications: certifications?.slice(0, 5) || [],
-          recentTrainings: trainings?.slice(0, 5) || []
+          recentCertifications: [],
+          recentTrainings: []
         };
 
         console.log('Career analytics data:', analyticsData);
+        console.log('Career Path Results found:', careerPathResults?.length);
+        console.log('Learning Results found:', learningResults?.length);
+        console.log('Active Career Paths from AI:', activeCareerPathsFromAI);
+        console.log('Development Plans found:', developmentPlans?.length);
+        console.log('Calculated certifications:', totalCertifications);
+        console.log('Calculated trainings:', totalTrainings);
         setCareerAnalytics(analyticsData);
       } catch (error) {
         console.error('Error fetching career analytics:', error);

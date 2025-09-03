@@ -93,15 +93,15 @@ const DevelopmentDashboard = () => {
       </section>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="ai-insights" className="w-full">
+      <Tabs defaultValue="pathways" className="w-full">
         <TabsList className="grid w-full grid-cols-3 lg:w-fit">
-          <TabsTrigger value="ai-insights" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            <span className="hidden sm:inline">AI Insights</span>
-          </TabsTrigger>
           <TabsTrigger value="pathways" className="flex items-center gap-2">
             <BookOpen className="h-4 w-4" />
             <span className="hidden sm:inline">Pathways</span>
+          </TabsTrigger>
+          <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Insights</span>
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
