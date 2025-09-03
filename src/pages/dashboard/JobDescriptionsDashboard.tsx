@@ -4,23 +4,53 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { AIJobDescriptionGeneratorEnhanced } from "@/components/AIJobDescriptionGeneratorEnhanced";
 import { AIJobDescriptionsIntelligence } from "@/components/AIJobDescriptionsIntelligence";
-import AIRoleAssignmentTester from "@/components/AIRoleAssignmentTester";
 import JobDescriptionDialog from "@/components/JobDescriptionDialog";
 import { useJobDescriptionStats } from "@/hooks/useJobDescriptionStats";
 import { useRecentJobDescriptions } from "@/hooks/useRecentJobDescriptions";
 import { useNavigate } from "react-router-dom";
-import { FileText, Zap, CheckCircle, Clock, Brain, Loader2 } from "lucide-react";
+import { FileText, Zap, CheckCircle, Clock, Brain, Loader2, XCircle } from "lucide-react";
 
 const JobDescriptionsDashboard = () => {
   console.log('🔄 JobDescriptionsDashboard rendered');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("generator");
   
+  // Add useEffect to handle page refresh and ensure we stay on this page
+  React.useEffect(() => {
+    console.log('📍 JobDescriptionsDashboard mounted - ensuring we stay on this page');
+    console.log('📍 Current pathname:', window.location.pathname);
+    
+    // Check if this is a page refresh (using modern Navigation API if available)
+    const isRefresh = window.performance.getEntriesByType('navigation').length > 0 
+      ? (window.performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming).type === 'reload'
+      : true;
+    console.log('📍 Is page refresh:', isRefresh);
+    
+    // Only navigate if we're not already on the correct page
+    if (window.location.pathname !== '/dashboard/job-descriptions') {
+      console.log('🔄 URL mismatch detected, correcting...');
+      navigate('/dashboard/job-descriptions', { replace: true });
+    } else {
+      console.log('✅ Already on correct page, no navigation needed');
+    }
+    
+    // Add a small delay to ensure the page is fully loaded
+    const timer = setTimeout(() => {
+      console.log('📍 Page fully loaded, ensuring correct URL');
+      if (window.location.pathname !== '/dashboard/job-descriptions') {
+        console.log('🔄 Final URL correction...');
+        navigate('/dashboard/job-descriptions', { replace: true });
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [navigate]);
+  
   console.log('🎯 Current activeTab:', activeTab);
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
-  const { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading } = useJobDescriptionStats();
-  const { recentJDs, loading: recentLoading } = useRecentJobDescriptions();
-  console.log('📊 Dashboard stats:', { totalJDs, activeJDs, draftJDs, approvedJDs, pendingJDs, loading });
+  const { totalJDs, activeJDs, draftJDs, approvedJDs, publishedJDs, declinedJDs, pendingJDs, loading, refetch: refetchStats } = useJobDescriptionStats();
+  const { recentJDs, loading: recentLoading, refetch: refetchRecent } = useRecentJobDescriptions();
+  console.log('📊 Dashboard stats:', { totalJDs, activeJDs, draftJDs, approvedJDs, publishedJDs, declinedJDs, pendingJDs, loading });
 
   const handleCardClick = useCallback((cardType: string, index: number) => {
     console.log('🔍 Card clicked:', cardType, index);
@@ -34,8 +64,17 @@ const JobDescriptionsDashboard = () => {
       setActiveDialog('pending-jds');
     } else if (index === 3) {
       setActiveDialog('active-jds');
+    } else if (index === 4) {
+      setActiveDialog('declined-jds');
     }
   }, []);
+
+  // Callback to refresh data when a new JD is generated
+  const handleJDGenerated = useCallback(() => {
+    console.log('🔄 JD generated, refreshing dashboard data...');
+    refetchStats();
+    refetchRecent();
+  }, [refetchStats, refetchRecent]);
 
   // Memoize the stats array to prevent re-renders
   const jdStats = useMemo(() => [
@@ -52,7 +91,7 @@ const JobDescriptionsDashboard = () => {
       label: "Approved JDs", 
       icon: CheckCircle, 
       color: "text-green-600",
-      description: "Approved job descriptions",
+      description: "Approved + Published JDs",
       status: "approved"
     },
     { 
@@ -68,10 +107,18 @@ const JobDescriptionsDashboard = () => {
       label: "Active JDs", 
       icon: Zap, 
       color: "text-orange-600",
-      description: "Currently in use",
+      description: "Currently published",
       status: "published"
+    },
+    { 
+      value: loading ? "Loading..." : `${declinedJDs}`, 
+      label: "Declined JDs", 
+      icon: XCircle, 
+      color: "text-red-600",
+      description: "Declined job descriptions",
+      status: "declined"
     }
-  ], [loading, totalJDs, approvedJDs, pendingJDs, activeJDs]);
+  ], [loading, totalJDs, approvedJDs, pendingJDs, activeJDs, declinedJDs]);
 
   return (
     <div className="space-y-8">
@@ -92,7 +139,7 @@ const JobDescriptionsDashboard = () => {
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           {jdStats.map((stat, index) => (
             <Card 
               key={`${stat.label}-${stat.value}`}
@@ -102,10 +149,11 @@ const JobDescriptionsDashboard = () => {
               <CardContent className="p-4">
                 <div className="flex items-center space-x-3">
                   <div className={`p-2 rounded-lg bg-gradient-to-br ${
-                    index % 4 === 0 ? 'from-blue-500 to-blue-600' :
-                    index % 4 === 1 ? 'from-green-500 to-green-600' :
-                    index % 4 === 2 ? 'from-purple-500 to-purple-600' :
-                    'from-orange-500 to-orange-600'
+                    index % 5 === 0 ? 'from-blue-500 to-blue-600' :
+                    index % 5 === 1 ? 'from-green-500 to-green-600' :
+                    index % 5 === 2 ? 'from-purple-500 to-purple-600' :
+                    index % 5 === 3 ? 'from-orange-500 to-orange-600' :
+                    'from-red-500 to-red-600'
                   }`}>
                     <stat.icon className="h-5 w-5 text-white" />
                   </div>
@@ -137,8 +185,11 @@ const JobDescriptionsDashboard = () => {
           </p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+        <Tabs value={activeTab} onValueChange={(value) => {
+          console.log('🔄 Tab changed from', activeTab, 'to', value);
+          setActiveTab(value);
+        }} className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="generator" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Generator
@@ -146,10 +197,6 @@ const JobDescriptionsDashboard = () => {
             <TabsTrigger value="intelligence" className="flex items-center gap-2">
               <Brain className="h-4 w-4" />
               Intelligence
-            </TabsTrigger>
-            <TabsTrigger value="tester" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              AI Tester
             </TabsTrigger>
           </TabsList>
 
@@ -161,9 +208,9 @@ const JobDescriptionsDashboard = () => {
                   <span>Generate Job Descriptions</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <AIJobDescriptionGeneratorEnhanced />
-              </CardContent>
+                             <CardContent>
+                 <AIJobDescriptionGeneratorEnhanced onJDGenerated={handleJDGenerated} />
+               </CardContent>
             </Card>
           </TabsContent>
 
@@ -177,20 +224,6 @@ const JobDescriptionsDashboard = () => {
               </CardHeader>
               <CardContent>
                 <AIJobDescriptionsIntelligence />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="tester" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Brain className="h-5 w-5 text-primary" />
-                  <span>AI System Tester</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AIRoleAssignmentTester />
               </CardContent>
             </Card>
           </TabsContent>
@@ -223,12 +256,14 @@ const JobDescriptionsDashboard = () => {
                       jd.status === 'approved' ? 'text-green-600' :
                       jd.status === 'published' ? 'text-blue-600' :
                       jd.status === 'review' ? 'text-yellow-600' :
+                      jd.status === 'declined' ? 'text-red-600' :
                       'text-gray-600'
                     }`}>
                       {jd.status === 'approved' && '✓ Approved'}
                       {jd.status === 'published' && '✓ Published'}
                       {jd.status === 'review' && '⏳ Review'}
                       {jd.status === 'draft' && '📝 Draft'}
+                      {jd.status === 'declined' && '❌ Declined'}
                     </div>
                   </div>
                 ))
@@ -272,28 +307,35 @@ const JobDescriptionsDashboard = () => {
       <Dialog open={activeDialog === 'all-jds'} onOpenChange={(open) => setActiveDialog(open ? 'all-jds' : null)}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="sr-only">All Job Descriptions</DialogTitle>
-          <JobDescriptionDialog statusFilters={['all']} />
+          <JobDescriptionDialog statusFilters={['all']} onActionPerformed={handleJDGenerated} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={activeDialog === 'approved-jds'} onOpenChange={(open) => setActiveDialog(open ? 'approved-jds' : null)}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="sr-only">Approved Job Descriptions</DialogTitle>
-          <JobDescriptionDialog statusFilters={['approved']} />
+          <JobDescriptionDialog statusFilters={['approved', 'published']} onActionPerformed={handleJDGenerated} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={activeDialog === 'pending-jds'} onOpenChange={(open) => setActiveDialog(open ? 'pending-jds' : null)}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="sr-only">Pending Review Job Descriptions</DialogTitle>
-          <JobDescriptionDialog statusFilters={['draft', 'review']} />
+          <JobDescriptionDialog statusFilters={['draft', 'review']} onActionPerformed={handleJDGenerated} />
         </DialogContent>
       </Dialog>
 
       <Dialog open={activeDialog === 'active-jds'} onOpenChange={(open) => setActiveDialog(open ? 'active-jds' : null)}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogTitle className="sr-only">Active Job Descriptions</DialogTitle>
-          <JobDescriptionDialog statusFilters={['published']} />
+          <JobDescriptionDialog statusFilters={['published']} onActionPerformed={handleJDGenerated} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={activeDialog === 'declined-jds'} onOpenChange={(open) => setActiveDialog(open ? 'declined-jds' : null)}>
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Declined Job Descriptions</DialogTitle>
+          <JobDescriptionDialog statusFilters={['declined']} onActionPerformed={handleJDGenerated} />
         </DialogContent>
       </Dialog>
     </div>

@@ -84,6 +84,12 @@ const skillsAndDevelopmentItems = [
     description: "Learning & development paths"
   },
   {
+    title: "Training",
+    url: "/dashboard/training",
+    icon: Award,
+    description: "Training programs & analytics"
+  },
+  {
     title: "Certifications",
     url: "/dashboard/certifications",
     icon: Award,

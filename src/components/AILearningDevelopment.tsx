@@ -21,6 +21,7 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
   const [employeeId, setEmployeeId] = useState<string>('');
   const [pastResults, setPastResults] = useState<any[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string>('');
+  const [debugInfo, setDebugInfo] = useState<string>('No analysis run yet');
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -52,8 +53,15 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
 
   const handleAnalysis = async () => {
     setIsAnalyzing(true);
+    setDebugInfo('Starting analysis...');
+    
     try {
       console.log('Starting AI development analysis');
+      console.log('Selected analysis:', selectedAnalysis);
+      console.log('Department filter:', departmentFilter);
+      console.log('Employee ID:', employeeId);
+      
+      setDebugInfo('Calling Supabase function...');
       
       const { data, error } = await supabase.functions.invoke('ai-learning-development', {
         body: {
@@ -63,10 +71,14 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
         }
       });
 
-      console.log('Function response:', { data, error });
+      console.log('Function response data:', data);
+      console.log('Function response error:', error);
+      
+      setDebugInfo(`Response received. Data: ${data ? 'YES' : 'NO'}, Error: ${error ? 'YES' : 'NO'}`);
 
       if (error) {
         console.error('Development analysis error:', error);
+        setDebugInfo(`ERROR: ${JSON.stringify(error)}`);
         throw error;
       }
 
@@ -74,7 +86,17 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
         throw new Error('No data returned from analysis');
       }
 
-      setAnalysisResult(data);
+      console.log('Analysis data received:', data);
+      setDebugInfo(`Analysis complete! Data keys: ${data ? Object.keys(data).join(', ') : 'none'}`);
+      
+      // Force immediate state update
+      setAnalysisResult(null); // Clear first
+      setTimeout(() => {
+        setAnalysisResult(data); // Then set new data
+        console.log('Analysis result set in state:', data);
+        setDebugInfo(`State updated with ${data ? Object.keys(data).length : 0} properties`);
+      }, 100);
+      
       setSelectedResultId(''); // Clear selected result ID for new analysis
       onAnalysisComplete?.(data);
       
@@ -132,7 +154,26 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
   };
 
   const renderPersonalizedLearningResults = () => {
-    if (!analysisResult?.personalizedPlans) return null;
+    console.log('renderPersonalizedLearningResults called');
+    console.log('analysisResult:', analysisResult);
+    
+    // Handle the actual AI response structure
+    if (analysisResult?.employees) {
+      return renderEmployeeCareerDevelopment();
+    }
+    
+    // Handle the expected structure
+    if (!analysisResult?.personalizedPlans) {
+      console.log('No personalized plans found');
+      return (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No personalized learning plans available</p>
+          <pre className="text-xs text-left mt-4 bg-muted p-4 rounded overflow-auto max-h-96">
+            {JSON.stringify(analysisResult, null, 2)}
+          </pre>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-6">
@@ -310,6 +351,125 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
             </CardContent>
           </Card>
         )}
+      </div>
+    );
+  };
+
+  const renderEmployeeCareerDevelopment = () => {
+    const employees = analysisResult?.employees || [];
+    const analysisDate = analysisResult?.analysis_date;
+    
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5" />
+              Employee Career Development Plans
+              {analysisDate && (
+                <Badge variant="outline" className="ml-2">
+                  {new Date(analysisDate).toLocaleDateString()}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {employees.map((employee: any, index: number) => (
+                <div key={employee.employee_id || index} className="border rounded-lg p-6 bg-gray-50">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h4 className="font-semibold text-lg">
+                        {employee.employee_name || employee.employee_id || `Employee ${index + 1}`}
+                      </h4>
+                      <div className="text-sm text-muted-foreground mb-2">
+                        ID: {employee.employee_id}
+                      </div>
+                      <div className="flex gap-2 mt-1">
+                        <Badge variant="outline">{employee.current_role}</Badge>
+                        <Badge variant="secondary">{employee.target_role}</Badge>
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">{employee.readiness_score}%</div>
+                      <div className="text-sm text-muted-foreground">Readiness Score</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Gap Analysis */}
+                    <div className="space-y-4">
+                      <h5 className="font-medium text-base">Gap Analysis</h5>
+                      
+                      {employee.gap_analysis?.technical_skills && (
+                        <div>
+                          <h6 className="font-medium text-sm text-blue-600 mb-2">Technical Skills</h6>
+                          <ul className="space-y-1">
+                            {employee.gap_analysis.technical_skills.map((skill: string, idx: number) => (
+                              <li key={idx} className="text-sm flex items-center gap-2">
+                                <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                {skill}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {employee.gap_analysis?.leadership_skills && (
+                        <div>
+                          <h6 className="font-medium text-sm text-green-600 mb-2">Leadership Skills</h6>
+                          <ul className="space-y-1">
+                            {employee.gap_analysis.leadership_skills.map((skill: string, idx: number) => (
+                              <li key={idx} className="text-sm flex items-center gap-2">
+                                <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                {skill}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
+                      {employee.gap_analysis?.certifications && (
+                        <div>
+                          <h6 className="font-medium text-sm text-purple-600 mb-2">Required Certifications</h6>
+                          <div className="flex flex-wrap gap-2">
+                            {employee.gap_analysis.certifications.map((cert: string, idx: number) => (
+                              <Badge key={idx} variant="outline" className="text-xs">
+                                {cert}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Development Recommendations */}
+                    <div>
+                      <h5 className="font-medium text-base mb-3">Development Recommendations</h5>
+                      <ul className="space-y-2">
+                        {employee.development_recommendations?.map((rec: string, idx: number) => (
+                          <li key={idx} className="text-sm flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                            {rec}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  {/* Progress Bar */}
+                  <div className="mt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Career Readiness</span>
+                      <span className="text-sm text-muted-foreground">{employee.readiness_score}%</span>
+                    </div>
+                    <Progress value={employee.readiness_score} className="h-2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   };
@@ -523,6 +683,16 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
               </p>
             </div>
           )}
+          
+          {/* Debug Info */}
+          <div className="bg-blue-50 p-3 rounded-lg mb-4">
+            <p className="text-sm text-blue-700">
+              <strong>Debug:</strong> {debugInfo}
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Analysis Result: {analysisResult ? JSON.stringify(Object.keys(analysisResult)).substring(0, 100) + '...' : 'null'}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -547,7 +717,33 @@ export function AILearningDevelopment({ onAnalysisComplete }: LearningDevelopmen
               </CardContent>
             </Card>
           )}
+          
+          {/* Debug: Show raw analysis result if no specific renderer matches */}
+          {!['personalized_learning', 'skills_development', 'training_effectiveness', 'learning_strategy'].includes(selectedAnalysis) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Analysis Results (Debug)</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs bg-muted p-4 rounded overflow-auto max-h-96">
+                  {JSON.stringify(analysisResult, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
+          )}
         </div>
+      )}
+      
+      {!analysisResult && !isAnalyzing && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold">No Analysis Results</h3>
+            <p className="text-muted-foreground">
+              Click "Run Analysis" to generate AI learning & development insights
+            </p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

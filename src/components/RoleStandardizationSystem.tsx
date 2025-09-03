@@ -7,11 +7,14 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Upload, FileSpreadsheet, Brain, CheckCircle, AlertCircle, Zap, Database } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Upload, FileSpreadsheet, Brain, CheckCircle, AlertCircle, Zap, Database, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { FILE_UPLOAD, SUCCESS_MESSAGES, ERROR_MESSAGES } from "@/lib/constants";
+import { UploadDebugger } from "./UploadDebugger";
+import { UploadedRolesViewer } from "./UploadedRolesViewer";
 import * as XLSX from 'xlsx';
 
 interface ParsedFile {
@@ -38,6 +41,8 @@ export const RoleStandardizationSystem = () => {
   const [results, setResults] = useState<any>(null);
   const [sessionId, setSessionId] = useState<string>("");
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [showDebugger, setShowDebugger] = useState(false);
+  const [showUploadedRoles, setShowUploadedRoles] = useState(false);
 
   const parseExcelFile = useCallback((file: File, type: 'xl' | 'smart'): Promise<ParsedFile> => {
     return new Promise((resolve, reject) => {
@@ -156,7 +161,8 @@ export const RoleStandardizationSystem = () => {
           ai_analysis: { 
             step: 'upload_started',
             xl_files: parsedFiles.filter(f => f.type === 'xl').length,
-            smart_files: parsedFiles.filter(f => f.type === 'smart').length
+            smart_files: parsedFiles.filter(f => f.type === 'smart').length,
+            raw_data: parsedFiles  // Add this for the Edge Function
           }
         })
         .select()
@@ -218,11 +224,11 @@ export const RoleStandardizationSystem = () => {
           duration: 5000
         });
       } else {
-        toast({
-          title: "🎉 Upload Success!",
-          description: `Uploaded ${uploadResult.totalInserted} new roles to database`,
-          duration: 5000
-        });
+              toast({
+        title: "🎉 Upload Success!",
+        description: `Uploaded ${uploadResult.totalInserted} new roles to database. Click "View Uploaded Roles" to see and standardize them.`,
+        duration: 8000
+      });
       }
 
     } catch (error) {
@@ -230,6 +236,126 @@ export const RoleStandardizationSystem = () => {
       
       toast({
         title: "❌ Upload Failed",
+        description: error instanceof Error ? error.message : 'Unknown error occurred',
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+      setCurrentStep("");
+    }
+  };
+
+  const uploadAndStandardizeDirectly = async () => {
+    if (xlFiles.length === 0 && smartFiles.length === 0) {
+      toast({
+        title: "No files selected",
+        description: "Please select at least one Excel file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required", 
+        description: "Please log in to use this feature",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    setProgress(0);
+    setResults(null);
+
+    try {
+      // Step 1: Parse files
+      setCurrentStep("📊 Parsing Excel files...");
+      setProgress(20);
+      
+      const allFiles = [...xlFiles, ...smartFiles];
+      const parsedFiles: ParsedFile[] = [];
+      
+      for (const file of xlFiles) {
+        const parsed = await parseExcelFile(file, 'xl');
+        parsedFiles.push(parsed);
+      }
+      
+      for (const file of smartFiles) {
+        const parsed = await parseExcelFile(file, 'smart');
+        parsedFiles.push(parsed);
+      }
+
+      // Step 2: Create session with raw data for AI
+      setCurrentStep("🔐 Creating upload session...");
+      setProgress(40);
+
+      const { data: session, error: sessionError } = await supabase
+        .from('xlsmart_upload_sessions')
+        .insert({
+          session_name: `AI Standardization ${new Date().toISOString()}: ${allFiles.map(f => f.name).join(', ')}`,
+          file_names: allFiles.map(f => f.name),
+          temp_table_names: [],
+          total_rows: parsedFiles.reduce((sum, file) => sum + file.rows.length, 0),
+          status: 'processing',
+          created_by: user.id,
+          ai_analysis: { 
+            step: 'ready_for_standardization',
+            xl_files: parsedFiles.filter(f => f.type === 'xl').length,
+            smart_files: parsedFiles.filter(f => f.type === 'smart').length,
+            raw_data: parsedFiles
+          }
+        })
+        .select()
+        .single();
+
+      if (sessionError) throw sessionError;
+      setSessionId(session.id);
+
+      // Step 3: Run AI Standardization directly
+      setCurrentStep("🧠 AI standardizing roles...");
+      setProgress(70);
+
+      const { data: result, error } = await supabase.functions.invoke('ai-role-standardization', {
+        body: { sessionId: session.id }
+      });
+
+      if (error) {
+        console.error('Standardization error:', error);
+        throw new Error(`Standardization failed: ${error.message}`);
+      }
+
+      if (!result?.success) {
+        console.error('Standardization failed:', result);
+        throw new Error(result?.error || 'Standardization failed');
+      }
+
+      setProgress(100);
+      setCurrentStep("✅ Standardization completed!");
+
+      setResults({
+        standardizedRolesCreated: result.standardRolesCreated,
+        mappingsCreated: result.mappingsCreated,
+        xlDataProcessed: result.xlDataProcessed,
+        smartDataProcessed: result.smartDataProcessed
+      });
+
+      toast({
+        title: "🎉 Complete Success!",
+        description: `Created ${result.standardRolesCreated} standardized roles with ${result.mappingsCreated} mappings`,
+        duration: 5000
+      });
+
+      // Auto-show debugger popup after successful standardization
+      setTimeout(() => {
+        setShowDebugger(true);
+      }, 1000);
+
+    } catch (error) {
+      console.error('Upload and standardization error:', error);
+      
+      toast({
+        title: "❌ Process Failed",
         description: error instanceof Error ? error.message : 'Unknown error occurred',
         variant: "destructive"
       });
@@ -286,6 +412,11 @@ export const RoleStandardizationSystem = () => {
         duration: 5000
       });
 
+      // Auto-show debugger popup after successful standardization
+      setTimeout(() => {
+        setShowDebugger(true);
+      }, 1000);
+
     } catch (error) {
       console.error('Standardization error details:', error);
       
@@ -310,6 +441,28 @@ export const RoleStandardizationSystem = () => {
         <p className="text-muted-foreground mt-2">
           Choose how you want to process your role data
         </p>
+        
+        {/* Debug Tools */}
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDebugger(true)}
+            className="flex items-center gap-2"
+          >
+            <Database className="h-4 w-4" />
+            🔍 Upload Debugger
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowUploadedRoles(true)}
+            className="flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            📋 View Uploaded Roles
+          </Button>
+        </div>
       </div>
 
       {/* Option Selection */}
@@ -424,6 +577,15 @@ export const RoleStandardizationSystem = () => {
                   </>
                 )}
               </Button>
+              
+              <Button
+                variant="outline"
+                onClick={() => setShowUploadedRoles(true)}
+                className="w-full"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Uploaded Roles
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -522,10 +684,7 @@ export const RoleStandardizationSystem = () => {
 
               <Button
                 onClick={async () => {
-                  await uploadToDatabase('standardize');
-                  if (sessionId) {
-                    await runStandardization();
-                  }
+                  await uploadAndStandardizeDirectly();
                 }}
                 disabled={(xlFiles.length === 0 && smartFiles.length === 0) || !user || isProcessing}
                 className="w-full"
@@ -585,6 +744,26 @@ export const RoleStandardizationSystem = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Auto-popup Debugger Dialog */}
+      <Dialog open={showDebugger} onOpenChange={setShowDebugger}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>🎉 Standardization Complete - Upload Status</DialogTitle>
+          </DialogHeader>
+          <UploadDebugger />
+        </DialogContent>
+      </Dialog>
+
+      {/* Uploaded Roles Viewer Dialog */}
+      <Dialog open={showUploadedRoles} onOpenChange={setShowUploadedRoles}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>📋 Uploaded Roles</DialogTitle>
+          </DialogHeader>
+          <UploadedRolesViewer />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

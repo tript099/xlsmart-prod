@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { HRSidebar } from "@/components/HRSidebar";
 import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 import { LiteLLMTest } from "@/components/LiteLLMTest";
 import { ComprehensiveApplicationTester } from "@/components/ComprehensiveApplicationTester";
@@ -12,7 +13,7 @@ import { Zap, TestTube } from "lucide-react";
 
 
 const HRDashboard = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isLiteLLMDialogOpen, setIsLiteLLMDialogOpen] = useState(false);
@@ -20,12 +21,26 @@ const HRDashboard = () => {
 
   // Redirect unauthenticated users to login
   useEffect(() => {
-    if (!user) {
+    console.log('🔐 HRDashboard auth check - user:', !!user, 'loading:', authLoading, 'pathname:', location.pathname);
+    if (!authLoading && !user) {
+      console.log('🚫 No user found, redirecting to login');
       navigate('/');
+    } else if (!authLoading && user) {
+      console.log('✅ User authenticated, staying on current page:', location.pathname);
     }
-  }, [user, navigate]);
+  }, [user, authLoading, navigate, location.pathname]);
 
-  // No need for manual redirect since we have an index route now
+  // Show loading while auth is being checked
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return null;

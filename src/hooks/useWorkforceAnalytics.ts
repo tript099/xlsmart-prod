@@ -170,9 +170,21 @@ export const useWorkforceAnalytics = () => {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
-      // Skill gaps analysis
-      const totalAssessments = skillAssessments.length;
-      const averageMatchPercentage = skillAssessments.reduce((sum, assessment) => 
+      // Get latest skill assessment per employee to avoid duplicates
+      const latestAssessmentPerEmployee = new Map();
+      skillAssessments.forEach(assessment => {
+        const employeeId = assessment.employee_id;
+        const existingAssessment = latestAssessmentPerEmployee.get(employeeId);
+        
+        if (!existingAssessment || new Date(assessment.assessment_date) > new Date(existingAssessment.assessment_date)) {
+          latestAssessmentPerEmployee.set(employeeId, assessment);
+        }
+      });
+
+      // Skill gaps analysis from latest assessments only
+      const latestAssessments = Array.from(latestAssessmentPerEmployee.values());
+      const totalAssessments = latestAssessments.length;
+      const averageMatchPercentage = latestAssessments.reduce((sum, assessment) => 
         sum + (Number(assessment.overall_match_percentage) || 0), 0) / totalAssessments || 0;
       const criticalGaps = skillGaps.filter(gap => 
         gap.overall_match_percentage && Number(gap.overall_match_percentage) < 60
@@ -185,11 +197,11 @@ export const useWorkforceAnalytics = () => {
         roleDistribution[role] = (roleDistribution[role] || 0) + 1;
       });
 
-      // Retention risk based on skill assessments
-      const highRisk = skillAssessments.filter(assessment => 
+      // Retention risk based on latest skill assessments only
+      const highRisk = latestAssessments.filter(assessment => 
         (assessment.churn_risk_score || 0) > 70 || (assessment.rotation_risk_score || 0) > 70
       ).length;
-      const mediumRisk = skillAssessments.filter(assessment => 
+      const mediumRisk = latestAssessments.filter(assessment => 
         ((assessment.churn_risk_score || 0) > 40 && (assessment.churn_risk_score || 0) <= 70) ||
         ((assessment.rotation_risk_score || 0) > 40 && (assessment.rotation_risk_score || 0) <= 70)
       ).length;

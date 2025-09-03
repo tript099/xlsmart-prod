@@ -16,6 +16,7 @@ import {
   Edit3,
   Download
 } from 'lucide-react';
+import { generatePDF, PDFPreview } from './PDFGenerator';
 
 interface JobDescription {
   id: string;
@@ -40,13 +41,17 @@ interface JobDescription {
   reviewed_by: string | null;
   approved_by: string | null;
   ai_generated: boolean;
+  job_identity?: any;
+  key_contacts?: any;
+  competencies?: any;
 }
 
 interface JobDescriptionDialogProps {
   statusFilters: string[];
+  onActionPerformed?: () => void;
 }
 
-const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilters }) => {
+const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilters, onActionPerformed }) => {
   const { toast } = useToast();
   const [jobDescriptions, setJobDescriptions] = useState<JobDescription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,11 +132,52 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
         description: "Job description has been approved successfully",
         duration: 3000,
       });
+      // Notify parent component to refresh dashboard stats
+      if (onActionPerformed) {
+        onActionPerformed();
+      }
     } catch (error) {
       console.error('Error approving JD:', error);
       toast({
         title: "Error",
         description: "Failed to approve job description",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDecline = async (jdId: string) => {
+    try {
+      setActionLoading(jdId);
+      const { error } = await supabase
+        .from('xlsmart_job_descriptions')
+        .update({
+          status: 'declined',
+          approved_by: null,
+          reviewed_by: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jdId);
+
+      if (error) throw error;
+
+      await loadJobDescriptions();
+      toast({
+        title: "❌ Declined!",
+        description: "Job description has been declined",
+        duration: 3000,
+      });
+      // Notify parent component to refresh dashboard stats
+      if (onActionPerformed) {
+        onActionPerformed();
+      }
+    } catch (error) {
+      console.error('Error declining JD:', error);
+      toast({
+        title: "Error",
+        description: "Failed to decline job description",
         variant: "destructive",
       });
     } finally {
@@ -158,6 +204,10 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
         description: "Job description is now live and active",
         duration: 3000,
       });
+      // Notify parent component to refresh dashboard stats
+      if (onActionPerformed) {
+        onActionPerformed();
+      }
     } catch (error) {
       console.error('Error publishing JD:', error);
       toast({
@@ -170,23 +220,60 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
     }
   };
 
+  const handleMoveToDraft = async (jdId: string) => {
+    try {
+      setActionLoading(jdId);
+      const { error } = await supabase
+        .from('xlsmart_job_descriptions')
+        .update({
+          status: 'draft',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', jdId);
+
+      if (error) throw error;
+
+      await loadJobDescriptions();
+      toast({
+        title: "📝 Moved to Draft!",
+        description: "Job description has been moved back to draft status",
+        duration: 3000,
+      });
+      // Notify parent component to refresh dashboard stats
+      if (onActionPerformed) {
+        onActionPerformed();
+      }
+    } catch (error) {
+      console.error('Error moving JD to draft:', error);
+      toast({
+        title: "Error",
+        description: "Failed to move job description to draft",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'published': return 'bg-blue-100 text-blue-800';
-      case 'review': return 'bg-yellow-100 text-yellow-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'approved': return 'bg-green-50 text-green-700 border-green-200';
+      case 'published': return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'review': return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'draft': return 'bg-gray-50 text-gray-700 border-gray-200';
+      case 'declined': return 'bg-red-50 text-red-700 border-red-200';
+      default: return 'bg-gray-50 text-gray-700 border-gray-200';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'approved': return <CheckCircle className="h-4 w-4" />;
-      case 'published': return <Eye className="h-4 w-4" />;
-      case 'review': return <Edit3 className="h-4 w-4" />;
-      case 'draft': return <FileText className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
+      case 'approved': return <CheckCircle className="h-3 w-3" />;
+      case 'published': return <Eye className="h-3 w-3" />;
+      case 'review': return <Edit3 className="h-3 w-3" />;
+      case 'draft': return <FileText className="h-3 w-3" />;
+      case 'declined': return <XCircle className="h-3 w-3" />;
+      default: return <FileText className="h-3 w-3" />;
     }
   };
 
@@ -196,6 +283,9 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
       if (statusFilters.includes('draft') && statusFilters.includes('review')) {
         return 'Pending Review Job Descriptions';
       }
+      if (statusFilters.includes('approved') && statusFilters.includes('published')) {
+        return 'Approved Job Descriptions';
+      }
       return `${statusFilters.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' & ')} Job Descriptions`;
     }
     const status = statusFilters[0];
@@ -204,6 +294,7 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
       case 'approved': return 'Approved Job Descriptions';
       case 'published': return 'Published Job Descriptions';
       case 'review': return 'Job Descriptions Under Review';
+      case 'declined': return 'Declined Job Descriptions';
       default: return 'Job Descriptions';
     }
   };
@@ -216,6 +307,22 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
       </div>
     );
   }
+
+  const downloadAsText = (text: string, filename: string) => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPDF = (jd: JobDescription) => {
+    generatePDF(jd);
+  };
 
   return (
     <div className="space-y-6">
@@ -230,56 +337,63 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
         <Badge variant="secondary">{jobDescriptions.length} found</Badge>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Job Descriptions List */}
-        <div className="lg:col-span-1">
+             <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+         {/* Job Descriptions List */}
+         <div className="xl:col-span-1 min-w-0">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Job Descriptions ({jobDescriptions.length})
-              </CardTitle>
-            </CardHeader>
+                         <CardHeader className="pb-1">
+               <CardTitle className="flex items-center gap-2 text-sm">
+                 <FileText className="h-3 w-3 text-primary" />
+                 Job Descriptions ({jobDescriptions.length})
+               </CardTitle>
+             </CardHeader>
             <CardContent className="p-0">
-              <ScrollArea className="h-[500px]">
-                <div className="space-y-2 p-4">
+                             <ScrollArea className="h-[500px] sm:h-[600px]">
+                 <div className="space-y-1.5 p-2">
                   {jobDescriptions.map((jd) => (
-                    <Card
-                      key={jd.id}
-                      className={`cursor-pointer transition-all hover:shadow-md ${
-                        selectedJD?.id === jd.id ? 'ring-2 ring-primary' : ''
-                      }`}
-                      onClick={() => setSelectedJD(jd)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-sm truncate">{jd.title}</h4>
-                            <Badge 
-                              className={`text-xs ${getStatusColor(jd.status)}`}
-                              variant="secondary"
-                            >
-                              {getStatusIcon(jd.status)}
-                              <span className="ml-1 capitalize">{jd.status}</span>
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {jd.summary?.substring(0, 100) || 'No summary available'}...
-                          </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {new Date(jd.created_at).toLocaleDateString()}
-                            </span>
-                            {jd.ai_generated && (
-                              <Badge variant="outline" className="text-xs">
-                                AI Generated
+                                                              <Card
+                       key={jd.id}
+                       className={`cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
+                         selectedJD?.id === jd.id ? 'ring-2 ring-primary bg-primary/5' : ''
+                       }`}
+                       onClick={() => setSelectedJD(jd)}
+                     >
+                                               <CardContent className="p-2.5">
+                          <div className="space-y-1.5">
+                                                       <div className="flex items-start justify-between gap-1.5">
+                                                           <h4 className="font-medium text-xs leading-tight flex-1 min-w-0">
+                                <span className="truncate block">{jd.title}</span>
+                              </h4>
+                                                           <Badge 
+                                className={`text-xs flex-shrink-0 ${getStatusColor(jd.status)}`}
+                                variant="secondary"
+                              >
+                                {getStatusIcon(jd.status)}
+                                <span className="ml-0.5 capitalize">{jd.status}</span>
                               </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                           </div>
+                                                       <p className="text-xs text-muted-foreground overflow-hidden" style={{
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              lineHeight: '1.2'
+                            }}>
+                              {jd.summary || 'No summary available'}
+                            </p>
+                                                       <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
+                                                           <span className="flex items-center gap-1">
+                                <Calendar className="h-2.5 w-2.5" />
+                                {new Date(jd.created_at).toLocaleDateString()}
+                              </span>
+                                                           {jd.ai_generated && (
+                                <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-purple-50 text-purple-700 border-purple-200 flex-shrink-0">
+                                  AI Generated
+                                </Badge>
+                              )}
+                           </div>
+                         </div>
+                       </CardContent>
+                     </Card>
                   ))}
                 </div>
               </ScrollArea>
@@ -288,7 +402,7 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
         </div>
 
         {/* Job Description Details */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-2">
           {selectedJD ? (
             <Card>
               <CardHeader>
@@ -303,96 +417,280 @@ const JobDescriptionDialog: React.FC<JobDescriptionDialogProps> = ({ statusFilte
                   </Badge>
                 </div>
                 
-                {/* Action Buttons */}
-                <div className="flex items-center gap-2 pt-4">
-                  {(selectedJD.status === 'draft' || selectedJD.status === 'review') && (
-                    <Button
-                      onClick={() => handleApprove(selectedJD.id)}
-                      disabled={actionLoading === selectedJD.id}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {actionLoading === selectedJD.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                      )}
-                      Approve
-                    </Button>
-                  )}
-                  {selectedJD.status === 'approved' && (
-                    <Button
-                      onClick={() => handlePublish(selectedJD.id)}
-                      disabled={actionLoading === selectedJD.id}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      {actionLoading === selectedJD.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Eye className="h-4 w-4 mr-2" />
-                      )}
-                      Publish
-                    </Button>
-                  )}
+                                 {/* Action Buttons */}
+                 <div className="flex items-center gap-2 pt-4 flex-wrap">
+                   {(selectedJD.status === 'draft' || selectedJD.status === 'review') && (
+                     <>
+                       <Button
+                         onClick={() => handleApprove(selectedJD.id)}
+                         disabled={actionLoading === selectedJD.id}
+                         className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm"
+                         size="sm"
+                       >
+                         {actionLoading === selectedJD.id ? (
+                           <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                         ) : (
+                           <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                         )}
+                         Approve
+                       </Button>
+                       <Button
+                         onClick={() => handleDecline(selectedJD.id)}
+                         disabled={actionLoading === selectedJD.id}
+                         variant="destructive"
+                         className="bg-red-600 hover:bg-red-700 text-xs sm:text-sm"
+                         size="sm"
+                       >
+                         {actionLoading === selectedJD.id ? (
+                           <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                         ) : (
+                           <XCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                         )}
+                         Decline
+                       </Button>
+                     </>
+                   )}
+                   {selectedJD.status === 'approved' && (
+                     <Button
+                       onClick={() => handlePublish(selectedJD.id)}
+                       disabled={actionLoading === selectedJD.id}
+                       className="bg-blue-600 hover:bg-blue-700 text-xs sm:text-sm"
+                       size="sm"
+                     >
+                       {actionLoading === selectedJD.id ? (
+                         <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                       ) : (
+                         <Eye className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                       )}
+                       Publish
+                     </Button>
+                   )}
+                   {selectedJD.status === 'declined' && (
+                     <Button
+                       onClick={() => handleMoveToDraft(selectedJD.id)}
+                       disabled={actionLoading === selectedJD.id}
+                       className="bg-gray-600 hover:bg-gray-700 text-xs sm:text-sm"
+                       size="sm"
+                     >
+                       {actionLoading === selectedJD.id ? (
+                         <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin mr-1 sm:mr-2" />
+                       ) : (
+                         <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                       )}
+                       Move to Draft
+                     </Button>
+                   )}
+                  <Button
+                    onClick={() => handleDownloadPDF(selectedJD)}
+                    variant="outline"
+                    className="ml-auto text-xs sm:text-sm"
+                    size="sm"
+                  >
+                    <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    Download PDF
+                  </Button>
                 </div>
               </CardHeader>
               
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium mb-2">Summary</h4>
-                    <p className="text-sm text-muted-foreground">{selectedJD.summary || 'No summary available'}</p>
-                  </div>
+                <Tabs defaultValue="standard" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3 text-xs sm:text-sm">
+                    <TabsTrigger value="standard" className="text-xs sm:text-sm">Standard View</TabsTrigger>
+                    <TabsTrigger value="structured" className="text-xs sm:text-sm">Structured Template</TabsTrigger>
+                    <TabsTrigger value="pdf-preview" className="text-xs sm:text-sm">PDF Preview</TabsTrigger>
+                  </TabsList>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <TabsContent value="standard" className="space-y-4">
                     <div>
-                      <h4 className="font-medium mb-2">Salary Range</h4>
-                      <p className="text-sm">
-                        {selectedJD.currency} {selectedJD.salary_range_min?.toLocaleString() || 'N/A'} - {selectedJD.salary_range_max?.toLocaleString() || 'N/A'}
-                      </p>
+                      <h4 className="font-medium mb-2">Summary</h4>
+                      <p className="text-sm text-muted-foreground">{selectedJD.summary || 'No summary available'}</p>
                     </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="font-medium mb-2">Salary Range</h4>
+                        <p className="text-sm">
+                          {selectedJD.currency} {selectedJD.salary_range_min?.toLocaleString() || 'N/A'} - {selectedJD.salary_range_max?.toLocaleString() || 'N/A'}
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="font-medium mb-2">Experience Level</h4>
+                        <p className="text-sm capitalize">{selectedJD.experience_level || 'N/A'}</p>
+                      </div>
+                    </div>
+
                     <div>
-                      <h4 className="font-medium mb-2">Experience Level</h4>
-                      <p className="text-sm capitalize">{selectedJD.experience_level || 'N/A'}</p>
+                      <h4 className="font-medium mb-2">Key Responsibilities</h4>
+                      <ul className="space-y-2">
+                        {Array.isArray(selectedJD.responsibilities) && selectedJD.responsibilities.length > 0 ? (
+                          selectedJD.responsibilities.map((resp: string, index: number) => (
+                            <li key={index} className="text-sm flex items-start gap-2">
+                              <span className="text-primary">•</span>
+                              <span>{resp}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-sm text-muted-foreground">No responsibilities listed</li>
+                        )}
+                      </ul>
                     </div>
-                  </div>
 
-                  <div>
-                    <h4 className="font-medium mb-2">Key Responsibilities</h4>
-                    <ul className="space-y-2">
-                      {Array.isArray(selectedJD.responsibilities) && selectedJD.responsibilities.length > 0 ? (
-                        selectedJD.responsibilities.map((resp: string, index: number) => (
-                          <li key={index} className="text-sm flex items-start gap-2">
-                            <span className="text-primary">•</span>
-                            <span>{resp}</span>
-                          </li>
-                        ))
-                      ) : (
-                        <li className="text-sm text-muted-foreground">No responsibilities listed</li>
-                      )}
-                    </ul>
-                  </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Required Qualifications</h4>
+                      <ul className="space-y-2">
+                        {Array.isArray(selectedJD.required_qualifications) && selectedJD.required_qualifications.length > 0 ? (
+                          selectedJD.required_qualifications.map((qual: string, index: number) => (
+                            <li key={index} className="text-sm flex items-start gap-2">
+                              <span className="text-red-500">•</span>
+                              <span>{qual}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-sm text-muted-foreground">No required qualifications listed</li>
+                        )}
+                      </ul>
+                    </div>
+                  </TabsContent>
+                  
+                  <TabsContent value="structured" className="space-y-4">
+                    <div className="space-y-4">
+                      {/* Job Identity */}
+                      <div>
+                        <h4 className="font-medium mb-2 text-blue-600">1. JOB IDENTITY</h4>
+                        <div className="bg-muted/50 p-3 rounded-lg text-sm">
+                          <div className="grid grid-cols-2 gap-2">
+                            <span className="font-medium">Position Title:</span>
+                            <span>{selectedJD.job_identity?.positionTitle || selectedJD.title}</span>
+                            <span className="font-medium">Directorate:</span>
+                            <span>{selectedJD.job_identity?.directorate || 'Not specified'}</span>
+                            {selectedJD.job_identity?.division && (
+                              <>
+                                <span className="font-medium">Division:</span>
+                                <span>{selectedJD.job_identity.division}</span>
+                              </>
+                            )}
+                            {selectedJD.job_identity?.department && (
+                              <>
+                                <span className="font-medium">Department:</span>
+                                <span>{selectedJD.job_identity.department}</span>
+                              </>
+                            )}
+                            <span className="font-medium">Direct Supervisor:</span>
+                            <span>{selectedJD.job_identity?.directSupervisor || 'Not specified'}</span>
+                          </div>
+                          {selectedJD.job_identity?.directSubordinate && selectedJD.job_identity.directSubordinate.length > 0 && (
+                            <div className="mt-2">
+                              <span className="font-medium">Direct Subordinate:</span>
+                              <ol className="list-decimal list-inside mt-1">
+                                {selectedJD.job_identity.directSubordinate.map((sub: string, index: number) => (
+                                  <li key={index} className="text-sm">{sub}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                  <div>
-                    <h4 className="font-medium mb-2">Required Qualifications</h4>
-                    <ul className="space-y-2">
-                      {Array.isArray(selectedJD.required_qualifications) && selectedJD.required_qualifications.length > 0 ? (
-                        selectedJD.required_qualifications.map((qual: string, index: number) => (
-                          <li key={index} className="text-sm flex items-start gap-2">
-                            <span className="text-red-500">•</span>
-                            <span>{qual}</span>
-                          </li>
-                        ))
-                      ) : (
-                        <li className="text-sm text-muted-foreground">No required qualifications listed</li>
-                      )}
-                    </ul>
-                  </div>
-                </div>
+                      {/* Job Purposes */}
+                      <div>
+                        <h4 className="font-medium mb-2 text-blue-600">2. JOB PURPOSES</h4>
+                        <p className="text-sm bg-muted/50 p-3 rounded-lg">{selectedJD.summary || 'Not specified'}</p>
+                      </div>
+
+                      {/* Main Responsibility */}
+                      <div>
+                        <h4 className="font-medium mb-2 text-blue-600">3. MAIN RESPONSIBILITY</h4>
+                        <div className="bg-muted/50 p-3 rounded-lg">
+                          {Array.isArray(selectedJD.responsibilities) && selectedJD.responsibilities.length > 0 ? (
+                            <ol className="list-decimal list-inside space-y-2">
+                              {selectedJD.responsibilities.map((resp: string, index: number) => (
+                                <li key={index} className="text-sm">{resp}</li>
+                              ))}
+                            </ol>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Not specified</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Key Contacts */}
+                      <div>
+                        <h4 className="font-medium mb-2 text-blue-600">5. KEY CONTACTS & RELATIONSHIP</h4>
+                        <div className="bg-muted/50 p-3 rounded-lg space-y-3">
+                          <div>
+                            <span className="font-medium text-sm">Internal:</span>
+                            {selectedJD.key_contacts?.internal && selectedJD.key_contacts.internal.length > 0 ? (
+                              <ol className="list-decimal list-inside mt-1">
+                                {selectedJD.key_contacts.internal.map((contact: string, index: number) => (
+                                  <li key={index} className="text-sm">{contact}</li>
+                                ))}
+                              </ol>
+                            ) : (
+                              <p className="text-sm text-muted-foreground ml-4">Not specified</p>
+                            )}
+                          </div>
+                          <div>
+                            <span className="font-medium text-sm">External:</span>
+                            {selectedJD.key_contacts?.external && selectedJD.key_contacts.external.length > 0 ? (
+                              <ol className="list-decimal list-inside mt-1">
+                                {selectedJD.key_contacts.external.map((contact: string, index: number) => (
+                                  <li key={index} className="text-sm">{contact}</li>
+                                ))}
+                              </ol>
+                            ) : (
+                              <p className="text-sm text-muted-foreground ml-4">Not specified</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Competencies */}
+                      <div>
+                        <h4 className="font-medium mb-2 text-blue-600">6. COMPETENCY SECTION</h4>
+                        <div className="bg-muted/50 p-3 rounded-lg space-y-4">
+                          <div>
+                            <h5 className="font-medium text-sm text-green-600">A. FUNCTIONAL COMPETENCY</h5>
+                            {selectedJD.competencies?.functional ? (
+                              <div className="mt-2 space-y-1 text-sm">
+                                <div><span className="font-medium">Academy Qualifications:</span> {selectedJD.competencies.functional.academyQualifications}</div>
+                                <div><span className="font-medium">Professional Experience:</span> {selectedJD.competencies.functional.professionalExperience}</div>
+                                <div><span className="font-medium">Certification/License:</span> {selectedJD.competencies.functional.certificationLicense}</div>
+                                <div><span className="font-medium">Expertise:</span> {selectedJD.competencies.functional.expertise?.join(', ')}</div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">Not specified</p>
+                            )}
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-sm text-purple-600">B. LEADERSHIP COMPETENCY</h5>
+                            {selectedJD.competencies?.leadership ? (
+                              <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                                <div><span className="font-medium">Strategic accountability:</span> {selectedJD.competencies.leadership.strategicAccountability}</div>
+                                <div><span className="font-medium">Customer centric:</span> {selectedJD.competencies.leadership.customerCentric}</div>
+                                <div><span className="font-medium">Coalition Building:</span> {selectedJD.competencies.leadership.coalitionBuilding}</div>
+                                <div><span className="font-medium">People First:</span> {selectedJD.competencies.leadership.peopleFirst}</div>
+                                <div><span className="font-medium">Agile Leadership:</span> {selectedJD.competencies.leadership.agileLeadership}</div>
+                                <div><span className="font-medium">Result Driven:</span> {selectedJD.competencies.leadership.resultDriven}</div>
+                                <div><span className="font-medium">Technology Savvy:</span> {selectedJD.competencies.leadership.technologySavvy}</div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">Not specified</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="pdf-preview" className="space-y-4">
+                    <PDFPreview jd={selectedJD} />
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           ) : (
             <Card>
-              <CardContent className="flex items-center justify-center h-[500px]">
+              <CardContent className="flex items-center justify-center h-[400px] sm:h-[500px]">
                 <div className="text-center">
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">Select a Job Description</h3>

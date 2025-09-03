@@ -48,8 +48,7 @@ serve(async (req) => {
     const { data: employees, error: empError } = await supabase
       .from('xlsmart_employees')
       .select('*')
-      .eq('is_active', true)
-      .limit(5);
+      .eq('is_active', true);
 
     if (empError) {
       console.error('Employee fetch error:', empError);
@@ -59,7 +58,35 @@ serve(async (req) => {
     console.log(`Found ${employees?.length || 0} employees`);
 
     // Call LiteLLM for AI analysis
+    console.log('About to call LiteLLM with employees:', employees?.length);
     const aiResponse = await callLiteLLM(employees, analysisType, employeeId, departmentFilter);
+    console.log('LiteLLM call completed, response type:', typeof aiResponse);
+    
+    console.log('Storing AI analysis result in database...');
+    
+    // Store the analysis result in the database
+    const { error: insertError } = await supabase
+      .from('ai_analysis_results')
+      .insert({
+        analysis_type: analysisType,
+        function_name: 'ai-learning-development',
+        input_parameters: {
+          analysisType,
+          employeeId,
+          departmentFilter,
+          employeeCount: employees?.length || 0
+        },
+        analysis_result: aiResponse,
+        created_by: '00000000-0000-0000-0000-000000000000', // System user
+        status: 'completed'
+      });
+
+    if (insertError) {
+      console.error('Error storing analysis result:', insertError);
+      // Don't fail the entire request if storage fails
+    } else {
+      console.log('Analysis result stored successfully');
+    }
     
     console.log('Returning AI response for analysis type:', analysisType);
     
@@ -94,17 +121,66 @@ async function callLiteLLM(employees: any[], analysisType: string, employeeId?: 
   const systemPrompt = `You are an expert HR analyst specializing in career development and workforce mobility for XLSMART, one of Indonesia's largest telecom companies. Using employee data, role requirements, and telecom career frameworks, analyze and: Suggest possible career progression pathways. Provide readiness scores and gap analysis. Recommend development activities to close gaps and prepare for next roles. Ensure recommendations align with telecom industry benchmarks and XLSMART's organizational needs. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART's HR systems.`;
 
   let prompt = '';
-  if (analysisType === 'personalized_plans') {
+  if (analysisType === 'personalized_learning') {
     prompt = `Based on these ${employees.length} employees, create personalized learning development plans.
 Include skill development paths, certification goals, and learning preferences for each employee.
 Focus on telecommunications industry skills and career progression.
 
-Employee data: ${JSON.stringify(employees.slice(0, 5))}`;
+Return JSON with:
+{
+  "analysis_date": "2024-12-18",
+  "employees": [
+    {
+      "employee_id": "actual_employee_id",
+      "employee_name": "First Last",
+      "current_role": "current position",
+      "target_role": "suggested next role",
+      "readiness_score": 65,
+      "gap_analysis": {
+        "technical_skills": ["skill1", "skill2"],
+        "leadership_skills": ["skill1", "skill2"],
+        "certifications": ["cert1", "cert2"]
+      },
+      "development_recommendations": ["action1", "action2", "action3"]
+    }
+  ]
+}
+
+Employee data: ${JSON.stringify(employees)}`;
+  } else if (analysisType === 'skills_development') {
+    prompt = `Analyze organizational skills gaps for ${employees.length} employees.
+Identify critical skill gaps and recommend development programs.
+
+Return JSON with:
+{
+  "organizationalSkillsGaps": [array of skill gaps],
+  "skillsDevelopmentPrograms": [array of programs]
+}
+
+Employee data: ${JSON.stringify(employees)}`;
+  } else if (analysisType === 'training_effectiveness') {
+    prompt = `Analyze training effectiveness metrics for ${employees.length} employees.
+Provide completion rates, ROI, and program performance analysis.
+
+Return JSON with:
+{
+  "trainingEffectivenessMetrics": {
+    "totalTrainingsCompleted": number,
+    "avgCompletionRate": number,
+    "skillImprovementRate": number,
+    "trainingROI": number
+  },
+  "programPerformance": [array of program analyses]
+}
+
+Employee data: ${JSON.stringify(employees)}`;
   } else {
     prompt = `Analyze learning and development needs for ${employees.length} employees.
 Type: ${analysisType}
 ${employeeId ? `Focus on employee: ${employeeId}` : ''}
-${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
+${departmentFilter ? `Department filter: ${departmentFilter}` : ''}
+
+Employee data: ${JSON.stringify(employees)}`;
   }
 
   console.log('=== LiteLLM API Call Started ===');
@@ -150,15 +226,46 @@ ${departmentFilter ? `Department filter: ${departmentFilter}` : ''}`;
     console.log('LiteLLM response received successfully');
     
     const content = data.choices[0].message.content;
+    console.log('Raw AI response length:', content.length);
+    console.log('Raw AI response preview:', content.substring(0, 300));
     
     // Clean up any markdown code blocks before JSON parsing
-    const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    let cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    
+    // Try to fix common JSON issues
+    cleanContent = cleanContent
+      .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+      .replace(/([{,]\s*)(\w+):/g, '$1"$2":') // Quote unquoted keys
+      .trim();
+    
+    console.log('Cleaned content preview:', cleanContent.substring(0, 300));
     console.log('Analysis completed successfully');
-    return JSON.parse(cleanContent);
+    
+    try {
+      return JSON.parse(cleanContent);
+    } catch (jsonParseError) {
+      console.error('JSON parse failed, trying to extract JSON from content');
+      console.error('JSON Parse error:', jsonParseError);
+      console.error('Content around error position:', cleanContent.substring(Math.max(0, 7400-100), 7400+100));
+      
+      // Try to find JSON in the content
+      const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          console.log('Found JSON match, attempting to parse...');
+          return JSON.parse(jsonMatch[0]);
+        } catch (secondParseError) {
+          console.error('Second parse attempt failed:', secondParseError);
+        }
+      }
+      
+      // If all parsing fails, return the fallback instead of throwing
+      console.log('All JSON parsing failed, returning fallback response');
+      throw jsonParseError;
+    }
   } catch (parseError) {
     console.error('Failed to parse AI response as JSON, using fallback');
     console.error('Parse error:', parseError);
-    console.error('Content that failed to parse:', cleanContent?.substring(0, 500) || 'No content');
     // Return a fallback response
     return {
       personalizedPlans: employees?.slice(0, 3).map((emp, index) => ({

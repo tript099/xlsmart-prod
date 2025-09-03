@@ -12,6 +12,7 @@ import { useAIStats } from "@/components/AIStatsProvider";
 import { useRoleAnalytics } from "@/hooks/useRoleAnalytics";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { AIUploadedRolesIntelligence } from "@/components/AIUploadedRolesIntelligence";
 
 const RolesDashboard = () => {
   const aiStats = useAIStats();
@@ -116,7 +117,7 @@ const RolesDashboard = () => {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="standardization" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-fit">
+        <TabsList className="grid w-full grid-cols-5 lg:w-fit">
           <TabsTrigger value="standardization" className="flex items-center gap-2">
             <Upload className="h-4 w-4" />
             <span className="hidden sm:inline">Standardization</span>
@@ -132,6 +133,10 @@ const RolesDashboard = () => {
           <TabsTrigger value="directory" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Directory</span>
+          </TabsTrigger>
+          <TabsTrigger value="ai-intelligence" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            <span className="hidden sm:inline">AI Uploaded Intelligence</span>
           </TabsTrigger>
         </TabsList>
 
@@ -203,6 +208,20 @@ const RolesDashboard = () => {
               </CardContent>
             </Card>
           </section>
+        </TabsContent>
+
+        <TabsContent value="ai-intelligence" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Brain className="h-5 w-5 text-primary" />
+                <span>AI Uploaded Intelligence</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AIUploadedRolesIntelligence />
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

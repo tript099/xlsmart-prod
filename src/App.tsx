@@ -19,6 +19,7 @@ import DevelopmentDashboard from "./pages/dashboard/DevelopmentDashboard";
 import CertificationsDashboard from "./pages/dashboard/CertificationsDashboard";
 import WorkforceAnalyticsDashboard from "./pages/dashboard/WorkforceAnalyticsDashboard";
 import SkillInventoryDashboard from "./pages/dashboard/SkillInventoryDashboard";
+import TrainingDashboard from "./pages/dashboard/TrainingDashboard";
 import BulkRoleAssignmentDashboard from "./pages/dashboard/BulkRoleAssignmentDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="career-paths" element={<CareerPathsDashboard />} />
             <Route path="mobility" element={<MobilityDashboard />} />
             <Route path="development" element={<DevelopmentDashboard />} />
+            <Route path="training" element={<TrainingDashboard />} />
             <Route path="certifications" element={<CertificationsDashboard />} />
             <Route path="workforce-analytics" element={<WorkforceAnalyticsDashboard />} />
             <Route path="skill-inventory" element={<SkillInventoryDashboard />} />

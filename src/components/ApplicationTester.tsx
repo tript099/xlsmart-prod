@@ -101,7 +101,7 @@ const ApplicationTester = () => {
       // Test 5: LiteLLM API Key
       updateTest('LiteLLM API Key', 'running', 'Testing LiteLLM API...');
       try {
-        const { data, error } = await supabase.functions.invoke('test-litellm', {
+        const { data, error } = await supabase.functions.invoke('test-litellm-direct', {
           body: { test: true }
         });
         if (error) throw error;

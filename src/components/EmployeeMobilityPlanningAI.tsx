@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ interface MobilityPlan {
   recommendations: string;
   ai_analysis: string;
   created_at: string;
+  formattedAnalysis?: string; // Optional for performance optimization
 }
 
 export const EmployeeMobilityPlanningAI = () => {
@@ -53,6 +54,7 @@ export const EmployeeMobilityPlanningAI = () => {
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,25 +65,59 @@ export const EmployeeMobilityPlanningAI = () => {
     try {
       setLoading(true);
       
-      // Load all employees
-      const { data: employeesData, error: employeesError } = await supabase
-        .from('xlsmart_employees')
-        .select('*')
-        .eq('is_active', true)
-        .order('first_name');
+      // Load employees and roles in parallel for faster initial load
+      const [employeesResult, rolesResult] = await Promise.all([
+        supabase
+          .from('xlsmart_employees')
+          .select('*')
+          .eq('is_active', true)
+          .order('first_name'),
+        supabase
+          .from('xlsmart_standard_roles')
+          .select('*')
+          .eq('is_active', true)
+      ]);
 
-      if (employeesError) throw employeesError;
+      if (employeesResult.error) throw employeesResult.error;
+      if (rolesResult.error) throw rolesResult.error;
 
-      // Load standard roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('xlsmart_standard_roles')
-        .select('*')
-        .eq('is_active', true);
+      setEmployees(employeesResult.data || []);
+      setStandardRoles(rolesResult.data || []);
+      
+      // Show the UI immediately, load mobility plans in background
+      setLoading(false);
 
-      if (rolesError) throw rolesError;
+      // Load AI-generated mobility plans asynchronously (non-blocking)
+      setTimeout(async () => {
+        try {
+          const { data: mobilityPlansData, error: mobilityPlansError } = await supabase
+            .from('ai_analysis_results')
+            .select('*')
+            .eq('analysis_type', 'mobility_plan')
+            .order('created_at', { ascending: false });
 
-      setEmployees(employeesData || []);
-      setStandardRoles(rolesData || []);
+          if (mobilityPlansError) {
+            console.error('Error loading mobility plans:', mobilityPlansError);
+          } else {
+            // Transform mobility plans data
+            const transformedMobilityPlans = mobilityPlansData?.map((result: any) => ({
+              id: result.id,
+              employee_id: result.input_parameters?.employee_id || '',
+              current_role: result.input_parameters?.current_position || '',
+              target_roles: result.analysis_result?.mobilityPlan || '',
+              mobility_score: 75, // Default score
+              barriers: [],
+              recommendations: result.analysis_result?.mobilityPlan || '',
+              ai_analysis: result.analysis_result?.mobilityPlan || '',
+              created_at: result.created_at
+            })) || [];
+
+            setMobilityPlans(transformedMobilityPlans);
+          }
+        } catch (error) {
+          console.error('Error loading mobility plans:', error);
+        }
+      }, 100); // Small delay to ensure UI renders first
 
     } catch (error: any) {
       console.error('Error loading data:', error);
@@ -90,7 +126,6 @@ export const EmployeeMobilityPlanningAI = () => {
         description: "Failed to load mobility planning data",
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };
@@ -115,13 +150,15 @@ export const EmployeeMobilityPlanningAI = () => {
         body: {
           employees: employees.map(emp => ({
             id: emp.id,
-            name: `${emp.first_name} ${emp.last_name}`,
+            first_name: emp.first_name,
+            last_name: emp.last_name,
             current_position: emp.current_position,
-            department: emp.current_department,
-            level: emp.current_level,
-            experience: emp.years_of_experience,
+            current_department: emp.current_department,
+            current_level: emp.current_level,
+            years_of_experience: emp.years_of_experience,
             skills: emp.skills,
-            performance_rating: emp.performance_rating
+            performance_rating: emp.performance_rating,
+            source_company: emp.source_company
           })),
           standard_roles: standardRoles
         }
@@ -251,6 +288,158 @@ export const EmployeeMobilityPlanningAI = () => {
     return (progress.processed / progress.total) * 100;
   };
 
+  // Simplified and faster formatting function
+  const formatMobilityPlan = useCallback((text: string) => {
+    if (!text) return '';
+    
+    // Much simpler and faster formatting
+    return text
+      // Basic headers
+      .replace(/###\s+(.*?)(?=\n|$)/g, '<h4 class="font-semibold text-blue-600 mt-3 mb-2">$1</h4>')
+      .replace(/##\s+(.*?)(?=\n|$)/g, '<h3 class="font-bold text-gray-800 mt-4 mb-2">$1</h3>')
+      
+      // Bold text
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      
+      // Simple bullet points
+      .replace(/^[-•]\s+(.*)$/gm, '<div class="mb-1">• $1</div>')
+      
+      // Basic line breaks
+      .replace(/\n\n/g, '<br/><br/>')
+      .replace(/\n/g, '<br/>');
+  }, []);
+
+  // Progressive formatting state
+  const [formattedPlans, setFormattedPlans] = useState<MobilityPlan[]>([]);
+  const [isFormatting, setIsFormatting] = useState(false);
+
+  // Format plans progressively when AI Results tab becomes active
+  useEffect(() => {
+    if (activeTab === "ai-results" && mobilityPlans.length > 0) {
+      // Show content immediately with unformatted text
+      setFormattedPlans([...mobilityPlans]);
+      
+      const unformattedPlans = mobilityPlans.filter(plan => !plan.formattedAnalysis);
+      
+      if (unformattedPlans.length > 0) {
+        setIsFormatting(true);
+        
+        // Process plans quickly in the background
+        const formatInBatches = async () => {
+          let allFormatted = [...mobilityPlans];
+          
+          // Format all at once but with a small delay to let UI render
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          unformattedPlans.forEach(plan => {
+            const index = allFormatted.findIndex(p => p.id === plan.id);
+            if (index !== -1) {
+              allFormatted[index] = {
+                ...plan,
+                formattedAnalysis: formatMobilityPlan(plan.ai_analysis)
+              };
+            }
+          });
+          
+          setFormattedPlans([...allFormatted]);
+          setIsFormatting(false);
+        };
+        
+        formatInBatches();
+      }
+    } else if (activeTab !== "ai-results") {
+      // Clear formatted plans when not on AI Results tab to save memory
+      setFormattedPlans([]);
+    }
+  }, [activeTab, mobilityPlans, formatMobilityPlan]);
+
+  // Lazy loading component for AI Results
+  const AIResultsTab = useCallback(() => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Brain className="h-5 w-5" />
+          AI-Generated Mobility Plans
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {mobilityPlans.length > 0 ? (
+          <div className="space-y-4">
+            {isFormatting && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />
+                  <span className="text-sm text-blue-700">
+                    Formatting content... ({formattedPlans.filter(p => p.formattedAnalysis).length}/{mobilityPlans.length})
+                  </span>
+                </div>
+              </div>
+            )}
+            {formattedPlans.slice(0, 20).map((plan) => { // Limit to 20 plans for performance
+              const employee = employees.find(emp => emp.id === plan.employee_id);
+              return (
+                <div key={plan.id} className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold">
+                        {employee ? `${employee.first_name} ${employee.last_name}` : 'Unknown Employee'}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {plan.current_role} • {employee?.current_department}
+                      </p>
+                    </div>
+                    <Badge variant="outline">
+                      {new Date(plan.created_at).toLocaleDateString()}
+                    </Badge>
+                  </div>
+                  <div className="bg-white border border-gray-200 p-6 rounded-lg">
+                    <h5 className="font-semibold text-base mb-4 text-gray-800 border-b border-gray-200 pb-2">
+                      AI Mobility Recommendations
+                    </h5>
+                    <div className="max-w-none">
+                      <div className="text-sm leading-relaxed text-gray-700">
+                        {plan.formattedAnalysis ? (
+                          <div dangerouslySetInnerHTML={{ __html: plan.formattedAnalysis }} />
+                        ) : (
+                          <div className="whitespace-pre-wrap">
+                            {plan.ai_analysis || 'No analysis available'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {formattedPlans.length > 20 && (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing first 20 of {formattedPlans.length} mobility plans
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold">No AI Results Yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Run the AI mobility analysis to generate personalized mobility plans.
+            </p>
+            <Button
+              onClick={runAIMobilityAnalysis}
+              disabled={analyzing || employees.length === 0}
+              className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+            >
+              <Brain className="mr-2 h-4 w-4" />
+              Run AI Analysis
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  ), [formattedPlans, employees, analyzing, runAIMobilityAnalysis, isFormatting, mobilityPlans]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -304,10 +493,11 @@ export const EmployeeMobilityPlanningAI = () => {
         </Card>
       )}
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="employees">Mobility Analysis</TabsTrigger>
+          <TabsTrigger value="ai-results">AI Results</TabsTrigger>
           <TabsTrigger value="risks">Flight Risk</TabsTrigger>
         </TabsList>
 
@@ -462,6 +652,10 @@ export const EmployeeMobilityPlanningAI = () => {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="ai-results" className="space-y-4">
+          {activeTab === "ai-results" && <AIResultsTab />}
         </TabsContent>
 
         <TabsContent value="risks" className="space-y-4">

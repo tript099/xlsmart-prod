@@ -14,7 +14,7 @@ export function LiteLLMTest() {
   const { toast } = useToast();
 
   const aiFunctions = [
-    { name: 'test-litellm', description: 'Test basic LiteLLM connection' },
+    { name: 'test-litellm-direct', description: 'Test basic LiteLLM connection' },
     { name: 'ai-chat', description: 'General AI chat functionality' },
     { name: 'ai-skills-assessment', description: 'Employee skills assessment' },
     { name: 'ai-employee-engagement', description: 'Employee engagement analysis' },
@@ -31,7 +31,7 @@ export function LiteLLMTest() {
       console.log(`Testing function: ${functionName}`);
       
       let payload;
-      if (functionName === 'test-litellm') {
+      if (functionName === 'test-litellm-direct') {
         payload = { message: testMessage };
       } else if (functionName === 'ai-chat') {
         payload = { message: testMessage, context: "hr_assistant" };

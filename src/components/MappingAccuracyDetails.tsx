@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
-import { Zap, TrendingUp, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { Zap, TrendingUp, AlertCircle, CheckCircle, Clock, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { RoleMappingPagination } from "@/components/RoleMappingPagination";
+import { useToast } from "@/hooks/use-toast";
 
 interface RoleMapping {
   id: string;
   employee_name?: string;
   original_role_title: string;
+  standardized_role_title?: string;
   mapped_role?: string;
   mapping_confidence: number;
   mapping_status?: string;
@@ -34,6 +36,8 @@ export const MappingAccuracyDetails = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [fixingMappings, setFixingMappings] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchMappingData();
@@ -49,19 +53,29 @@ export const MappingAccuracyDetails = () => {
       if (error) throw error;
 
       const mappingData = data || [];
+      console.log('🔍 DEBUG: Raw mapping data:', mappingData);
+      console.log('🔍 DEBUG: Confidence values:', mappingData.map(m => m.mapping_confidence));
+      
       setMappings(mappingData);
 
       // Calculate stats
       const totalMappings = mappingData.length;
       const averageAccuracy = totalMappings > 0 
-        ? Math.round(mappingData.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / totalMappings * 100)
+        ? Math.round(mappingData.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / totalMappings)
         : 0;
 
-      // Convert decimal confidence values to percentages for comparison
-      const highConfidence = mappingData.filter(m => ((m.mapping_confidence || 0) * 100) >= 80).length;
-      const mediumConfidence = mappingData.filter(m => ((m.mapping_confidence || 0) * 100) >= 60 && ((m.mapping_confidence || 0) * 100) < 80).length;
-      const lowConfidence = mappingData.filter(m => ((m.mapping_confidence || 0) * 100) < 60).length;
+      console.log('🔍 DEBUG: Total mappings:', totalMappings);
+      console.log('🔍 DEBUG: Average accuracy:', averageAccuracy);
+
+      // Handle confidence values as percentages (already stored as percentages by AI function)
+      const highConfidence = mappingData.filter(m => (m.mapping_confidence || 0) >= 80).length;
+      const mediumConfidence = mappingData.filter(m => (m.mapping_confidence || 0) >= 60 && (m.mapping_confidence || 0) < 80).length;
+      const lowConfidence = mappingData.filter(m => (m.mapping_confidence || 0) < 60).length;
       const pendingReview = mappingData.filter(m => m.mapping_status === 'pending_review').length;
+
+      console.log('🔍 DEBUG: High confidence count:', highConfidence);
+      console.log('🔍 DEBUG: Medium confidence count:', mediumConfidence);
+      console.log('🔍 DEBUG: Low confidence count:', lowConfidence);
 
       setStats({
         averageAccuracy,
@@ -78,9 +92,112 @@ export const MappingAccuracyDetails = () => {
     }
   };
 
+  const fixExistingMappings = async () => {
+    setFixingMappings(true);
+    try {
+      // Calculate real confidence values for existing mappings
+      const updates = [];
+      
+      for (const mapping of mappings) {
+        if (!mapping.original_role_title || !mapping.standardized_role_title) continue;
+        
+        // Calculate similarity
+        const normalized1 = mapping.original_role_title.toLowerCase().trim();
+        const normalized2 = mapping.standardized_role_title.toLowerCase().trim();
+        
+        let confidence = 0;
+        
+        // Exact match
+        if (normalized1 === normalized2) {
+          confidence = 100;
+        } else {
+          // Word similarity
+          const words1 = normalized1.split(/\s+/);
+          const words2 = normalized2.split(/\s+/);
+          
+          let exactWordMatches = 0;
+          for (const word1 of words1) {
+            if (words2.includes(word1)) {
+              exactWordMatches++;
+            }
+          }
+          
+          const wordSimilarity = exactWordMatches / Math.max(words1.length, words2.length);
+          
+          // Substring bonus
+          const containsMatch = normalized1.includes(normalized2) || normalized2.includes(normalized1);
+          const substringBonus = containsMatch ? 0.2 : 0;
+          
+          // Keyword bonus
+          const commonKeywords = ['engineer', 'manager', 'analyst', 'specialist', 'coordinator', 'lead', 'senior', 'junior'];
+          let keywordMatches = 0;
+          for (const keyword of commonKeywords) {
+            if (normalized1.includes(keyword) && normalized2.includes(keyword)) {
+              keywordMatches++;
+            }
+          }
+          const keywordBonus = (keywordMatches / commonKeywords.length) * 0.3;
+          
+          confidence = Math.min((wordSimilarity + substringBonus + keywordBonus) * 100, 95);
+        }
+        
+        const confidencePercentage = Math.round(confidence);
+        const currentConfidence = mapping.mapping_confidence || 0;
+        
+        // Only update if significantly different
+        if (Math.abs(confidencePercentage - currentConfidence) > 5) {
+          updates.push({
+            id: mapping.id,
+            mapping_confidence: confidencePercentage,
+            requires_manual_review: confidencePercentage < 80
+          });
+        }
+      }
+      
+      // Update mappings in database
+      let fixedCount = 0;
+      for (const update of updates) {
+        const { error } = await supabase
+          .from('xlsmart_role_mappings')
+          .update({
+            mapping_confidence: update.mapping_confidence,
+            requires_manual_review: update.requires_manual_review
+          })
+          .eq('id', update.id);
+        
+        if (!error) {
+          fixedCount++;
+        }
+      }
+      
+      if (fixedCount > 0) {
+        toast({
+          title: "Mappings Fixed!",
+          description: `Successfully updated ${fixedCount} mappings with realistic confidence values.`,
+        });
+        // Refresh the data
+        await fetchMappingData();
+      } else {
+        toast({
+          title: "No Updates Needed",
+          description: "All mappings already have realistic confidence values.",
+        });
+      }
+    } catch (error) {
+      console.error('Error fixing mappings:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fix existing mappings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFixingMappings(false);
+    }
+  };
+
   const getConfidenceBadge = (confidence: number) => {
-    // Convert decimal to percentage for display
-    const confidencePercent = Math.round(confidence * 100);
+    // Confidence is already stored as percentage by AI function
+    const confidencePercent = Math.round(confidence);
     
     if (confidencePercent >= 80) {
       return <Badge className="bg-green-100 text-green-800 border-green-200">High ({confidencePercent}%)</Badge>;
@@ -132,9 +249,23 @@ export const MappingAccuracyDetails = () => {
       <div className="flex items-center gap-4 mb-6">
         <Zap className="h-6 w-6 text-primary" />
         <h2 className="text-2xl font-bold">Mapping Accuracy Analysis</h2>
-        <Badge variant="secondary" className="ml-auto">
-          {stats?.averageAccuracy}% Average Accuracy
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          {mappings.length > 0 && (
+            <Button
+              onClick={fixExistingMappings}
+              disabled={fixingMappings}
+              size="sm"
+              variant="outline"
+              className="bg-blue-50 hover:bg-blue-100 border-blue-200"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${fixingMappings ? 'animate-spin' : ''}`} />
+              {fixingMappings ? 'Fixing...' : 'Fix Confidence Values'}
+            </Button>
+          )}
+          <Badge variant="secondary">
+            {stats?.averageAccuracy}% Average Accuracy
+          </Badge>
+        </div>
       </div>
 
       {/* Stats Overview */}
@@ -243,9 +374,27 @@ export const MappingAccuracyDetails = () => {
         <CardHeader>
           <CardTitle className="text-lg">Recent Role Mappings</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {paginatedMappings.map((mapping) => (
+                 <CardContent>
+           {mappings.length === 0 ? (
+             <div className="text-center py-8">
+               <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+               <h3 className="text-lg font-medium mb-2">No Role Mappings Found</h3>
+               <p className="text-muted-foreground mb-4">
+                 Role mappings will appear here after you upload and standardize role catalogs.
+               </p>
+               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-md mx-auto">
+                 <h4 className="font-medium text-blue-900 mb-2">How to get started:</h4>
+                 <ol className="text-sm text-blue-800 space-y-1 text-left">
+                   <li>1. Go to the <strong>Standardization</strong> tab</li>
+                   <li>2. Upload XL and SMART role files</li>
+                   <li>3. Run the AI standardization process</li>
+                   <li>4. View your mapping accuracy here</li>
+                 </ol>
+               </div>
+             </div>
+           ) : (
+             <div className="space-y-4">
+               {paginatedMappings.map((mapping) => (
               <div key={mapping.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center gap-2">
@@ -254,15 +403,15 @@ export const MappingAccuracyDetails = () => {
                     )}
                     {getStatusIcon(mapping.mapping_status || 'pending')}
                   </div>
-                  <div className="text-sm text-muted-foreground">
-                    <span className="font-medium">Original:</span> {mapping.original_role_title}
-                    {mapping.mapped_role && (
-                      <>
-                        <span className="mx-2">→</span>
-                        <span className="font-medium">Mapped:</span> {mapping.mapped_role}
-                      </>
-                    )}
-                  </div>
+                                     <div className="text-sm text-muted-foreground">
+                     <span className="font-medium">Original:</span> {mapping.original_role_title}
+                     {(mapping.standardized_role_title || mapping.mapped_role) && (
+                       <>
+                         <span className="mx-2">→</span>
+                         <span className="font-medium">Mapped:</span> {mapping.standardized_role_title || mapping.mapped_role}
+                       </>
+                     )}
+                   </div>
                   {mapping.created_at && (
                     <div className="text-xs text-muted-foreground">
                       Created: {new Date(mapping.created_at).toLocaleDateString()}
@@ -273,22 +422,23 @@ export const MappingAccuracyDetails = () => {
                   {getConfidenceBadge(mapping.mapping_confidence)}
                 </div>
               </div>
-            ))}
-          </div>
+             ))}
 
-          {/* Pagination */}
-          <RoleMappingPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={mappings.length}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(newSize) => {
-              setPageSize(newSize);
-              setCurrentPage(1);
-            }}
-          />
-        </CardContent>
+             {/* Pagination */}
+             <RoleMappingPagination
+               currentPage={currentPage}
+               totalPages={totalPages}
+               pageSize={pageSize}
+               totalItems={mappings.length}
+               onPageChange={setCurrentPage}
+               onPageSizeChange={(newSize) => {
+                 setPageSize(newSize);
+                 setCurrentPage(1);
+               }}
+             />
+           </div>
+         )}
+         </CardContent>
       </Card>
     </div>
   );

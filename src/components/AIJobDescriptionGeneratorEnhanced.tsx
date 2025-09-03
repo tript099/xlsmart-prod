@@ -30,6 +30,8 @@ interface GeneratedJD {
   responsibilities: string[];
   requiredQualifications: string[];
   preferredQualifications: string[];
+  requiredSkills?: string[];
+  preferredSkills?: string[];
   benefits: string[];
   fullDescription: string;
   keywords: string[];
@@ -37,6 +39,40 @@ interface GeneratedJD {
     min: number;
     max: number;
     currency: string;
+  };
+  experienceLevel?: string;
+  educationLevel?: string;
+  employmentType?: string;
+  locationType?: string;
+  // New structured template fields
+  jobIdentity?: {
+    positionTitle: string;
+    directorate: string;
+    division?: string;
+    department?: string;
+    directSupervisor: string;
+    directSubordinate: string[];
+  };
+  keyContacts?: {
+    internal: string[];
+    external: string[];
+  };
+  competencies?: {
+    functional: {
+      academyQualifications: string;
+      professionalExperience: string;
+      certificationLicense: string;
+      expertise: string[];
+    };
+    leadership: {
+      strategicAccountability: string;
+      customerCentric: string;
+      coalitionBuilding: string;
+      peopleFirst: string;
+      agileLeadership: string;
+      resultDriven: string;
+      technologySavvy: string;
+    };
   };
 }
 
@@ -58,7 +94,11 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-export const AIJobDescriptionGeneratorEnhanced = () => {
+interface AIJobDescriptionGeneratorEnhancedProps {
+  onJDGenerated?: () => void; // Callback to notify parent when JD is generated
+}
+
+export const AIJobDescriptionGeneratorEnhanced: React.FC<AIJobDescriptionGeneratorEnhancedProps> = ({ onJDGenerated }) => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('bulk');
   
@@ -161,8 +201,10 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
         responsibilities: Array.isArray(jd.responsibilities) ? (jd.responsibilities as string[]) : [],
         requiredQualifications: Array.isArray(jd.required_qualifications) ? (jd.required_qualifications as string[]) : [],
         preferredQualifications: Array.isArray(jd.preferred_qualifications) ? (jd.preferred_qualifications as string[]) : [],
+        requiredSkills: Array.isArray(jd.required_skills) ? (jd.required_skills as string[]) : [],
+        preferredSkills: Array.isArray(jd.preferred_skills) ? (jd.preferred_skills as string[]) : [],
         benefits: [],
-        fullDescription: `${jd.summary || ''}\n\nResponsibilities:\n${
+        fullDescription: (jd as any).full_description || `${jd.summary || ''}\n\nResponsibilities:\n${
           Array.isArray(jd.responsibilities) ? (jd.responsibilities as string[]).join('\n') : ''
         }\n\nQualifications:\n${
           Array.isArray(jd.required_qualifications) ? (jd.required_qualifications as string[]).join('\n') : ''
@@ -172,13 +214,93 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
           min: jd.salary_range_min || 0,
           max: jd.salary_range_max || 0,
           currency: jd.currency || 'IDR'
-        }
+        },
+        experienceLevel: jd.experience_level || '',
+        educationLevel: jd.education_level || '',
+        employmentType: jd.employment_type || 'full_time',
+        locationType: jd.location_type || 'office',
+        // New structured template fields
+        jobIdentity: (jd as any).job_identity || undefined,
+        keyContacts: (jd as any).key_contacts || undefined,
+        competencies: (jd as any).competencies || undefined
       }));
       
       setExistingJDs(formattedJDs);
     } catch (error) {
       console.error('Error loading existing JDs:', error);
     }
+  };
+
+  const generatePDF = (jd: GeneratedJD) => {
+    // Create PDF content using the structured template
+    const pdfContent = `
+JOB DESCRIPTION
+
+1. JOB IDENTITY
+${jd.jobIdentity ? `
+Position Title: ${jd.jobIdentity.positionTitle}
+Directorate: ${jd.jobIdentity.directorate}
+${jd.jobIdentity.division ? `Division: ${jd.jobIdentity.division}` : ''}
+${jd.jobIdentity.department ? `Department: ${jd.jobIdentity.department}` : ''}
+Direct Supervisor: ${jd.jobIdentity.directSupervisor}
+Direct Subordinate:
+${jd.jobIdentity.directSubordinate.map((sub, index) => `${index + 1}. ${sub}`).join('\n')}
+` : ''}
+
+2. JOB PURPOSES
+${jd.summary}
+
+3. MAIN RESPONSIBILITY
+${jd.responsibilities.map((resp, index) => `${index + 1}. ${resp}`).join('\n\n')}
+
+4. KEY OUTPUT
+${jd.benefits.map(benefit => `• ${benefit}`).join('\n')}
+
+5. KEY CONTACTS & RELATIONSHIP
+Internal:
+${jd.keyContacts?.internal.map((contact, index) => `${index + 1}. ${contact}`).join('\n') || 'Not specified'}
+
+External:
+${jd.keyContacts?.external.map((contact, index) => `${index + 1}. ${contact}`).join('\n') || 'Not specified'}
+
+6. COMPETENCY SECTION
+
+A. FUNCTIONAL COMPETENCY
+${jd.competencies?.functional ? `
+Academy Qualifications: ${jd.competencies.functional.academyQualifications}
+Professional Experience: ${jd.competencies.functional.professionalExperience}
+Certification/License: ${jd.competencies.functional.certificationLicense}
+Expertise: ${jd.competencies.functional.expertise.join(', ')}
+` : 'Not specified'}
+
+B. LEADERSHIP COMPETENCY
+${jd.competencies?.leadership ? `
+Strategic accountability: ${jd.competencies.leadership.strategicAccountability}
+Customer centric: ${jd.competencies.leadership.customerCentric}
+Coalition Building: ${jd.competencies.leadership.coalitionBuilding}
+People First: ${jd.competencies.leadership.peopleFirst}
+Agile Leadership: ${jd.competencies.leadership.agileLeadership}
+Result Driven: ${jd.competencies.leadership.resultDriven}
+Technology Savvy: ${jd.competencies.leadership.technologySavvy}
+` : 'Not specified'}
+    `.trim();
+
+    // Create and download PDF
+    const blob = new Blob([pdfContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${jd.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_job_description.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "📄 PDF Generated!",
+      description: `Job description for ${jd.title} has been downloaded`,
+      duration: 3000,
+    });
   };
 
   const handleBulkGenerate = async () => {
@@ -238,6 +360,11 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
     await loadExistingJDs(); // Refresh the list
     setBulkGenerating(false);
 
+    // Notify parent component that JDs were generated
+    if (onJDGenerated && successCount > 0) {
+      onJDGenerated();
+    }
+
     toast({
       title: "🎉 Bulk Generation Complete!",
       description: `Generated ${successCount} JDs successfully. ${failedCount} failed.`,
@@ -260,23 +387,72 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
     setIsChatLoading(true);
 
     try {
-      // Use the dedicated JD updater function
+      // Use the dedicated JD updater function with structured data
       const { data, error } = await supabase.functions.invoke('ai-jd-updater', {
         body: {
           currentContent: updatedJDContent || selectedJDForChat.fullDescription,
-          updateRequest: chatInput
+          updateRequest: chatInput,
+          jobDescription: {
+            title: selectedJDForChat.title,
+            summary: selectedJDForChat.summary,
+            responsibilities: selectedJDForChat.responsibilities,
+            required_qualifications: selectedJDForChat.requiredQualifications,
+            preferred_qualifications: selectedJDForChat.preferredQualifications,
+            required_skills: selectedJDForChat.requiredSkills || [],
+            preferred_skills: selectedJDForChat.preferredSkills || [],
+            salary_range_min: selectedJDForChat.estimatedSalary.min,
+            salary_range_max: selectedJDForChat.estimatedSalary.max,
+            currency: selectedJDForChat.estimatedSalary.currency,
+            experience_level: selectedJDForChat.experienceLevel || '',
+            education_level: selectedJDForChat.educationLevel || '',
+            employment_type: selectedJDForChat.employmentType || 'full_time',
+            location_type: selectedJDForChat.locationType || 'office',
+            job_identity: selectedJDForChat.jobIdentity,
+            key_contacts: selectedJDForChat.keyContacts,
+            competencies: selectedJDForChat.competencies
+          }
         }
       });
 
       if (error) throw error;
       if (!data.success) throw new Error(data.message);
       
+      console.log('AI Response Data:', data);
+      console.log('Updated Content:', data.updatedContent);
+      console.log('Updated Job Description:', data.updatedJobDescription);
+      
+      // Update with the formatted content and structured data
       setUpdatedJDContent(data.updatedContent);
+      
+      // Update the selected JD with the new structured data
+      if (data.updatedJobDescription) {
+        setSelectedJDForChat(prev => prev ? {
+          ...prev,
+          ...data.updatedJobDescription,
+          fullDescription: data.updatedContent
+        } : null);
+      }
+
+      // Determine if this was a "show" request or an "update" request
+      const isShowRequest = /show|display|view|see|preview/i.test(chatInput);
+      
+      let responseContent = '';
+      if (isShowRequest) {
+        responseContent = `Here's the current job description for "${selectedJDForChat.title}":\n\n`;
+      } else {
+        responseContent = `I've updated the job description based on your request: "${chatInput}"\n\n`;
+      }
+      
+      if (data.updatedContent) {
+        responseContent += data.updatedContent;
+      } else {
+        responseContent += "The job description content is ready for review.";
+      }
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: `I've updated the job description based on your request. Here are the changes:\n\n${data.updatedContent}`,
+        content: responseContent,
         timestamp: new Date()
       };
 
@@ -298,37 +474,42 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
 
     setIsSaving(true);
     try {
-      // Parse the updated content to extract structured data
-      const lines = updatedJDContent.split('\n');
-      const summaryEnd = updatedJDContent.indexOf('\n\nResponsibilities:');
-      const summary = summaryEnd > 0 ? updatedJDContent.substring(0, summaryEnd) : lines[0];
-      
-      // Extract responsibilities and qualifications from the updated content
-      const responsibilitiesStart = updatedJDContent.indexOf('Responsibilities:\n');
-      const qualificationsStart = updatedJDContent.indexOf('Qualifications:\n');
-      
-      let responsibilities: string[] = [];
-      let qualifications: string[] = [];
-      
-      if (responsibilitiesStart > 0 && qualificationsStart > 0) {
-        const respSection = updatedJDContent.substring(responsibilitiesStart + 16, qualificationsStart).trim();
-        responsibilities = respSection.split('\n').filter(line => line.trim());
-        
-        const qualSection = updatedJDContent.substring(qualificationsStart + 15).trim();
-        qualifications = qualSection.split('\n').filter(line => line.trim());
+      // Get the updated structured data from the selected JD
+      const updateData: any = {
+        title: selectedJDForChat.title,
+        summary: selectedJDForChat.summary,
+        responsibilities: selectedJDForChat.responsibilities,
+        required_qualifications: selectedJDForChat.requiredQualifications,
+        preferred_qualifications: selectedJDForChat.preferredQualifications,
+        required_skills: selectedJDForChat.requiredSkills || [],
+        preferred_skills: selectedJDForChat.preferredSkills || [],
+        salary_range_min: selectedJDForChat.estimatedSalary.min,
+        salary_range_max: selectedJDForChat.estimatedSalary.max,
+        currency: selectedJDForChat.estimatedSalary.currency,
+        experience_level: selectedJDForChat.experienceLevel || '',
+        education_level: selectedJDForChat.educationLevel || '',
+        employment_type: selectedJDForChat.employmentType || 'full_time',
+        location_type: selectedJDForChat.locationType || 'office',
+        status: 'draft', // Reset to draft for re-approval
+        updated_at: new Date().toISOString(),
+        reviewed_by: null, // Clear previous review
+        approved_by: null  // Clear previous approval
+      };
+
+      // Add structured template fields if they exist
+      if (selectedJDForChat.jobIdentity) {
+        updateData.job_identity = selectedJDForChat.jobIdentity;
+      }
+      if (selectedJDForChat.keyContacts) {
+        updateData.key_contacts = selectedJDForChat.keyContacts;
+      }
+      if (selectedJDForChat.competencies) {
+        updateData.competencies = selectedJDForChat.competencies;
       }
 
       const { error } = await supabase
         .from('xlsmart_job_descriptions')
-        .update({
-          summary: summary,
-          responsibilities: responsibilities.length > 0 ? responsibilities : selectedJDForChat.responsibilities,
-          required_qualifications: qualifications.length > 0 ? qualifications : selectedJDForChat.requiredQualifications,
-          status: 'draft', // Reset to draft for re-approval
-          updated_at: new Date().toISOString(),
-          reviewed_by: null, // Clear previous review
-          approved_by: null  // Clear previous approval
-        })
+        .update(updateData)
         .eq('id', selectedJDForChat.id);
 
       if (error) throw error;
@@ -542,7 +723,7 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
                              setChatMessages([{
                                id: 'welcome',
                                role: 'assistant',
-                               content: `I'll help you update the job description for "${jd.title}". What changes would you like to make?`,
+                               content: `I'll help you with the job description for "${jd.title}". You can ask me to show you the current JD or make updates. What would you like to do?`,
                                timestamp: new Date()
                              }]);
                            }}
@@ -583,7 +764,20 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
                                         : 'bg-muted text-card-foreground'
                                     }`}
                                   >
-                                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                                    <div className="text-sm whitespace-pre-wrap">
+                                      {message.role === 'assistant' ? (
+                                        <div 
+                                          className="prose prose-sm max-w-none"
+                                          dangerouslySetInnerHTML={{ 
+                                            __html: message.content
+                                              .replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight: 700; color: inherit;">$1</strong>')
+                                              .replace(/\n/g, '<br>')
+                                          }} 
+                                        />
+                                      ) : (
+                                        <p>{message.content}</p>
+                                      )}
+                                    </div>
                                     <p className="text-xs opacity-70 mt-1">
                                       {message.timestamp.toLocaleTimeString()}
                                     </p>
@@ -600,61 +794,224 @@ export const AIJobDescriptionGeneratorEnhanced = () => {
                             </div>
                           </ScrollArea>
                           
-                          <div className="flex gap-2 p-4 border-t border-border">
-                            <Input
-                              value={chatInput}
-                              onChange={(e) => setChatInput(e.target.value)}
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                  e.preventDefault();
-                                  handleChatSend();
-                                }
-                              }}
-                              placeholder="Ask me to update the job description..."
-                              disabled={isChatLoading}
-                              className="flex-1 bg-background border-border"
-                            />
-                            <Button 
-                              onClick={handleChatSend} 
-                              disabled={isChatLoading || !chatInput.trim()}
-                              size="icon"
-                              className="xl-button-primary"
-                            >
-                              <Send className="h-4 w-4" />
-                            </Button>
-                          </div>
+                                                     <div className="flex gap-2 p-4 border-t border-border">
+                             <Input
+                               value={chatInput}
+                               onChange={(e) => setChatInput(e.target.value)}
+                               onKeyPress={(e) => {
+                                 if (e.key === 'Enter' && !e.shiftKey) {
+                                   e.preventDefault();
+                                   handleChatSend();
+                                 }
+                               }}
+                               placeholder="Ask me to show or update the job description..."
+                               disabled={isChatLoading}
+                               className="flex-1 bg-background border-border"
+                             />
+                             <Button 
+                               onClick={handleChatSend} 
+                               disabled={isChatLoading || !chatInput.trim()}
+                               size="icon"
+                               className="xl-button-primary"
+                             >
+                               <Send className="h-4 w-4" />
+                             </Button>
+                             <Button 
+                               onClick={() => {
+                                 console.log('Current updatedJDContent:', updatedJDContent);
+                                 console.log('Current selectedJDForChat:', selectedJDForChat);
+                                 setUpdatedJDContent('TEST UPDATE: ' + new Date().toISOString());
+                               }}
+                               variant="outline"
+                               size="icon"
+                               title="Debug: Test Update"
+                             >
+                               🐛
+                             </Button>
+                           </div>
                         </CardContent>
                        </Card>
 
-                       {/* Updated JD Preview and Save Button */}
-                       {updatedJDContent && updatedJDContent !== selectedJDForChat.fullDescription && (
+                                               {/* Updated JD Preview and Save Button */}
+                        {updatedJDContent && (
                          <Card className="border-border bg-muted/50">
                            <CardHeader className="pb-3">
-                             <CardTitle className="text-lg flex items-center justify-between">
-                               Updated Job Description
-                               <Button
-                                 onClick={handleSaveUpdatedJD}
-                                 disabled={isSaving}
-                                 className="xl-button-primary"
-                               >
-                                 {isSaving ? (
-                                   <>
-                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                     Saving...
-                                   </>
-                                 ) : (
-                                   <>
-                                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                                     Save Changes
-                                   </>
-                                 )}
-                               </Button>
+                                                           <CardTitle className="text-lg flex items-center justify-between">
+                                Updated Job Description {updatedJDContent !== selectedJDForChat.fullDescription && '(Modified)'}
+                               <div className="flex items-center gap-2">
+                                 <Button
+                                   onClick={() => downloadAsText(updatedJDContent, `${selectedJDForChat.title}_updated.txt`)}
+                                   variant="outline"
+                                   size="sm"
+                                 >
+                                   <Download className="mr-2 h-4 w-4" />
+                                   Download
+                                 </Button>
+                                 <Button
+                                   onClick={handleSaveUpdatedJD}
+                                   disabled={isSaving}
+                                   className="xl-button-primary"
+                                 >
+                                   {isSaving ? (
+                                     <>
+                                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                       Saving...
+                                     </>
+                                   ) : (
+                                     <>
+                                       <CheckCircle2 className="mr-2 h-4 w-4" />
+                                       Save Changes
+                                     </>
+                                   )}
+                                 </Button>
+                               </div>
                              </CardTitle>
                            </CardHeader>
                            <CardContent>
-                             <ScrollArea className="h-60 p-4 bg-background rounded border">
-                               <pre className="text-sm whitespace-pre-wrap">{updatedJDContent}</pre>
-                             </ScrollArea>
+                             <Tabs defaultValue="formatted" className="w-full">
+                               <TabsList className="grid w-full grid-cols-2">
+                                 <TabsTrigger value="formatted">Formatted View</TabsTrigger>
+                                 <TabsTrigger value="structured">Structured Template</TabsTrigger>
+                               </TabsList>
+                               
+                               <TabsContent value="formatted" className="mt-4">
+                                 <ScrollArea className="h-60 p-4 bg-background rounded border">
+                                   <pre className="text-sm whitespace-pre-wrap">{updatedJDContent}</pre>
+                                 </ScrollArea>
+                               </TabsContent>
+                               
+                               <TabsContent value="structured" className="mt-4">
+                                 <ScrollArea className="h-60 p-4 bg-background rounded border">
+                                   <div className="space-y-4 text-sm">
+                                     {/* Job Identity */}
+                                     <div>
+                                       <h4 className="font-medium mb-2 text-blue-600">1. JOB IDENTITY</h4>
+                                       <div className="bg-muted/50 p-3 rounded-lg">
+                                         <div className="grid grid-cols-2 gap-2">
+                                           <span className="font-medium">Position Title:</span>
+                                           <span>{selectedJDForChat.jobIdentity?.positionTitle || selectedJDForChat.title}</span>
+                                           <span className="font-medium">Directorate:</span>
+                                           <span>{selectedJDForChat.jobIdentity?.directorate || 'Not specified'}</span>
+                                           {selectedJDForChat.jobIdentity?.division && (
+                                             <>
+                                               <span className="font-medium">Division:</span>
+                                               <span>{selectedJDForChat.jobIdentity.division}</span>
+                                             </>
+                                           )}
+                                           {selectedJDForChat.jobIdentity?.department && (
+                                             <>
+                                               <span className="font-medium">Department:</span>
+                                               <span>{selectedJDForChat.jobIdentity.department}</span>
+                                             </>
+                                           )}
+                                           <span className="font-medium">Direct Supervisor:</span>
+                                           <span>{selectedJDForChat.jobIdentity?.directSupervisor || 'Not specified'}</span>
+                                         </div>
+                                         {selectedJDForChat.jobIdentity?.directSubordinate && selectedJDForChat.jobIdentity.directSubordinate.length > 0 && (
+                                           <div className="mt-2">
+                                             <span className="font-medium">Direct Subordinate:</span>
+                                             <ol className="list-decimal list-inside mt-1">
+                                               {selectedJDForChat.jobIdentity.directSubordinate.map((sub: string, index: number) => (
+                                                 <li key={index}>{sub}</li>
+                                               ))}
+                                             </ol>
+                                           </div>
+                                         )}
+                                       </div>
+                                     </div>
+
+                                     {/* Job Purposes */}
+                                     <div>
+                                       <h4 className="font-medium mb-2 text-blue-600">2. JOB PURPOSES</h4>
+                                       <p className="bg-muted/50 p-3 rounded-lg">{selectedJDForChat.summary || 'Not specified'}</p>
+                                     </div>
+
+                                     {/* Main Responsibility */}
+                                     <div>
+                                       <h4 className="font-medium mb-2 text-blue-600">3. MAIN RESPONSIBILITY</h4>
+                                       <div className="bg-muted/50 p-3 rounded-lg">
+                                         {selectedJDForChat.responsibilities.length > 0 ? (
+                                           <ol className="list-decimal list-inside space-y-2">
+                                             {selectedJDForChat.responsibilities.map((resp: string, index: number) => (
+                                               <li key={index}>{resp}</li>
+                                             ))}
+                                           </ol>
+                                         ) : (
+                                           <p className="text-muted-foreground">Not specified</p>
+                                         )}
+                                       </div>
+                                     </div>
+
+                                     {/* Key Contacts */}
+                                     <div>
+                                       <h4 className="font-medium mb-2 text-blue-600">5. KEY CONTACTS & RELATIONSHIP</h4>
+                                       <div className="bg-muted/50 p-3 rounded-lg space-y-3">
+                                         <div>
+                                           <span className="font-medium">Internal:</span>
+                                           {selectedJDForChat.keyContacts?.internal && selectedJDForChat.keyContacts.internal.length > 0 ? (
+                                             <ol className="list-decimal list-inside mt-1">
+                                               {selectedJDForChat.keyContacts.internal.map((contact: string, index: number) => (
+                                                 <li key={index}>{contact}</li>
+                                               ))}
+                                             </ol>
+                                           ) : (
+                                             <p className="text-muted-foreground ml-4">Not specified</p>
+                                           )}
+                                         </div>
+                                         <div>
+                                           <span className="font-medium">External:</span>
+                                           {selectedJDForChat.keyContacts?.external && selectedJDForChat.keyContacts.external.length > 0 ? (
+                                             <ol className="list-decimal list-inside mt-1">
+                                               {selectedJDForChat.keyContacts.external.map((contact: string, index: number) => (
+                                                 <li key={index}>{contact}</li>
+                                               ))}
+                                             </ol>
+                                           ) : (
+                                             <p className="text-muted-foreground ml-4">Not specified</p>
+                                           )}
+                                         </div>
+                                       </div>
+                                     </div>
+
+                                     {/* Competencies */}
+                                     <div>
+                                       <h4 className="font-medium mb-2 text-blue-600">6. COMPETENCY SECTION</h4>
+                                       <div className="bg-muted/50 p-3 rounded-lg space-y-4">
+                                         <div>
+                                           <h5 className="font-medium text-green-600">A. FUNCTIONAL COMPETENCY</h5>
+                                           {selectedJDForChat.competencies?.functional ? (
+                                             <div className="mt-2 space-y-1">
+                                               <div><span className="font-medium">Academy Qualifications:</span> {selectedJDForChat.competencies.functional.academyQualifications}</div>
+                                               <div><span className="font-medium">Professional Experience:</span> {selectedJDForChat.competencies.functional.professionalExperience}</div>
+                                               <div><span className="font-medium">Certification/License:</span> {selectedJDForChat.competencies.functional.certificationLicense}</div>
+                                               <div><span className="font-medium">Expertise:</span> {selectedJDForChat.competencies.functional.expertise?.join(', ')}</div>
+                                             </div>
+                                           ) : (
+                                             <p className="text-muted-foreground">Not specified</p>
+                                           )}
+                                         </div>
+                                         <div>
+                                           <h5 className="font-medium text-purple-600">B. LEADERSHIP COMPETENCY</h5>
+                                           {selectedJDForChat.competencies?.leadership ? (
+                                             <div className="mt-2 grid grid-cols-2 gap-2">
+                                               <div><span className="font-medium">Strategic accountability:</span> {selectedJDForChat.competencies.leadership.strategicAccountability}</div>
+                                               <div><span className="font-medium">Customer centric:</span> {selectedJDForChat.competencies.leadership.customerCentric}</div>
+                                               <div><span className="font-medium">Coalition Building:</span> {selectedJDForChat.competencies.leadership.coalitionBuilding}</div>
+                                               <div><span className="font-medium">People First:</span> {selectedJDForChat.competencies.leadership.peopleFirst}</div>
+                                               <div><span className="font-medium">Agile Leadership:</span> {selectedJDForChat.competencies.leadership.agileLeadership}</div>
+                                               <div><span className="font-medium">Result Driven:</span> {selectedJDForChat.competencies.leadership.resultDriven}</div>
+                                               <div><span className="font-medium">Technology Savvy:</span> {selectedJDForChat.competencies.leadership.technologySavvy}</div>
+                                             </div>
+                                           ) : (
+                                             <p className="text-muted-foreground">Not specified</p>
+                                           )}
+                                         </div>
+                                       </div>
+                                     </div>
+                                   </div>
+                                 </ScrollArea>
+                               </TabsContent>
+                             </Tabs>
                            </CardContent>
                          </Card>
                        )}

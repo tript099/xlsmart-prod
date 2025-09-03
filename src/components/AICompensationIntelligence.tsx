@@ -21,6 +21,19 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
   const [roleFilter, setRoleFilter] = useState<string>('');
   const { toast } = useToast();
 
+  // Format variance to handle extremely large values
+  const formatVariance = (variance: number): string => {
+    if (variance == null || isNaN(variance)) return '0';
+    
+    // If variance is extremely large (> 1000%), cap it to reasonable range
+    if (variance > 1000) {
+      return Math.min(variance, 100).toFixed(1);
+    }
+    
+    // For normal values, show with one decimal place
+    return variance.toFixed(1);
+  };
+
   const analysisTypes = [
     { value: 'pay_equity', label: 'Pay Equity Analysis', icon: Users },
     { value: 'market_benchmarking', label: 'Market Benchmarking', icon: TrendingUp },
@@ -116,7 +129,7 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-5 w-5 text-accent" />
                 <div>
-                  <p className="text-2xl font-bold">{analysisResult.payEquityMetrics.avgSalaryVariance}%</p>
+                  <p className="text-2xl font-bold">{formatVariance(analysisResult.payEquityMetrics.avgSalaryVariance)}%</p>
                   <p className="text-sm text-muted-foreground">Avg Variance</p>
                 </div>
               </div>
@@ -129,6 +142,16 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
             <CardTitle>Gender Pay Analysis</CardTitle>
           </CardHeader>
           <CardContent>
+            {(!analysisResult.genderPayAnalysis || analysisResult.genderPayAnalysis.length === 0 || 
+              analysisResult.genderPayAnalysis.every((a: any) => a.sampleSize?.male === 0 && a.sampleSize?.female === 0)) ? (
+              <div className="text-center py-8">
+                <div className="text-muted-foreground mb-2">
+                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Gender data not available for employees</p>
+                  <p className="text-xs">Add gender field to employee records to enable pay equity analysis</p>
+                </div>
+              </div>
+            ) : (
             <div className="space-y-4">
               {analysisResult.genderPayAnalysis?.map((analysis: any, index: number) => (
                 <div key={index} className="border rounded-lg p-4">
@@ -162,6 +185,7 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
                 </div>
               ))}
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -633,9 +657,13 @@ export function AICompensationIntelligence({ onAnalysisComplete }: CompensationI
 
             <div className="flex items-end">
               <Button 
-                onClick={handleAnalysis} 
+                onClick={() => {
+                  console.log('🚀 Run Analysis clicked!');
+                  handleAnalysis();
+                }} 
                 disabled={isAnalyzing}
-                className="w-full"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold"
+                size="lg"
               >
                 {isAnalyzing ? (
                   <>

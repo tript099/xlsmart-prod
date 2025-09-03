@@ -115,28 +115,54 @@ serve(async (req) => {
             try {
               console.log(`Starting assessment for employee ${employee.id}: ${employee.first_name} ${employee.last_name}`);
               
+              // Check if employee already has a recent assessment (within last 30 days)
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+              
+              const { data: existingAssessment } = await supabase
+                .from('xlsmart_skill_assessments')
+                .select('id, assessment_date')
+                .eq('employee_id', employee.id)
+                .gte('assessment_date', thirtyDaysAgo.toISOString())
+                .order('assessment_date', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              
+              if (existingAssessment) {
+                console.log(`Employee ${employee.id} already has recent assessment from ${existingAssessment.assessment_date}, skipping`);
+                return { success: true, skipped: true, employeeId: employee.id, reason: 'Recent assessment exists' };
+              }
+              
               // Find job description for employee's assigned role if no target role specified
               let jobDescriptionId = targetRoleId;
+              let assessmentContext = 'specific_role';
+              
               if (!jobDescriptionId) {
-                console.log(`Looking up job description for employee's standard role: ${employee.standard_role_id}`);
-                const { data: jobDesc } = await supabase
-                  .from('xlsmart_job_descriptions')
-                  .select('id')
-                  .eq('standard_role_id', employee.standard_role_id)
-                  .eq('status', 'approved')
-                  .maybeSingle();
-                
-                if (jobDesc) {
-                  jobDescriptionId = jobDesc.id;
-                  console.log(`Found job description ${jobDescriptionId} for standard role ${employee.standard_role_id}`);
+                if (employee.standard_role_id) {
+                  console.log(`Looking up job description for employee's standard role: ${employee.standard_role_id}`);
+                  const { data: jobDesc } = await supabase
+                    .from('xlsmart_job_descriptions')
+                    .select('id')
+                    .eq('standard_role_id', employee.standard_role_id)
+                    .eq('status', 'approved')
+                    .maybeSingle();
+                  
+                  if (jobDesc) {
+                    jobDescriptionId = jobDesc.id;
+                    console.log(`Found job description ${jobDescriptionId} for standard role ${employee.standard_role_id}`);
+                  } else {
+                    console.log(`No job description found for standard role: ${employee.standard_role_id}, performing general assessment`);
+                    assessmentContext = 'general';
+                    jobDescriptionId = null;
+                  }
                 } else {
-                  console.log(`No job description found for standard role: ${employee.standard_role_id}`);
-                  // Skip this employee if no job description found
-                  throw new Error(`No job description found for employee's standard role: ${employee.standard_role_id}`);
+                  console.log(`Employee ${employee.id} has no standard role assigned, performing general assessment`);
+                  assessmentContext = 'general';
+                  jobDescriptionId = null;
                 }
               }
               
-              const assessment = await runEmployeeAssessment(employee, targetRole);
+              const assessment = await runEmployeeAssessment(employee, targetRole, assessmentContext);
               
               console.log(`Assessment completed for ${employee.id}:`, JSON.stringify(assessment, null, 2));
 
@@ -145,7 +171,7 @@ serve(async (req) => {
               
               const insertData = {
                 employee_id: employee.id,
-                job_description_id: jobDescriptionId,
+                job_description_id: jobDescriptionId, // Can be null for general assessments
                 overall_match_percentage: assessment.overallMatch || 0,
                 skill_gaps: assessment.skillGaps || [],
                 churn_risk_score: assessment.churnRisk || 25,
@@ -153,7 +179,9 @@ serve(async (req) => {
                 level_fit_score: assessment.levelFit || 75,
                 recommendations: assessment.recommendations || 'No recommendations available',
                 next_role_recommendations: assessment.nextRoles || [],
-                ai_analysis: `Bulk assessment via ${assessmentType}`,
+                ai_analysis: assessmentContext === 'general' 
+                  ? `General skills assessment (${assessmentType}) - no specific role target`
+                  : `Role-specific assessment via ${assessmentType}`,
                 assessed_by: session.created_by
               };
               console.log('Insert data:', JSON.stringify(insertData, null, 2));
@@ -168,16 +196,33 @@ serve(async (req) => {
               }
 
               console.log(`Successfully saved assessment for employee ${employee.id}`);
-              completedCount++;
-              return { success: true, employee: employee.id };
+              return { success: true, employee: employee.id, assessed: true };
             } catch (error) {
               console.error(`Error assessing employee ${employee.id}:`, error);
-              errorCount++;
               return { success: false, employee: employee.id, error: error.message };
             }
           });
 
-          await Promise.all(batchPromises);
+          const results = await Promise.allSettled(batchPromises);
+          
+          // Count results properly
+          results.forEach((result, index) => {
+            if (result.status === 'fulfilled') {
+              if (result.value?.success) {
+                if (result.value?.assessed) {
+                  completedCount++;
+                } else if (result.value?.skipped) {
+                  console.log(`Employee ${batch[index]?.id} skipped: ${result.value?.reason}`);
+                }
+              } else {
+                errorCount++;
+              }
+            } else {
+              console.error(`Assessment failed for employee ${batch[index]?.id}:`, result.reason);
+              errorCount++;
+            }
+          });
+          
           processedCount += batch.length;
 
           // Update progress
@@ -255,15 +300,18 @@ serve(async (req) => {
   }
 });
 
-async function runEmployeeAssessment(employee: any, targetRole: any) {
-  console.log(`Starting AI assessment for employee: ${employee.first_name} ${employee.last_name}`);
+async function runEmployeeAssessment(employee: any, targetRole: any, assessmentContext: string = 'specific_role') {
+  console.log(`Starting AI assessment for employee: ${employee.first_name} ${employee.last_name} (context: ${assessmentContext})`);
   
   if (!openAIApiKey) {
     return {
       overallMatch: 50,
       skillGaps: [],
       recommendations: 'AI assessment unavailable - no OpenAI API key configured',
-      nextRoles: []
+      nextRoles: [],
+      churnRisk: 25,
+      rotationRisk: 30,
+      levelFit: 75
     };
   }
 
@@ -279,12 +327,36 @@ Skills: ${Array.isArray(employee.skills) ? employee.skills.join(', ') : employee
 Certifications: ${Array.isArray(employee.certifications) ? employee.certifications.join(', ') : employee.certifications || 'Not specified'}
 `;
 
-    const targetRoleInfo = targetRole ? `
+    let targetRoleInfo;
+    let assessmentInstructions;
+    
+    if (assessmentContext === 'general') {
+      targetRoleInfo = 'No specific target role - performing general skills and career potential assessment';
+      assessmentInstructions = `
+Assessment Context: General skills evaluation
+Focus on:
+- Overall skill strength and career potential
+- Skills development opportunities 
+- Career progression possibilities within telecom industry
+- Risk factors based on current role satisfaction and market trends
+`;
+    } else {
+      targetRoleInfo = targetRole ? `
 Target Role: ${targetRole.title}
 Required Skills: ${Array.isArray(targetRole.required_skills) ? targetRole.required_skills.join(', ') : 'Not specified'}
 Required Qualifications: ${Array.isArray(targetRole.required_qualifications) ? targetRole.required_qualifications.join(', ') : 'Not specified'}
 Experience Level: ${targetRole.experience_level || 'Not specified'}
 ` : 'No specific target role - general assessment';
+      
+      assessmentInstructions = `
+Assessment Context: Role-specific evaluation
+Focus on:
+- Fit for the specific target role
+- Specific skill gaps for the target role
+- Development path to target role
+- Risk factors related to role transition
+`;
+    }
 
     const prompt = `Analyze this employee's skills and provide a detailed assessment.
 
@@ -292,11 +364,13 @@ ${employeeProfile}
 
 ${targetRoleInfo}
 
+${assessmentInstructions}
+
 Provide a JSON response with:
 1. overallMatch: percentage (0-100) of how well the employee matches the target role or their career progression potential
 2. skillGaps: array of objects with {skill, currentLevel, requiredLevel, gap}
 3. recommendations: detailed text recommendations for skill development
-4. nextRoles: array of 3-5 suggested career progression roles
+4. nextRoles: array of 3-5 suggested career progression roles within telecom industry
 5. churnRisk: percentage (0-100) - higher values indicate higher risk of employee leaving (consider: skill gaps, overqualification, market demand, career stagnation)
 6. rotationRisk: percentage (0-100) - higher values indicate higher likelihood of internal role change (consider: growth potential, skill transferability, ambition)
 7. levelFit: percentage (0-100) - how well the employee's experience and skills match their current level

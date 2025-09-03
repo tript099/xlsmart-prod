@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, XCircle, User, Brain, Edit, Save } from "lucide-react";
+import { CheckCircle, XCircle, User, Brain, Edit, Save, Bot } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -228,6 +228,86 @@ export const EmployeeRoleAssignmentReview = ({ sessionId }: EmployeeRoleAssignme
     }
   };
 
+  const handleAcceptAllAI = async () => {
+    try {
+      setSaving("bulk");
+      let acceptedCount = 0;
+
+      // Accept all AI suggestions that haven't been manually assigned
+      for (const employee of employees) {
+        if (employee.ai_suggested_role_id && !employee.standard_role_id) {
+          await handleRoleAssignment(employee.id, employee.ai_suggested_role_id, 'ai', 'Bulk accepted AI suggestion');
+          acceptedCount++;
+        }
+      }
+
+      toast({
+        title: "AI Suggestions Accepted",
+        description: `Successfully accepted ${acceptedCount} AI role suggestions`,
+      });
+
+    } catch (error) {
+      console.error('Error accepting AI suggestions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to accept all AI suggestions",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleFinalizeAssignments = async () => {
+    try {
+      setSaving("finalize");
+      
+      // Update all assigned employees to approved status
+      const assignedEmployees = employees.filter(emp => emp.standard_role_id);
+      
+      for (const employee of assignedEmployees) {
+        await handleRoleAssignment(employee.id, employee.standard_role_id!, 'ai', 'Finalized assignment');
+      }
+
+      // Update session status to indicate completion
+      const { error: sessionError } = await supabase
+        .from('xlsmart_upload_sessions')
+        .update({ 
+          status: 'completed',
+          ai_analysis: {
+            ...employees[0]?.uploadSession?.ai_analysis,
+            finalized_at: new Date().toISOString(),
+            finalized_count: assignedEmployees.length
+          }
+        })
+        .eq('id', sessionId);
+
+      if (sessionError) {
+        console.error('Session update error:', sessionError);
+      }
+
+      toast({
+        title: "Assignments Finalized",
+        description: `Successfully finalized ${assignedEmployees.length} role assignments. The upload process is now complete!`,
+      });
+
+      // Refresh page after successful finalization
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+    } catch (error) {
+      console.error('Error finalizing assignments:', error);
+      toast({
+        title: "Error",
+        description: "Failed to finalize assignments",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(null);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -256,13 +336,13 @@ export const EmployeeRoleAssignmentReview = ({ sessionId }: EmployeeRoleAssignme
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Current Position</TableHead>
-                <TableHead>Original Role</TableHead>
-                <TableHead>AI Suggested Role</TableHead>
-                <TableHead>Assigned Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="min-w-[150px]">Employee</TableHead>
+                <TableHead className="min-w-[150px]">Current Position</TableHead>
+                <TableHead className="min-w-[120px]">Original Role</TableHead>
+                <TableHead className="min-w-[120px]">AI Suggested</TableHead>
+                <TableHead className="min-w-[150px]">Assigned Role</TableHead>
+                <TableHead className="min-w-[100px]">Status</TableHead>
+                <TableHead className="min-w-[100px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -405,6 +485,36 @@ export const EmployeeRoleAssignmentReview = ({ sessionId }: EmployeeRoleAssignme
         {employees.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             No employees found for this session.
+          </div>
+        )}
+
+        {/* Action buttons for bulk operations */}
+        {employees.length > 0 && (
+          <div className="flex flex-col sm:flex-row gap-4 mt-6 pt-6 border-t">
+            <div className="flex-1">
+              <div className="text-sm text-muted-foreground">
+                {employees.filter(emp => emp.standard_role_id).length} of {employees.length} employees have assigned roles
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                onClick={handleAcceptAllAI}
+                disabled={saving !== null}
+                className="w-full sm:w-auto"
+              >
+                <Bot className="h-4 w-4 mr-2" />
+                {saving === "bulk" ? "Accepting..." : "Accept All AI Suggestions"}
+              </Button>
+              <Button
+                onClick={handleFinalizeAssignments}
+                disabled={saving !== null || employees.filter(emp => emp.standard_role_id).length === 0}
+                className="w-full sm:w-auto"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {saving === "finalize" ? "Finalizing..." : "Finalize & Complete"}
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

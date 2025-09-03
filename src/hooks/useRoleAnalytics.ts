@@ -43,7 +43,7 @@ export const useRoleAnalytics = (): RoleAnalytics => {
           .from('xlsmart_role_mappings')
           .select('mapping_confidence', { count: 'exact' });
 
-        // Calculate average mapping accuracy (values are decimals 0.0-1.0, convert to percentages)
+        // Calculate average mapping accuracy (confidence is stored as percentages by AI function)
         const avgAccuracy = mappings?.length > 0 
           ? mappings.reduce((sum, m) => sum + (m.mapping_confidence || 0), 0) / mappings.length 
           : 0;
@@ -54,14 +54,35 @@ export const useRoleAnalytics = (): RoleAnalytics => {
           .select('*', { count: 'exact', head: true })
           .eq('upload_status', 'completed');
 
-        // Calculate standardization rate (mapped roles vs total roles uploaded)
-        const standardizationRate = totalMappings && totalRoles 
-          ? Math.min(100, Math.round((totalMappings / totalRoles) * 100))
-          : 0;
+        // Calculate standardization rate - percentage of uploaded roles that have been successfully mapped
+        // Get total roles uploaded from catalogs
+        const { data: catalogs } = await supabase
+          .from('xlsmart_role_catalogs')
+          .select('total_roles, processed_roles')
+          .eq('upload_status', 'completed');
+
+        const totalRolesUploaded = catalogs?.reduce((sum, catalog) => sum + (catalog.total_roles || 0), 0) || 0;
+        const totalRolesProcessed = catalogs?.reduce((sum, catalog) => sum + (catalog.processed_roles || 0), 0) || 0;
+
+        // Debug logging
+        console.log('🔍 DEBUG Standardization Rate Calculation:');
+        console.log('  - Catalogs found:', catalogs?.length || 0);
+        console.log('  - Total roles uploaded:', totalRolesUploaded);
+        console.log('  - Total roles processed:', totalRolesProcessed);
+        console.log('  - Total mappings created:', totalMappings);
+        console.log('  - Raw catalog data:', catalogs);
+
+        // Calculate standardization rate based on actual role mappings created
+        // This shows how many uploaded roles were successfully mapped to standardized roles
+        const standardizationRate = totalRolesUploaded > 0 
+          ? Math.round((totalMappings / totalRolesUploaded) * 100)
+          : (totalMappings > 0 ? 100 : 0);
+
+        console.log('  - Final standardization rate:', standardizationRate);
 
         setAnalytics({
           totalRoles: totalRoles || 0,
-          mappingAccuracy: Math.round(avgAccuracy * 100), // Convert decimal to percentage
+          mappingAccuracy: Math.round(avgAccuracy), // Already handled percentage conversion above
           standardizationRate,
           roleCategories: uniqueJobFamilies,
           totalMappings: totalMappings || 0,

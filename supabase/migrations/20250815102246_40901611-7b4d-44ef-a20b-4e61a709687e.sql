@@ -1,5 +1,7 @@
 -- Update RLS policy to allow edge functions to insert without auth context
 DROP POLICY IF EXISTS "Authenticated users can create AI analyses" ON public.ai_analysis_results;
+DROP POLICY IF EXISTS "Allow service role and authenticated users to create AI analyses" ON public.ai_analysis_results;
+DROP POLICY IF EXISTS "Allow service role and authenticated users to create AI analyse" ON public.ai_analysis_results;
 
 CREATE POLICY "Allow service role and authenticated users to create AI analyses"
   ON public.ai_analysis_results

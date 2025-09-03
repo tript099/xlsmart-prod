@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { BookOpen, ArrowRight, Target, Clock, Star, Users, RefreshCw, Brain, TrendingUp, Award } from "lucide-react";
+import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,12 +38,13 @@ interface StandardRole {
 interface DevelopmentPlan {
   id: string;
   employee_id: string;
-  skill_gaps: any;
-  learning_paths: any;
-  priority_skills: any;
-  development_timeline: string;
-  ai_recommendations: string;
+  employee_name: string;
+  current_position: string;
+  department: string;
+  experience: number;
+  ai_development_plan: string;
   created_at: string;
+  formattedPlan?: string;
 }
 
 export const DevelopmentPathwaysAI = () => {
@@ -62,25 +64,44 @@ export const DevelopmentPathwaysAI = () => {
     try {
       setLoading(true);
       
-      // Load all employees
-      const { data: employeesData, error: employeesError } = await supabase
-        .from('xlsmart_employees')
-        .select('*')
-        .eq('is_active', true)
-        .order('first_name');
+      // Load employees and roles in parallel for faster loading
+      const [employeesResult, rolesResult, developmentPlansResult] = await Promise.all([
+        supabase
+          .from('xlsmart_employees')
+          .select('*')
+          .eq('is_active', true)
+          .order('first_name'),
+        supabase
+          .from('xlsmart_standard_roles')
+          .select('*')
+          .eq('is_active', true),
+        supabase
+          .from('ai_analysis_results')
+          .select('*')
+          .eq('analysis_type', 'development_pathways')
+          .order('created_at', { ascending: false })
+      ]);
 
-      if (employeesError) throw employeesError;
+      if (employeesResult.error) throw employeesResult.error;
+      if (rolesResult.error) throw rolesResult.error;
+      if (developmentPlansResult.error) throw developmentPlansResult.error;
 
-      // Load standard roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('xlsmart_standard_roles')
-        .select('*')
-        .eq('is_active', true);
-
-      if (rolesError) throw rolesError;
-
-      setEmployees(employeesData || []);
-      setStandardRoles(rolesData || []);
+      setEmployees(employeesResult.data || []);
+      setStandardRoles(rolesResult.data || []);
+      
+      // Transform AI analysis results into development plans
+      const plans = (developmentPlansResult.data || []).map(result => ({
+        id: result.id,
+        employee_id: result.input_parameters?.employee_id || '',
+        employee_name: result.input_parameters?.employee_name || '',
+        current_position: result.input_parameters?.current_position || '',
+        department: result.input_parameters?.department || '',
+        experience: result.input_parameters?.experience || 0,
+        ai_development_plan: result.analysis_result?.developmentPlan || 'No development plan available',
+        created_at: result.created_at
+      }));
+      
+      setDevelopmentPlans(plans);
 
     } catch (error: any) {
       console.error('Error loading data:', error);
@@ -110,10 +131,21 @@ export const DevelopmentPathwaysAI = () => {
     try {
       console.log('Starting AI development analysis for', employees.length, 'employees');
 
+      // First, get all unique companies to ensure we use a valid identifier
+      const { data: companiesData } = await supabase
+        .from('xlsmart_employees')
+        .select('source_company')
+        .eq('is_active', true);
+      
+      const uniqueCompanies = [...new Set(companiesData?.map(emp => emp.source_company) || [])];
+      const targetCompany = uniqueCompanies.length > 0 ? uniqueCompanies[0] : 'xl';
+      
+      console.log('Available companies:', uniqueCompanies, 'Using:', targetCompany);
+
       const { data, error } = await supabase.functions.invoke('development-pathways-bulk', {
         body: {
           pathwayType: 'company',
-          identifier: 'xl'  // Analyzing xl company employees
+          identifier: targetCompany  // Use the first available company
         }
       });
 
@@ -193,6 +225,26 @@ export const DevelopmentPathwaysAI = () => {
     return (progress.processed / progress.total) * 100;
   };
 
+  // Simple formatting for development plans
+  const formatDevelopmentPlan = useCallback((text: string) => {
+    if (!text) return '';
+    
+    return text
+      // Basic headers
+      .replace(/###\s+(.*?)(?=\n|$)/g, '<h4 class="font-semibold text-blue-600 mt-3 mb-2">$1</h4>')
+      .replace(/##\s+(.*?)(?=\n|$)/g, '<h3 class="font-bold text-gray-800 mt-4 mb-2">$1</h3>')
+      
+      // Bold text
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+      
+      // Simple bullet points
+      .replace(/^[-•]\s+(.*)$/gm, '<div class="mb-1">• $1</div>')
+      
+      // Basic line breaks
+      .replace(/\n\n/g, '<br/><br/>')
+      .replace(/\n/g, '<br/>');
+  }, []);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -251,6 +303,7 @@ export const DevelopmentPathwaysAI = () => {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="employees">Development Analysis</TabsTrigger>
           <TabsTrigger value="pathways">Learning Pathways</TabsTrigger>
+          <TabsTrigger value="ai-results">AI Results</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -491,6 +544,89 @@ export const DevelopmentPathwaysAI = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="ai-results" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5" />
+                AI-Generated Development Plans
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {developmentPlans.length > 0 ? (
+                <div className="space-y-6">
+                  {developmentPlans.slice(0, 10).map((plan) => {
+                    const employee = employees.find(emp => emp.id === plan.employee_id);
+                    return (
+                      <div key={plan.id} className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-lg text-gray-900">
+                              {plan.employee_name || `${employee?.first_name} ${employee?.last_name}` || 'Unknown Employee'}
+                            </h4>
+                            <div className="flex gap-2 mt-1">
+                              <Badge variant="outline">{plan.current_position}</Badge>
+                              <Badge variant="secondary">{plan.department}</Badge>
+                              <Badge variant="outline">{plan.experience} years exp</Badge>
+                            </div>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(plan.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        
+                        <div className="bg-white border border-gray-200 p-6 rounded-lg">
+                          <h5 className="font-semibold text-base mb-4 text-gray-800 border-b border-gray-200 pb-2">
+                            AI Development Recommendations
+                          </h5>
+                          <div className="max-w-none">
+                            <div 
+                              className="text-sm leading-relaxed text-gray-700"
+                              dangerouslySetInnerHTML={{ __html: formatDevelopmentPlan(plan.ai_development_plan) }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {developmentPlans.length > 10 && (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-muted-foreground">
+                        Showing first 10 of {developmentPlans.length} development plans
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold">No AI Results Yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Run the AI Development Analysis to generate personalized development plans
+                  </p>
+                  <Button
+                    onClick={runAIDevelopmentAnalysis}
+                    disabled={analyzing || employees.length === 0}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  >
+                    {analyzing ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="mr-2 h-4 w-4" />
+                        Run AI Development Analysis
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -29,12 +29,12 @@ serve(async (req) => {
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     console.log('Fetching employees...');
+    // Mimic the exact query from EmployeeRoleAssignment.tsx
     const { data: employees, error: employeesError } = await supabaseClient
       .from('xlsmart_employees')
-      .select('id, first_name, last_name, current_position, current_department, current_level, years_of_experience, skills, standard_role_id')
+      .select('*')
       .is('standard_role_id', null)
-      .eq('is_active', true)
-      .limit(5); // Limit to 5 for testing
+      .order('created_at', { ascending: false });
 
     if (employeesError) {
       console.error('Employees fetch error:', employeesError);
@@ -44,10 +44,12 @@ serve(async (req) => {
     console.log(`Found ${employees?.length || 0} unassigned employees`);
 
     console.log('Fetching standard roles...');
+    // Mimic the exact query from EmployeeRoleAssignment.tsx
     const { data: standardRoles, error: rolesError } = await supabaseClient
       .from('xlsmart_standard_roles')
-      .select('*')
-      .eq('is_active', true);
+      .select('id, role_title, job_family, role_level, department, role_category')
+      .eq('is_active', true)
+      .order('role_title');
 
     if (rolesError) {
       console.error('Roles fetch error:', rolesError);
@@ -72,16 +74,7 @@ serve(async (req) => {
       throw new Error('No standard roles available');
     }
 
-    // Process just the first employee for testing
-    const employee = employees[0];
-    console.log(`Testing with employee: ${employee.first_name} ${employee.last_name}`);
-
-    // Enhanced role matching
-    let assignedRoleId = null;
-    
-    console.log(`Analyzing employee: ${employee.current_position} with skills: ${JSON.stringify(employee.skills)}`);
-    
-    // Simplified matching without job descriptions
+    // Enhanced role matching function
     const findBestMatch = (employee: any, roles: any[]) => {
       let bestMatch = null;
       let bestScore = 0;
@@ -95,19 +88,21 @@ serve(async (req) => {
           score += 0.4;
         }
         
-        // Skills match (40%)
-        const roleSkills = Array.isArray(role.required_skills) ? role.required_skills : [];
+        // Skills match (40%) - Note: role skills are not in this table structure
         const employeeSkills = Array.isArray(employee.skills) ? employee.skills : [];
         
-        const skillMatches = employeeSkills.filter(skill => 
-          roleSkills.some(roleSkill => 
-            skill.toLowerCase().includes(roleSkill.toLowerCase()) ||
-            roleSkill.toLowerCase().includes(skill.toLowerCase())
-          )
-        ).length;
-        
-        if (roleSkills.length > 0) {
-          score += (skillMatches / roleSkills.length) * 0.4;
+        // For now, we'll use a basic job family/department match instead of detailed skills
+        if (employeeSkills.length > 0) {
+          // Check if any employee skills match the role title or department
+          const skillMatches = employeeSkills.filter(skill => 
+            role.role_title.toLowerCase().includes(skill.toLowerCase()) ||
+            skill.toLowerCase().includes(role.role_title.toLowerCase()) ||
+            (role.department && role.department.toLowerCase().includes(skill.toLowerCase()))
+          ).length;
+          
+          if (skillMatches > 0) {
+            score += 0.3; // Give points for any skill matches
+          }
         }
         
         // Department match (20%)
@@ -116,9 +111,9 @@ serve(async (req) => {
           score += 0.2;
         }
         
-        // Experience level match (10%)
-        const empExp = employee.years_of_experience || 0;
-        if (empExp >= (role.experience_range_min || 0) && empExp <= (role.experience_range_max || 50)) {
+        // Job family/role level match (10%)
+        if (role.job_family && employee.current_department && 
+            role.job_family.toLowerCase().includes(employee.current_department.toLowerCase())) {
           score += 0.1;
         }
         
@@ -130,47 +125,82 @@ serve(async (req) => {
       
       return bestMatch;
     };
-    
-    const matchingRole = findBestMatch(employee, standardRoles);
-    
-    if (matchingRole) {
-      assignedRoleId = matchingRole.id;
-      console.log(`Found matching role: ${matchingRole.role_title} (score: calculated)`);
-    } else {
-      // Assign the first available role as fallback
-      assignedRoleId = standardRoles[0].id;
-      console.log(`No match found, assigning first role: ${standardRoles[0].role_title}`);
+
+    // Process all employees
+    let assignedCount = 0;
+    let failedCount = 0;
+    const totalEmployees = employees.length;
+    const processedEmployees = [];
+
+    console.log(`Processing ${totalEmployees} employees for role assignment...`);
+
+    for (let i = 0; i < employees.length; i++) {
+      const employee = employees[i];
+      
+      try {
+        console.log(`Processing employee ${i + 1}/${totalEmployees}: ${employee.first_name} ${employee.last_name}`);
+        console.log(`Analyzing: ${employee.current_position} with skills: ${JSON.stringify(employee.skills)}`);
+        
+        const matchingRole = findBestMatch(employee, standardRoles);
+        
+        let assignedRoleId = null;
+        if (matchingRole) {
+          assignedRoleId = matchingRole.id;
+          console.log(`Found matching role: ${matchingRole.role_title}`);
+        } else {
+          // Assign the first available role as fallback
+          assignedRoleId = standardRoles[0].id;
+          console.log(`No match found, assigning first role: ${standardRoles[0].role_title}`);
+        }
+
+        console.log(`Updating employee with role ID: ${assignedRoleId}`);
+        
+        const { error: updateError } = await supabaseClient
+          .from('xlsmart_employees')
+          .update({
+            standard_role_id: assignedRoleId,
+            role_assignment_status: 'ai_suggested',
+            assignment_notes: 'AI bulk assignment'
+          })
+          .eq('id', employee.id);
+
+        if (updateError) {
+          console.error(`Update error for employee ${employee.id}:`, updateError);
+          failedCount++;
+          processedEmployees.push({
+            employee: `${employee.first_name} ${employee.last_name}`,
+            status: 'failed',
+            error: updateError.message
+          });
+        } else {
+          console.log(`✅ Successfully assigned role to ${employee.first_name} ${employee.last_name}`);
+          assignedCount++;
+          processedEmployees.push({
+            employee: `${employee.first_name} ${employee.last_name}`,
+            status: 'assigned',
+            assigned_role: matchingRole?.role_title || standardRoles[0].role_title
+          });
+        }
+      } catch (error) {
+        console.error(`Error processing employee ${employee.id}:`, error);
+        failedCount++;
+        processedEmployees.push({
+          employee: `${employee.first_name} ${employee.last_name}`,
+          status: 'failed',
+          error: error.message
+        });
+      }
     }
 
-    console.log(`Updating employee with role ID: ${assignedRoleId}`);
-    
-    const { error: updateError } = await supabaseClient
-      .from('xlsmart_employees')
-      .update({
-        standard_role_id: assignedRoleId,
-        role_assignment_status: 'ai_suggested',
-        assignment_notes: 'Simple test assignment'
-      })
-      .eq('id', employee.id);
-
-    if (updateError) {
-      console.error('Update error:', updateError);
-      throw new Error(`Failed to update employee: ${updateError.message}`);
-    }
-
-    console.log('✅ Successfully assigned role');
+    console.log(`Bulk assignment completed: ${assignedCount} assigned, ${failedCount} failed`);
 
     return new Response(JSON.stringify({
       success: true,
-      message: 'Test assignment completed',
-      assigned: 1,
-      failed: 0,
-      total: 1,
-      details: {
-        employee: `${employee.first_name} ${employee.last_name}`,
-        assigned_role: matchingRole?.role_title || standardRoles[0].role_title,
-        matching_used: 'Enhanced job description matching'
-      }
+      message: `Bulk assignment completed: ${assignedCount} assigned, ${failedCount} failed`,
+      assigned: assignedCount,
+      failed: failedCount,
+      total: totalEmployees,
+      details: processedEmployees
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

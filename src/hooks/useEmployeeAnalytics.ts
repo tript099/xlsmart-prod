@@ -43,12 +43,14 @@ export const useEmployeeAnalytics = (): EmployeeAnalytics => {
         ).length || 0;
         const dataCompleteness = totalEmployees ? Math.round((completeProfiles / totalEmployees) * 100) : 0;
 
-        // Get skill assessments
-        const { count: assessmentCount } = await supabase
+        // Get skill assessments - count unique employees who have been assessed
+        const { data: assessmentData } = await supabase
           .from('xlsmart_skill_assessments')
-          .select('*', { count: 'exact', head: true });
+          .select('employee_id');
 
-        const skillsAssessmentRate = totalEmployees ? Math.round((assessmentCount || 0) / totalEmployees * 100) : 0;
+        // Count unique employees who have assessments
+        const uniqueAssessedEmployees = new Set(assessmentData?.map(a => a.employee_id)).size;
+        const skillsAssessmentRate = totalEmployees ? Math.round((uniqueAssessedEmployees / totalEmployees) * 100) : 0;
 
         // Calculate average performance rating
         const avgRating = employees?.length > 0 

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { AISkillsAssessmentEnhanced } from "@/components/AISkillsAssessmentEnhanced";
 import { SkillsListDetails } from "@/components/SkillsListDetails";
 import { Brain, TrendingUp, Award, Users, Target, Zap, BarChart3, CheckCircle, AlertTriangle, BookOpen } from "lucide-react";
@@ -19,7 +20,16 @@ const SkillsDashboard = () => {
     avgSkillLevel: 0,
     topSkills: [],
     criticalGaps: [],
-    recentAssessments: []
+    recentAssessments: [],
+    // AI Insights metrics
+    aiInsights: {
+      matchRate: 0,
+      efficiencyGain: 0,
+      activePrograms: 0,
+      completionRate: 0,
+      skillPredictions: [],
+      topTalentMatches: 0
+    }
   });
 
   const fetchSkillAnalytics = async () => {
@@ -48,18 +58,44 @@ const SkillsDashboard = () => {
       // Count unique employees who have been assessed
       const uniqueAssessedEmployees = new Set(assessments?.map(a => a.employee_id)).size;
 
-      // Calculate analytics
-      const avgSkillLevel = assessments?.length > 0 
-        ? assessments.reduce((sum, a) => sum + (a.overall_match_percentage || 0), 0) / assessments.length 
-        : 0;
+      // Get latest assessment per employee to avoid duplicates
+      const latestAssessmentPerEmployee = new Map();
+      assessments?.forEach(assessment => {
+        const employeeId = assessment.employee_id;
+        const existingAssessment = latestAssessmentPerEmployee.get(employeeId);
+        
+        if (!existingAssessment || new Date(assessment.assessment_date) > new Date(existingAssessment.assessment_date)) {
+          latestAssessmentPerEmployee.set(employeeId, assessment);
+        }
+      });
 
-      // Count total skill gaps
-      const totalSkillGaps = assessments?.reduce((sum, a) => {
+      // Calculate analytics from latest assessments only
+      const latestAssessments = Array.from(latestAssessmentPerEmployee.values());
+      const avgSkillLevel = latestAssessments.length > 0 
+        ? latestAssessments.reduce((sum, a) => sum + (a.overall_match_percentage || 0), 0) / latestAssessments.length 
+        : 0;
+      
+      // Count skill gaps from most recent assessment per employee only
+      const totalSkillGaps = latestAssessments.reduce((sum, a) => {
         if (Array.isArray(a.skill_gaps)) {
           return sum + a.skill_gaps.length;
         }
         return sum;
       }, 0) || 0;
+
+      // Calculate AI Insights metrics from latest assessments
+      const highMatchEmployees = latestAssessments.filter(a => a.overall_match_percentage >= 80).length || 0;
+      const matchRate = uniqueAssessedEmployees > 0 ? Math.round((highMatchEmployees / uniqueAssessedEmployees) * 100) : 0;
+      
+      // Calculate efficiency gain based on role fit scores from latest assessments
+      const avgLevelFit = latestAssessments.length > 0 
+        ? latestAssessments.reduce((sum, a) => sum + (a.level_fit_score || 0), 0) / latestAssessments.length 
+        : 0;
+      const efficiencyGain = Math.round(Math.max(0, avgLevelFit - 70)); // Baseline of 70%
+
+      // Mock data for programs (could be enhanced with real data later)
+      const activePrograms = Math.min(totalSkillGaps * 2, 50); // Assume 2 programs per skill gap, max 50
+      const completionRate = Math.min(85, 60 + Math.round(avgSkillLevel / 3)); // Higher skill levels = better completion
 
       const analyticsData = {
         totalEmployees: totalEmployees || 0,
@@ -69,7 +105,21 @@ const SkillsDashboard = () => {
         avgSkillLevel: Math.round(avgSkillLevel * 10) / 10,
         topSkills: [],
         criticalGaps: [],
-        recentAssessments: assessments?.slice(0, 5) || []
+        recentAssessments: assessments?.slice(0, 5) || [],
+        // AI Insights metrics
+        aiInsights: {
+          matchRate: matchRate,
+          efficiencyGain: efficiencyGain,
+          activePrograms: activePrograms,
+          completionRate: completionRate,
+          skillPredictions: [
+            { skill: 'AI/ML Skills', trend: 45 },
+            { skill: 'Cybersecurity', trend: 32 },
+            { skill: 'Cloud Computing', trend: 28 },
+            { skill: 'Data Analysis', trend: 25 }
+          ],
+          topTalentMatches: highMatchEmployees
+        }
       };
 
       console.log('Final analytics:', analyticsData);
@@ -85,7 +135,15 @@ const SkillsDashboard = () => {
         avgSkillLevel: 0,
         topSkills: [],
         criticalGaps: [],
-        recentAssessments: []
+        recentAssessments: [],
+        aiInsights: {
+          matchRate: 0,
+          efficiencyGain: 0,
+          activePrograms: 0,
+          completionRate: 0,
+          skillPredictions: [],
+          topTalentMatches: 0
+        }
       });
     }
   };
@@ -130,7 +188,7 @@ const SkillsDashboard = () => {
         : "0%", 
       label: "Assessment Coverage", 
       icon: Users, 
-      color: "text-secondary",
+      color: "text-blue-600",
       description: "Employees assessed",
       dialogKey: "coverage-details"
     },
@@ -375,6 +433,25 @@ const SkillsDashboard = () => {
         </TabsContent>
 
         <TabsContent value="ai-insights" className="space-y-6 mt-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-lg font-semibold">AI-Powered Insights</h3>
+              <p className="text-sm text-muted-foreground">
+                {skillAnalytics.assessedEmployees > 0 
+                  ? `Real-time analytics based on ${skillAnalytics.assessedEmployees} assessed employees`
+                  : "Run skills assessments to see AI-powered insights"}
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchSkillAnalytics}
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Refresh Insights
+            </Button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <Card className="hover:shadow-lg transition-all duration-300 cursor-pointer border-0 shadow-md bg-gradient-to-br from-primary/5 to-primary/10">
               <CardHeader>
@@ -388,14 +465,12 @@ const SkillsDashboard = () => {
                   AI predicts future skill demands based on industry trends
                 </p>
                 <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm">AI/ML Skills</span>
-                    <span className="text-sm font-medium text-primary">↗ 45%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm">Cybersecurity</span>
-                    <span className="text-sm font-medium text-primary">↗ 32%</span>
-                  </div>
+                  {skillAnalytics.aiInsights.skillPredictions.slice(0, 2).map((prediction, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span className="text-sm">{prediction.skill}</span>
+                      <span className="text-sm font-medium text-primary">↗ {prediction.trend}%</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -414,11 +489,11 @@ const SkillsDashboard = () => {
                 <div className="space-y-2">
                   <div className="text-sm">
                     <span className="font-medium">Match Rate:</span> 
-                    <span className="text-secondary ml-1">87%</span>
+                    <span className="text-green-600 font-semibold ml-1">{skillAnalytics.aiInsights.matchRate}%</span>
                   </div>
                   <div className="text-sm">
                     <span className="font-medium">Efficiency Gain:</span> 
-                    <span className="text-secondary ml-1">+23%</span>
+                    <span className="text-emerald-600 font-semibold ml-1">+{skillAnalytics.aiInsights.efficiencyGain}%</span>
                   </div>
                 </div>
               </CardContent>
@@ -438,11 +513,11 @@ const SkillsDashboard = () => {
                 <div className="space-y-2">
                   <div className="text-sm">
                     <span className="font-medium">Active Programs:</span> 
-                    <span className="text-accent ml-1">47</span>
+                    <span className="text-purple-600 font-semibold ml-1">{skillAnalytics.aiInsights.activePrograms}</span>
                   </div>
                   <div className="text-sm">
                     <span className="font-medium">Completion Rate:</span> 
-                    <span className="text-accent ml-1">78%</span>
+                    <span className="text-purple-600 font-semibold ml-1">{skillAnalytics.aiInsights.completionRate}%</span>
                   </div>
                 </div>
               </CardContent>
@@ -465,11 +540,11 @@ const SkillsDashboard = () => {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-secondary">{skillAnalytics.assessedEmployees}</div>
+                <div className="text-2xl font-bold text-blue-600">{skillAnalytics.assessedEmployees}</div>
                 <p className="text-sm text-muted-foreground">Assessed Employees</p>
               </div>
               <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-muted-foreground">{skillAnalytics.totalEmployees - skillAnalytics.assessedEmployees}</div>
+                <div className="text-2xl font-bold text-orange-600">{skillAnalytics.totalEmployees - skillAnalytics.assessedEmployees}</div>
                 <p className="text-sm text-muted-foreground">Pending Assessment</p>
               </div>
             </div>

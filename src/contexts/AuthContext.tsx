@@ -7,7 +7,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, role?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -54,16 +54,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, role = 'hr_manager') => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: redirectUrl
+        emailRedirectTo: redirectUrl,
+        data: {
+          role: role
+        }
       }
     });
+
+    // If signup was successful and user is created, update their profile with the role
+    if (!error && data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ role: role as any })
+        .eq('user_id', data.user.id);
+      
+      if (profileError) {
+        console.error('Error updating user role:', profileError);
+      }
+    }
+    
     return { error };
   };
 

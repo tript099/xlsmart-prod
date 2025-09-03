@@ -1,4 +1,5 @@
 -- Create trigger to automatically set created_by for ai_analysis_results
+DROP TRIGGER IF EXISTS set_ai_analysis_created_by_trigger ON public.ai_analysis_results;
 CREATE TRIGGER set_ai_analysis_created_by_trigger
   BEFORE INSERT ON public.ai_analysis_results
   FOR EACH ROW

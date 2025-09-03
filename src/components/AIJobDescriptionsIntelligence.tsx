@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, TrendingUp, Target, Shield, Brain, AlertTriangle, CheckCircle, Star, Wrench } from "lucide-react";
+import { FileText, TrendingUp, Target, Shield, Brain, AlertTriangle, CheckCircle, Star, Wrench, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -15,6 +15,7 @@ interface JobDescriptionsIntelligenceProps {
 
 export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligenceProps> = ({ onAnalysisComplete }) => {
   console.log('🧠 AIJobDescriptionsIntelligence component rendered');
+  console.log('🧠 Component props:', { onAnalysisComplete: !!onAnalysisComplete });
   
   const [selectedAnalysis, setSelectedAnalysis] = useState<string>('jd_optimization');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
@@ -24,6 +25,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   const [fixingJobs, setFixingJobs] = useState<Set<string>>(new Set());
   const [pastResults, setPastResults] = useState<any[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const analysisTypes = [
     { value: 'jd_optimization', label: 'JD Optimization', icon: Target },
@@ -36,6 +38,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
     console.log('🧠 Component mounted, fetching past results...');
     fetchPastResults().catch(error => {
       console.error('Failed to fetch past results:', error);
+      setError('Failed to load past results');
       // Don't prevent component from rendering if this fails
     });
   }, []);
@@ -66,10 +69,13 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
 
   const handleAnalysis = async () => {
     setIsLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase.functions.invoke('ai-job-descriptions-intelligence', {
         body: {
           analysisType: selectedAnalysis,
+          departmentFilter: departmentFilter || undefined,
+          roleFilter: roleFilter || undefined,
         }
       });
 
@@ -82,9 +88,16 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
       
       // Refresh past results to include the new one
       await fetchPastResults();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Analysis error:', error);
-      toast.error('Failed to complete analysis');
+      console.error('Error details:', {
+        message: error?.message,
+        response: error?.response,
+        data: error?.data,
+        stack: error?.stack
+      });
+      setError(error?.message || 'Failed to complete analysis');
+      toast.error(`Failed to complete analysis: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -109,6 +122,13 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   };
 
   const handleLoadPastResult = (resultId: string) => {
+    if (resultId === 'new') {
+      setResults(null);
+      setSelectedResultId('');
+      toast.success('Ready for new analysis');
+      return;
+    }
+    
     const result = pastResults.find(r => r.id === resultId);
     if (result) {
       setResults(result.analysis_result);
@@ -483,8 +503,10 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
 
   console.log('🧠 Rendering component. results:', !!results);
 
-  return (
-    <div className="space-y-6">
+  try {
+    console.log('🧠 About to render component');
+    return (
+      <div className="space-y-6">
       <div className="mb-4 p-4 bg-muted/30 rounded-lg border">
         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
           <Brain className="h-5 w-5 text-primary" />
@@ -494,6 +516,16 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
           Analyze job descriptions for optimization, market alignment, skills mapping, and compliance.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-2 text-red-800">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="font-medium">Error:</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      )}
       
       <div className="flex flex-col sm:flex-row gap-4">
         <Select value={selectedAnalysis} onValueChange={handleAnalysisTypeChange}>
@@ -516,21 +548,21 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
           <SelectTrigger className="w-full sm:w-64">
             <SelectValue placeholder="Load past analysis" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">New Analysis</SelectItem>
-            {pastResults.map((result) => (
-              <SelectItem key={result.id} value={result.id}>
-                <div className="flex flex-col">
-                  <span className="font-medium">
-                    {analysisTypes.find(t => t.value === result.analysis_type)?.label}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(result.created_at).toLocaleDateString()} {new Date(result.created_at).toLocaleTimeString()}
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
+                     <SelectContent>
+             <SelectItem value="new">New Analysis</SelectItem>
+             {pastResults.map((result) => (
+               <SelectItem key={result.id} value={result.id}>
+                 <div className="flex flex-col">
+                   <span className="font-medium">
+                     {analysisTypes.find(t => t.value === result.analysis_type)?.label}
+                   </span>
+                   <span className="text-xs text-muted-foreground">
+                     {new Date(result.created_at).toLocaleDateString()} {new Date(result.created_at).toLocaleTimeString()}
+                   </span>
+                 </div>
+               </SelectItem>
+             ))}
+           </SelectContent>
         </Select>
 
         <Select value={departmentFilter} onValueChange={setDepartmentFilter} disabled>
@@ -552,8 +584,17 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
           disabled={isLoading}
           className="w-full sm:w-auto"
         >
-          <FileText className="h-4 w-4 mr-2" />
-          {isLoading ? 'Analyzing...' : selectedResultId ? 'Run New Analysis' : 'Analyze Job Descriptions'}
+          {isLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <FileText className="h-4 w-4 mr-2" />
+              {selectedResultId ? 'Run New Analysis' : 'Analyze Job Descriptions'}
+            </>
+          )}
         </Button>
       </div>
 
@@ -566,8 +607,8 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
         </div>
       )}
 
-      {results && (
-        <Tabs value={selectedAnalysis} onValueChange={setSelectedAnalysis}>
+      {results ? (
+        <Tabs value={selectedAnalysis} onValueChange={handleAnalysisTypeChange}>
           <TabsList className="grid w-full grid-cols-4">
             {analysisTypes.map((type) => (
               <TabsTrigger key={type.value} value={type.value} className="flex items-center gap-2">
@@ -593,7 +634,49 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
             {renderComplianceResults(results)}
           </TabsContent>
         </Tabs>
+      ) : (
+        <div className="text-center p-8 bg-muted/30 rounded-lg border">
+          <Brain className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Analysis Results</h3>
+          <p className="text-muted-foreground mb-4">
+            Click "Analyze Job Descriptions" to start your first analysis.
+          </p>
+          <Button 
+            onClick={handleAnalysis} 
+            disabled={isLoading}
+            className="mt-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <FileText className="h-4 w-4 mr-2" />
+                Start Analysis
+              </>
+            )}
+          </Button>
+        </div>
       )}
-    </div>
-  );
-};
+     </div>
+   );
+   } catch (error) {
+     console.error('🧠 Error rendering AIJobDescriptionsIntelligence:', error);
+     return (
+       <div className="p-8 text-center">
+         <div className="text-red-600 mb-4">
+           <AlertTriangle className="h-12 w-12 mx-auto" />
+         </div>
+         <h3 className="text-lg font-semibold mb-2">Component Error</h3>
+         <p className="text-muted-foreground">
+           There was an error rendering the intelligence component. Please try refreshing the page.
+         </p>
+         <p className="text-sm text-red-600 mt-2">
+           Error: {error instanceof Error ? error.message : 'Unknown error'}
+         </p>
+       </div>
+     );
+   }
+ };

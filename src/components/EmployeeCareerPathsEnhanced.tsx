@@ -146,13 +146,15 @@ export const EmployeeCareerPathsEnhanced = () => {
         body: {
           employees: employees.map(emp => ({
             id: emp.id,
-            name: `${emp.first_name} ${emp.last_name}`,
+            first_name: emp.first_name,
+            last_name: emp.last_name,
             current_position: emp.current_position,
-            department: emp.current_department,
-            level: emp.current_level,
-            experience: emp.years_of_experience,
+            current_department: emp.current_department,
+            current_level: emp.current_level,
+            years_of_experience: emp.years_of_experience,
             skills: emp.skills,
-            performance_rating: emp.performance_rating
+            performance_rating: emp.performance_rating,
+            source_company: emp.source_company
           })),
           standard_roles: standardRoles
         }
@@ -351,12 +353,22 @@ export const EmployeeCareerPathsEnhanced = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Employee</TableHead>
-                    <TableHead>Current Role</TableHead>
+                    <TableHead>Current Position</TableHead>
                     <TableHead>Experience</TableHead>
                     <TableHead>Performance</TableHead>
-                    <TableHead>Lateral Roles</TableHead>
-                    <TableHead>Next Roles</TableHead>
-                    <TableHead>Recommended Actions</TableHead>
+                    <TableHead className="text-green-600">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        Lateral Opportunities
+                      </div>
+                    </TableHead>
+                    <TableHead className="text-blue-600">
+                      <div className="flex items-center gap-1">
+                        <ArrowRight className="h-4 w-4" />
+                        Career Progression
+                      </div>
+                    </TableHead>
+                    <TableHead>Development Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -398,57 +410,93 @@ export const EmployeeCareerPathsEnhanced = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-col gap-1 max-w-[200px]">
+                          <div className="space-y-1 max-w-[240px]">
                             {lateralRoles.length > 0 ? (
-                              lateralRoles.map((role, index) => (
-                                <div key={index} className="flex items-center gap-1 text-sm">
-                                  <MapPin className="h-3 w-3 text-green-500" />
-                                  <span className="truncate">{role}</span>
+                              <div className="space-y-1">
+                                <div className="text-xs font-medium text-green-600 mb-1 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  Lateral Moves
                                 </div>
-                              ))
-                            ) : (
-                              <span className="text-sm text-muted-foreground">No lateral roles identified</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1 max-w-[200px]">
-                            {nextRoles.length > 0 ? (
-                              nextRoles.map((role, index) => (
-                                <div key={index} className="flex items-center gap-1 text-sm">
-                                  <ArrowRight className="h-3 w-3 text-blue-500" />
-                                  <span className="truncate">{role}</span>
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-sm text-muted-foreground">No next roles identified</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-[250px] space-y-2">
-                            {actions.lateral.length > 0 && (
-                              <div>
-                                <div className="text-xs font-medium text-green-600 mb-1">Lateral:</div>
-                                {actions.lateral.slice(0, 2).map((action, index) => (
-                                  <div key={index} className="text-xs text-muted-foreground mb-1">
-                                    • {action}
-                                  </div>
+                                {lateralRoles.slice(0, 3).map((role, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs block w-fit mb-1 bg-green-50 border-green-200">
+                                    {role}
+                                  </Badge>
                                 ))}
+                                {lateralRoles.length > 3 && (
+                                  <span className="text-xs text-muted-foreground">+{lateralRoles.length - 3} more</span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground italic">Run AI analysis for recommendations</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1 max-w-[240px]">
+                            {nextRoles.length > 0 ? (
+                              <div className="space-y-1">
+                                <div className="text-xs font-medium text-blue-600 mb-1 flex items-center gap-1">
+                                  <ArrowRight className="h-3 w-3" />
+                                  Career Progression
+                                </div>
+                                {nextRoles.slice(0, 3).map((role, index) => (
+                                  <Badge key={index} variant="outline" className="text-xs block w-fit mb-1 bg-blue-50 border-blue-200">
+                                    {role}
+                                  </Badge>
+                                ))}
+                                {nextRoles.length > 3 && (
+                                  <span className="text-xs text-muted-foreground">+{nextRoles.length - 3} more</span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-muted-foreground italic">Run AI analysis for recommendations</div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-[280px] space-y-3">
+                            {actions.lateral.length > 0 && (
+                              <div className="bg-green-50 p-2 rounded-md border border-green-200">
+                                <div className="text-xs font-medium text-green-700 mb-1 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  Lateral Development
+                                </div>
+                                <div className="space-y-1">
+                                  {actions.lateral.slice(0, 2).map((action, index) => (
+                                    <div key={index} className="text-xs text-green-600 flex items-start gap-1">
+                                      <span className="text-green-400 mt-0.5">•</span>
+                                      <span>{action}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                {actions.lateral.length > 2 && (
+                                  <div className="text-xs text-green-500 mt-1">+{actions.lateral.length - 2} more actions</div>
+                                )}
                               </div>
                             )}
                             {actions.vertical.length > 0 && (
-                              <div>
-                                <div className="text-xs font-medium text-blue-600 mb-1">Vertical:</div>
-                                {actions.vertical.slice(0, 2).map((action, index) => (
-                                  <div key={index} className="text-xs text-muted-foreground mb-1">
-                                    • {action}
-                                  </div>
-                                ))}
+                              <div className="bg-blue-50 p-2 rounded-md border border-blue-200">
+                                <div className="text-xs font-medium text-blue-700 mb-1 flex items-center gap-1">
+                                  <ArrowRight className="h-3 w-3" />
+                                  Career Advancement
+                                </div>
+                                <div className="space-y-1">
+                                  {actions.vertical.slice(0, 2).map((action, index) => (
+                                    <div key={index} className="text-xs text-blue-600 flex items-start gap-1">
+                                      <span className="text-blue-400 mt-0.5">•</span>
+                                      <span>{action}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                {actions.vertical.length > 2 && (
+                                  <div className="text-xs text-blue-500 mt-1">+{actions.vertical.length - 2} more actions</div>
+                                )}
                               </div>
                             )}
                             {actions.lateral.length === 0 && actions.vertical.length === 0 && (
-                              <span className="text-xs text-muted-foreground">Run AI analysis for recommendations</span>
+                              <div className="text-xs text-muted-foreground italic bg-gray-50 p-2 rounded-md border border-gray-200">
+                                Run AI analysis for personalized recommendations
+                              </div>
                             )}
                           </div>
                         </TableCell>

@@ -44,6 +44,29 @@ CREATE TRIGGER update_xlsmart_standard_roles_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
+-- Create skills_master table for centralized skills taxonomy
+CREATE TABLE public.skills_master (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Enable RLS on skills_master
+ALTER TABLE public.skills_master ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for skills_master
+CREATE POLICY "HR managers can manage skills" 
+ON public.skills_master 
+FOR ALL 
+USING (get_current_user_role() = ANY(ARRAY['super_admin'::text, 'hr_manager'::text]))
+WITH CHECK (get_current_user_role() = ANY(ARRAY['super_admin'::text, 'hr_manager'::text]));
+
+-- Indexes for search and categorization
+CREATE INDEX idx_skills_master_category ON skills_master(category);
+CREATE INDEX idx_skills_master_name ON skills_master(name);
+
 -- Update role mappings table to reference standard roles
 ALTER TABLE public.xlsmart_role_mappings 
 ADD COLUMN standard_role_id UUID REFERENCES public.xlsmart_standard_roles(id);

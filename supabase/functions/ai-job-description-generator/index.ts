@@ -59,21 +59,24 @@ serve(async (req) => {
       throw new Error('Role title is required');
     }
 
-    let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    let openAIApiKey = Deno.env.get('LITELLM_API_KEY');
+    if (!openAIApiKey) {
+      openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    }
     if (!openAIApiKey) {
       openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
     }
     if (!openAIApiKey) {
-      console.error('Neither OPENAI_API_KEY nor OPENAI_API_KEY_NEW found in environment');
-      throw new Error('OpenAI API key not configured');
+      console.error('Neither LITELLM_API_KEY, OPENAI_API_KEY nor OPENAI_API_KEY_NEW found in environment');
+      throw new Error('API key not configured');
     }
     
     console.log('API key found, proceeding with AI generation...');
 
     // Build AI prompt
-    const aiPrompt = `You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Based on the provided inputs, generate a complete job description that is clear, professional, and aligned with telecom industry standards. ⚙️ Output Requirements: Always respond in valid JSON format. Ensure the output is concise, realistic, and directly usable by XLSMART's HR system.
+    const aiPrompt = `You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Generate a complete job description following the EXACT template structure provided below.
 
-Create a comprehensive, engaging job description for the following role:
+Create a comprehensive job description for the following role:
 
 ROLE DETAILS:
 - Position: ${roleTitle}
@@ -92,31 +95,92 @@ ${customInstructions}
 TONE: ${tone}
 LANGUAGE: ${language}
 
-Create a job description with the following structure:
-1. **Company Overview** (2-3 sentences about telecommunications leadership)
-2. **Role Summary** (compelling 2-3 sentence overview)
-3. **Key Responsibilities** (5-7 bullet points with action verbs)
-4. **Required Qualifications** (education, experience, technical skills)
-5. **Preferred Qualifications** (nice-to-have skills)
-6. **What We Offer** (benefits, growth opportunities, culture)
-7. **Application Process** (how to apply)
+IMPORTANT: Follow this EXACT template structure and format:
 
-Make it compelling, specific to telecommunications industry, and optimized for attracting top talent.
+**1. JOB IDENTITY**
+Create a table with "Field" and "Detail" columns:
+- Position Title: [Use the exact role title provided or generate a professional title]
+- Directorate: [Generate appropriate directorate based on department/function - e.g., "Technology", "Operations", "Sales & Marketing", "Finance", "Human Resources"]
+- Division: [Generate appropriate division within the directorate - e.g., "Network Operations", "Customer Service", "Enterprise Sales", "Financial Planning"]
+- Department: [Use the provided department or generate specific department name]
+- Direct Supervisor: [Generate immediate supervisor role - e.g., "Senior Manager", "Department Head", "Team Lead", "Director"]
+- Direct Subordinate: [Generate 3-8 realistic subordinate roles with numbers - e.g., "5 Customer Service Representatives", "3 Technical Support Specialists"]
+
+**2. JOB PURPOSES**
+Write 1 comprehensive paragraph (2-3 sentences) describing the overarching purpose and strategic impact of the role.
+
+**3. MAIN RESPONSIBILITY**
+Provide 3-4 numbered paragraphs, each describing a major responsibility area with strategic focus.
+
+**4. KEY OUTPUT**
+List 3-5 bullet points of expected deliverables and outcomes.
+
+**5. KEY CONTACTS & RELATIONSHIP**
+- Internal: 1-2 numbered points about internal relationships
+- External: 1-2 numbered points about external stakeholders
+
+**6. COMPETENCY SECTION**
+
+A. FUNCTIONAL COMPETENCY
+- Academy Qualifications: Education requirements
+- Professional Experience: Years and type of experience
+- Certification/License: Relevant certifications
+- Expertise: 2-3 areas of technical expertise
+
+B. LEADERSHIP COMPETENCY
+Create a table with Competency and Level columns for:
+- Strategic accountability
+- Customer centric
+- Coalition Building
+- People First
+- Agile Leadership
+- Result Driven
+- Technology Savvy
+(All should be "Mastery" level for senior roles)
 
 Respond in JSON format:
 {
   "title": "Generated job title",
-  "summary": "Role summary paragraph",
-  "responsibilities": ["responsibility 1", "responsibility 2", "..."],
-  "requiredQualifications": ["qualification 1", "qualification 2", "..."],
-  "preferredQualifications": ["preferred 1", "preferred 2", "..."],
-  "benefits": ["benefit 1", "benefit 2", "..."],
-  "fullDescription": "Complete formatted job description",
-  "keywords": ["keyword 1", "keyword 2", "..."],
+  "summary": "Job Purposes paragraph",
+  "responsibilities": ["Main Responsibility 1", "Main Responsibility 2", "Main Responsibility 3", "Main Responsibility 4"],
+  "requiredQualifications": ["Academy Qualifications", "Professional Experience", "Certification/License"],
+  "preferredQualifications": ["Expertise areas"],
+  "benefits": ["Key Output 1", "Key Output 2", "Key Output 3"],
+  "fullDescription": "Complete formatted job description with all sections",
+  "keywords": ["keyword 1", "keyword 2", "keyword 3"],
   "estimatedSalary": {
     "min": 75000,
     "max": 120000,
     "currency": "IDR"
+  },
+  "jobIdentity": {
+    "positionTitle": "Generated title",
+    "directorate": "Department/Function",
+    "division": "Division if applicable",
+    "department": "Specific department",
+    "directSupervisor": "Immediate supervisor",
+    "directSubordinate": ["Subordinate 1", "Subordinate 2", "Subordinate 3"]
+  },
+  "keyContacts": {
+    "internal": ["Internal relationship 1", "Internal relationship 2"],
+    "external": ["External relationship 1", "External relationship 2"]
+  },
+  "competencies": {
+    "functional": {
+      "academyQualifications": "Education requirements",
+      "professionalExperience": "Experience requirements",
+      "certificationLicense": "Certification requirements",
+      "expertise": ["Expertise area 1", "Expertise area 2", "Expertise area 3"]
+    },
+    "leadership": {
+      "strategicAccountability": "Mastery",
+      "customerCentric": "Mastery",
+      "coalitionBuilding": "Mastery",
+      "peopleFirst": "Mastery",
+      "agileLeadership": "Mastery",
+      "resultDriven": "Mastery",
+      "technologySavvy": "Mastery"
+    }
   }
 }`;
 
@@ -133,7 +197,7 @@ Respond in JSON format:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Based on the provided inputs, generate a complete job description that is clear, professional, and aligned with telecom industry standards. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART\'s HR systems.' 
+            content: 'You are an expert HR professional and job description writer for large telecommunications companies like XLSMART. Based on the provided inputs, generate a complete job description that is clear, professional, and aligned with telecom industry standards. CRITICAL: Fill ALL fields with realistic, specific data - never use "-" or leave fields empty. Generate appropriate directorates, divisions, departments, supervisors, and subordinates based on the role context. ⚙️ Output Requirements: Always return insights in valid JSON format. Ensure results are concise, structured, and machine-readable, ready for integration into XLSMART\'s HR systems.' 
           },
           { role: 'user', content: aiPrompt }
         ],
@@ -185,6 +249,11 @@ Respond in JSON format:
       tone: tone,
       language: language,
       status: 'draft',
+      // New structured template fields
+      job_identity: generatedJD.jobIdentity || null,
+      key_contacts: generatedJD.keyContacts || null,
+      competencies: generatedJD.competencies || null,
+      template_version: 'structured_v1', // Track template version
       ...(standardRoleId && { standard_role_id: standardRoleId }) // Link to role if provided
     };
 

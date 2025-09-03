@@ -6,6 +6,35 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to find the best matching column name
+function findColumnMapping(headers: string[], possibleNames: string[]): string | null {
+  for (const possibleName of possibleNames) {
+    const found = headers.find(header => 
+      header.toLowerCase().trim() === possibleName.toLowerCase().trim() ||
+      header.toLowerCase().trim().replace(/\s+/g, '') === possibleName.toLowerCase().trim().replace(/\s+/g, '')
+    );
+    if (found) {
+      console.log(`✅ Found column mapping: "${possibleName}" -> "${found}"`);
+      return found;
+    }
+  }
+  console.log(`❌ No column mapping found for: ${possibleNames.join(', ')}`);
+  console.log(`Available headers: ${headers.join(', ')}`);
+  return null;
+}
+
+// Helper function to extract value from row with flexible column mapping
+function extractValue(row: any, headers: string[], possibleNames: string[], defaultValue: string = ''): string {
+  const columnName = findColumnMapping(headers, possibleNames);
+  if (columnName && row[columnName]) {
+    const value = String(row[columnName]).trim();
+    console.log(`📝 Extracted value from "${columnName}": "${value}"`);
+    return value;
+  }
+  console.log(`⚠️ No value found for columns: ${possibleNames.join(', ')}`);
+  return defaultValue;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -65,25 +94,113 @@ serve(async (req) => {
 
     // Insert XL data
     if (xlData && xlData.length > 0) {
-      const xlRolesData = xlData.map((row: any) => ({
-        session_id: sessionId,
-        role_id: row['RoleID'] || null,
-        department: row['Department'] || null,
-        role_family: row['RoleFamily'] || null,
-        role_title: row['RoleTitle'] || 'Unknown Role',
-        seniority_band: row['SeniorityBand'] || null,
-        role_purpose: row['RolePurpose'] || null,
-        core_responsibilities: row['CoreResponsibilities'] || null,
-        required_skills: row['RequiredSkills'] || null,
-        preferred_skills: row['PreferredSkills'] || null,
-        certifications: row['Certifications'] || null,
-        tools_platforms: row['ToolsPlatforms'] || null,
-        experience_min_years: row['ExperienceMinYears'] ? parseInt(row['ExperienceMinYears']) : null,
-        education: row['Education'] || null,
-        location: row['Location'] || null,
-        role_variant: row['RoleVariant'] || null,
-        alternate_titles: row['AlternateTitles'] || null
-      }));
+      // Get headers from the first row to understand column structure
+      const headers = Object.keys(xlData[0] || {});
+      console.log('XL Data headers:', headers);
+
+      const xlRolesData = xlData.map((row: any) => {
+        // Flexible column mapping for role title
+        const roleTitle = extractValue(row, headers, [
+          'Title', 'RoleTitle', 'JobTitle', 'RoleName', 'CurrentPosition', 'Name', 
+          'Role Title', 'Position', 'Job Title', 'Role Name', 'Current Position', 
+          'Role', 'Designation', 'Job Role', 'Function'
+        ], 'Unknown Role');
+
+        // Flexible column mapping for department
+        const department = extractValue(row, headers, [
+          'Department', 'Dept', 'Division', 'Team', 'Business Unit', 'BU'
+        ]);
+
+        // Flexible column mapping for role family
+        const roleFamily = extractValue(row, headers, [
+          'RoleFamily', 'JobFamily', 'Family', 'Category', 'Job Category'
+        ]);
+
+        // Flexible column mapping for seniority band
+        const seniorityBand = extractValue(row, headers, [
+          'SeniorityBand', 'Level', 'Grade', 'Band', 'Seniority', 'Job Level'
+        ]);
+
+        // Flexible column mapping for role purpose
+        const rolePurpose = extractValue(row, headers, [
+          'RolePurpose', 'Purpose', 'Job Purpose', 'Description', 'Job Description'
+        ]);
+
+        // Flexible column mapping for core responsibilities
+        const coreResponsibilities = extractValue(row, headers, [
+          'CoreResponsibilities', 'Responsibilities', 'Key Responsibilities', 'Duties'
+        ]);
+
+        // Flexible column mapping for required skills
+        const requiredSkills = extractValue(row, headers, [
+          'RequiredSkills', 'Skills', 'Technical Skills', 'Required Qualifications'
+        ]);
+
+        // Flexible column mapping for preferred skills
+        const preferredSkills = extractValue(row, headers, [
+          'PreferredSkills', 'Preferred Qualifications', 'Nice to Have'
+        ]);
+
+        // Flexible column mapping for certifications
+        const certifications = extractValue(row, headers, [
+          'Certifications', 'Certs', 'Certificates', 'Qualifications'
+        ]);
+
+        // Flexible column mapping for tools/platforms
+        const toolsPlatforms = extractValue(row, headers, [
+          'ToolsPlatforms', 'Tools', 'Platforms', 'Technologies', 'Tech Stack'
+        ]);
+
+        // Flexible column mapping for experience
+        const experienceMinYears = extractValue(row, headers, [
+          'ExperienceMinYears', 'Experience', 'Years Experience', 'Min Experience'
+        ]);
+
+        // Flexible column mapping for education
+        const education = extractValue(row, headers, [
+          'Education', 'Education Requirements', 'Degree', 'Academic Requirements'
+        ]);
+
+        // Flexible column mapping for location
+        const location = extractValue(row, headers, [
+          'Location', 'Work Location', 'Office', 'Site'
+        ]);
+
+        // Flexible column mapping for role variant
+        const roleVariant = extractValue(row, headers, [
+          'RoleVariant', 'Variant', 'Type', 'Role Type'
+        ]);
+
+        // Flexible column mapping for alternate titles
+        const alternateTitles = extractValue(row, headers, [
+          'AlternateTitles', 'Alternative Titles', 'Other Titles', 'Synonyms'
+        ]);
+
+        // Flexible column mapping for role ID
+        const roleId = extractValue(row, headers, [
+          'RoleID', 'ID', 'Role Id', 'Job ID'
+        ]);
+
+        return {
+          session_id: sessionId,
+          role_id: roleId || null,
+          department: department || null,
+          role_family: roleFamily || null,
+          role_title: roleTitle,
+          seniority_band: seniorityBand || null,
+          role_purpose: rolePurpose || null,
+          core_responsibilities: coreResponsibilities || null,
+          required_skills: requiredSkills || null,
+          preferred_skills: preferredSkills || null,
+          certifications: certifications || null,
+          tools_platforms: toolsPlatforms || null,
+          experience_min_years: experienceMinYears ? parseInt(experienceMinYears) : null,
+          education: education || null,
+          location: location || null,
+          role_variant: roleVariant || null,
+          alternate_titles: alternateTitles || null
+        };
+      });
 
       const { error: xlError } = await supabase
         .from('xl_roles_data')
@@ -100,25 +217,113 @@ serve(async (req) => {
 
     // Insert SMART data
     if (smartData && smartData.length > 0) {
-      const smartRolesData = smartData.map((row: any) => ({
-        session_id: sessionId,
-        role_id: row['RoleID'] || null,
-        department: row['Department'] || null,
-        role_family: row['RoleFamily'] || null,
-        role_title: row['RoleTitle'] || 'Unknown Role',
-        seniority_band: row['SeniorityBand'] || null,
-        role_purpose: row['RolePurpose'] || null,
-        core_responsibilities: row['CoreResponsibilities'] || null,
-        required_skills: row['RequiredSkills'] || null,
-        preferred_skills: row['PreferredSkills'] || null,
-        certifications: row['Certifications'] || null,
-        tools_platforms: row['ToolsPlatforms'] || null,
-        experience_min_years: row['ExperienceMinYears'] ? parseInt(row['ExperienceMinYears']) : null,
-        education: row['Education'] || null,
-        location: row['Location'] || null,
-        role_variant: row['RoleVariant'] || null,
-        alternate_titles: row['AlternateTitles'] || null
-      }));
+      // Get headers from the first row to understand column structure
+      const headers = Object.keys(smartData[0] || {});
+      console.log('SMART Data headers:', headers);
+
+      const smartRolesData = smartData.map((row: any) => {
+        // Flexible column mapping for role title
+        const roleTitle = extractValue(row, headers, [
+          'Title', 'RoleTitle', 'JobTitle', 'RoleName', 'CurrentPosition', 'Name', 
+          'Role Title', 'Position', 'Job Title', 'Role Name', 'Current Position', 
+          'Role', 'Designation', 'Job Role', 'Function'
+        ], 'Unknown Role');
+
+        // Flexible column mapping for department
+        const department = extractValue(row, headers, [
+          'Department', 'Dept', 'Division', 'Team', 'Business Unit', 'BU'
+        ]);
+
+        // Flexible column mapping for role family
+        const roleFamily = extractValue(row, headers, [
+          'RoleFamily', 'JobFamily', 'Family', 'Category', 'Job Category'
+        ]);
+
+        // Flexible column mapping for seniority band
+        const seniorityBand = extractValue(row, headers, [
+          'SeniorityBand', 'Level', 'Grade', 'Band', 'Seniority', 'Job Level'
+        ]);
+
+        // Flexible column mapping for role purpose
+        const rolePurpose = extractValue(row, headers, [
+          'RolePurpose', 'Purpose', 'Job Purpose', 'Description', 'Job Description'
+        ]);
+
+        // Flexible column mapping for core responsibilities
+        const coreResponsibilities = extractValue(row, headers, [
+          'CoreResponsibilities', 'Responsibilities', 'Key Responsibilities', 'Duties'
+        ]);
+
+        // Flexible column mapping for required skills
+        const requiredSkills = extractValue(row, headers, [
+          'RequiredSkills', 'Skills', 'Technical Skills', 'Required Qualifications'
+        ]);
+
+        // Flexible column mapping for preferred skills
+        const preferredSkills = extractValue(row, headers, [
+          'PreferredSkills', 'Preferred Qualifications', 'Nice to Have'
+        ]);
+
+        // Flexible column mapping for certifications
+        const certifications = extractValue(row, headers, [
+          'Certifications', 'Certs', 'Certificates', 'Qualifications'
+        ]);
+
+        // Flexible column mapping for tools/platforms
+        const toolsPlatforms = extractValue(row, headers, [
+          'ToolsPlatforms', 'Tools', 'Platforms', 'Technologies', 'Tech Stack'
+        ]);
+
+        // Flexible column mapping for experience
+        const experienceMinYears = extractValue(row, headers, [
+          'ExperienceMinYears', 'Experience', 'Years Experience', 'Min Experience'
+        ]);
+
+        // Flexible column mapping for education
+        const education = extractValue(row, headers, [
+          'Education', 'Education Requirements', 'Degree', 'Academic Requirements'
+        ]);
+
+        // Flexible column mapping for location
+        const location = extractValue(row, headers, [
+          'Location', 'Work Location', 'Office', 'Site'
+        ]);
+
+        // Flexible column mapping for role variant
+        const roleVariant = extractValue(row, headers, [
+          'RoleVariant', 'Variant', 'Type', 'Role Type'
+        ]);
+
+        // Flexible column mapping for alternate titles
+        const alternateTitles = extractValue(row, headers, [
+          'AlternateTitles', 'Alternative Titles', 'Other Titles', 'Synonyms'
+        ]);
+
+        // Flexible column mapping for role ID
+        const roleId = extractValue(row, headers, [
+          'RoleID', 'ID', 'Role Id', 'Job ID'
+        ]);
+
+        return {
+          session_id: sessionId,
+          role_id: roleId || null,
+          department: department || null,
+          role_family: roleFamily || null,
+          role_title: roleTitle,
+          seniority_band: seniorityBand || null,
+          role_purpose: rolePurpose || null,
+          core_responsibilities: coreResponsibilities || null,
+          required_skills: requiredSkills || null,
+          preferred_skills: preferredSkills || null,
+          certifications: certifications || null,
+          tools_platforms: toolsPlatforms || null,
+          experience_min_years: experienceMinYears ? parseInt(experienceMinYears) : null,
+          education: education || null,
+          location: location || null,
+          role_variant: roleVariant || null,
+          alternate_titles: alternateTitles || null
+        };
+      });
 
       const { error: smartError } = await supabase
         .from('smart_roles_data')

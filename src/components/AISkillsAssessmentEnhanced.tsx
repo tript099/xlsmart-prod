@@ -86,17 +86,39 @@ export const AISkillsAssessmentEnhanced = () => {
 
       if (rolesError) throw rolesError;
 
-      // Load existing assessments
+      // Load existing assessments with more detailed debugging
+      console.log('Loading skill assessments...');
       const { data: assessmentsData, error: assessmentsError } = await supabase
         .from('xlsmart_skill_assessments')
         .select('*')
         .order('assessment_date', { ascending: false });
 
+      console.log('Assessments query result:', { 
+        assessmentsData, 
+        assessmentsError, 
+        count: assessmentsData?.length,
+        sampleRecord: assessmentsData?.[0]
+      });
+
       if (assessmentsError) {
-        console.log('No assessments found yet:', assessmentsError);
+        console.error('Assessment error:', assessmentsError);
+        toast({
+          title: "Assessment Loading Error",
+          description: `Error loading assessments: ${assessmentsError.message}`,
+          variant: "destructive",
+        });
         setAssessments([]);
       } else {
-        setAssessments(assessmentsData || []);
+        const validAssessments = assessmentsData || [];
+        setAssessments(validAssessments);
+        console.log('Set assessments:', validAssessments.length);
+        
+        if (validAssessments.length > 0) {
+          toast({
+            title: "Assessments Loaded",
+            description: `Found ${validAssessments.length} skill assessments`,
+          });
+        }
       }
 
       setEmployees(employeesData || []);
@@ -124,13 +146,25 @@ export const AISkillsAssessmentEnhanced = () => {
       return;
     }
 
+    // Check for existing assessments
+    const employeesWithAssessments = new Set(assessments.map(a => a.employee_id));
+    const alreadyAssessed = employees.filter(emp => employeesWithAssessments.has(emp.id));
+    
+    if (alreadyAssessed.length > 0) {
+      const confirmed = window.confirm(
+        `${alreadyAssessed.length} employees already have recent assessments. ` +
+        `Only employees without assessments from the last 30 days will be processed. Continue?`
+      );
+      if (!confirmed) return;
+    }
+
     try {
       setAnalyzing(true);
       setProgress({ processed: 0, total: employees.length });
 
       toast({
         title: "AI Skills Assessment Started",
-        description: `Analyzing ${employees.length} employees for skills, role fit, and risk factors...`,
+        description: `Analyzing up to ${employees.length} employees for skills, role fit, and risk factors...`,
       });
 
       // Call the bulk skills assessment function
@@ -228,6 +262,41 @@ export const AISkillsAssessmentEnhanced = () => {
     }));
     
     setAssessments(mockAssessments);
+    toast({
+      title: "Mock Data Generated",
+      description: `Generated ${mockAssessments.length} mock assessments for testing`,
+    });
+  };
+
+  const debugAssessmentData = async () => {
+    try {
+      // Direct query to check data
+      const { data: directAssessments, error: directError } = await supabase
+        .from('xlsmart_skill_assessments')
+        .select('employee_id, overall_match_percentage, assessment_date')
+        .limit(5);
+
+      console.log('Direct assessment query:', { directAssessments, directError });
+      
+      // Count query
+      const { count, error: countError } = await supabase
+        .from('xlsmart_skill_assessments')
+        .select('*', { count: 'exact', head: true });
+
+      console.log('Assessment count:', { count, countError });
+
+      toast({
+        title: "Debug Info",
+        description: `Found ${count || 0} assessments in database. Check console for details.`,
+      });
+    } catch (error) {
+      console.error('Debug query error:', error);
+      toast({
+        title: "Debug Error",
+        description: "Error running debug queries",
+        variant: "destructive",
+      });
+    }
   };
 
   const getEmployeeAssessment = (employeeId: string) => {
@@ -253,11 +322,25 @@ export const AISkillsAssessmentEnhanced = () => {
   };
 
   const getOverallStats = () => {
-    const assessedEmployees = employees.filter(emp => getEmployeeAssessment(emp.id));
+    console.log('Calculating stats with:', { 
+      employeesCount: employees.length, 
+      assessmentsCount: assessments.length 
+    });
+    
+    const assessedEmployees = employees.filter(emp => {
+      const assessment = getEmployeeAssessment(emp.id);
+      console.log(`Employee ${emp.id} assessment:`, assessment ? 'found' : 'not found');
+      return assessment;
+    });
+    
+    console.log('Assessed employees:', assessedEmployees.length);
+    
     const avgMatch = assessedEmployees.length > 0 
       ? assessedEmployees.reduce((sum, emp) => {
           const assessment = getEmployeeAssessment(emp.id);
-          return sum + (assessment?.overall_match_percentage || 0);
+          const matchPercentage = assessment?.overall_match_percentage || 0;
+          console.log(`Employee ${emp.id} match percentage:`, matchPercentage);
+          return sum + matchPercentage;
         }, 0) / assessedEmployees.length
       : 0;
 
@@ -266,13 +349,16 @@ export const AISkillsAssessmentEnhanced = () => {
       return assessment && (assessment.rotation_risk_score > 70 || assessment.churn_risk_score > 70);
     });
 
-    return {
+    const stats = {
       totalEmployees: employees.length,
       assessedEmployees: assessedEmployees.length,
       avgMatchPercentage: Math.round(avgMatch),
       highRiskCount: highRiskEmployees.length,
       assignedRoles: employees.filter(emp => emp.standard_role_id).length
     };
+    
+    console.log('Calculated stats:', stats);
+    return stats;
   };
 
   const stats = getOverallStats();
@@ -298,22 +384,46 @@ export const AISkillsAssessmentEnhanced = () => {
               AI-Powered Skills Assessment
               <Badge variant="secondary">{employees.length} employees</Badge>
             </CardTitle>
-            <Button
-              onClick={runAISkillsAssessment}
-              disabled={analyzing || employees.length === 0}
-            >
-              {analyzing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4 mr-2" />
-                  Run AI Assessment
-                </>
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={runAISkillsAssessment}
+                disabled={analyzing || employees.length === 0}
+              >
+                {analyzing ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-2" />
+                    Run AI Assessment
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={loadData}
+                disabled={loading}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh Data
+              </Button>
+              <Button
+                variant="outline"
+                onClick={debugAssessmentData}
+                size="sm"
+              >
+                Debug
+              </Button>
+              <Button
+                variant="outline"
+                onClick={generateMockAssessments}
+                size="sm"
+              >
+                Mock Data
+              </Button>
+            </div>
           </div>
           {progress && (
             <div className="mt-2">

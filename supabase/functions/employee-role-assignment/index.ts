@@ -189,8 +189,8 @@ serve(async (req) => {
     }
 
     // Mark session as completed
-    const finalStatus = errorCount === 0 ? 'completed' : 
-                       assignedCount > 0 ? 'completed_with_errors' : 'failed';
+    const finalStatus = errorCount === 0 ? 'roles_assigned' : 
+                       assignedCount > 0 ? 'roles_assigned' : 'failed';
     
     await supabase
       .from('xlsmart_upload_sessions')

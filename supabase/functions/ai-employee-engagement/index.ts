@@ -254,10 +254,12 @@ Return a JSON object with this structure:
   const prompt = `Predict employee engagement trends and recommend interventions:
 
 Employees: ${JSON.stringify(employees.slice(0, 20).map(emp => ({
-    department: emp.department,
-    role: emp.current_role,
+    id: emp.id,
+    name: `${emp.first_name} ${emp.last_name}`,
+    department: emp.current_department || emp.department,
+    role: emp.current_position || emp.current_role,
     performance: emp.performance_rating,
-    experience: emp.years_experience,
+    experience: emp.years_of_experience || emp.years_experience,
     hireDate: emp.hire_date
   })))}
 
@@ -301,7 +303,7 @@ Return a JSON object with this structure:
   },
   "riskAnalysis": [
     {
-      "employee": "string",
+      "employee": "string (use the employee name from the data)",
       "retentionProbability": number,
       "riskFactors": ["string"],
       "retentionActions": ["string"],
@@ -331,10 +333,11 @@ Return a JSON object with this structure:
 
 Employee Data: ${JSON.stringify(employees.slice(0, 25).map(emp => ({
     id: emp.id,
-    department: emp.department,
-    role: emp.current_role,
+    name: `${emp.first_name} ${emp.last_name}`,
+    department: emp.current_department || emp.department,
+    role: emp.current_position || emp.current_role,
     performance: emp.performance_rating,
-    experience: emp.years_experience,
+    experience: emp.years_of_experience || emp.years_experience,
     hireDate: emp.hire_date,
     lastPromotion: emp.last_promotion_date
   })))}
@@ -383,7 +386,7 @@ Return a JSON object with this structure:
   ],
   "alertedEmployees": [
     {
-      "employee": "string",
+      "employee": "string (use the employee name from the data)",
       "riskScore": number,
       "primaryWarnings": ["string"],
       "recommendedActions": ["string"],
@@ -404,10 +407,11 @@ Return a JSON object with this structure:
 
 Employee Performance Data: ${JSON.stringify(employees.slice(0, 20).map(emp => ({
     id: emp.id,
-    department: emp.department,
-    role: emp.current_role,
+    name: `${emp.first_name} ${emp.last_name}`,
+    department: emp.current_department || emp.department,
+    role: emp.current_position || emp.current_role,
     performance: emp.performance_rating,
-    experience: emp.years_experience,
+    experience: emp.years_of_experience || emp.years_experience,
     lastUpdate: emp.updated_at
   })))}
 

@@ -48,31 +48,8 @@ serve(async (req) => {
     console.log(`Found ${jobDescriptions?.length || 0} job descriptions`);
 
     if (!jobDescriptions || jobDescriptions.length === 0) {
-      console.log('No job descriptions found, returning empty results');
-      const emptyResult = {
-        summary: { totalAnalyzed: 0, averageCompleteness: 0, averageClarity: 0, improvementOpportunities: 0 },
-        optimizationRecommendations: [],
-        message: 'No job descriptions found for analysis. Please ensure job descriptions exist in the database.'
-      };
-      
-      // Still save empty result to database
-      try {
-        await supabase
-          .from('ai_analysis_results')
-          .insert({
-            analysis_type: analysisType,
-            function_name: 'ai-job-descriptions-intelligence',
-            input_parameters: { analysisType, departmentFilter, roleFilter },
-            analysis_result: emptyResult,
-            status: 'completed'
-          });
-      } catch (saveError) {
-        console.error('Error saving empty result:', saveError);
-      }
-      
-      return new Response(JSON.stringify(emptyResult), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      console.log('No job descriptions found for analysis');
+      throw new Error('No job descriptions found for analysis. Please ensure job descriptions exist in the database.');
     }
 
     // Fetch related data
@@ -149,22 +126,22 @@ serve(async (req) => {
   }
 });
 
-async function callLiteLLM(prompt: string, systemPrompt: string) {
-  console.log('Getting API key for LiteLLM...');
-  const openAIApiKey = Deno.env.get('OPENAI_API_KEY_NEW');
-  
-  if (!openAIApiKey) {
-    console.error('OPENAI_API_KEY_NEW not found');
-    console.error('Available env vars:', Object.keys(Deno.env.toObject()).filter(k => k.includes('API')));
-    throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY_NEW');
-  }
-  
-  console.log('API key found, length:', openAIApiKey.length);
 
-  console.log('Making request to LiteLLM proxy...');
-  console.log('Prompt length:', prompt.length);
+
+async function callLiteLLM(prompt: string, systemPrompt: string) {
+  let openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    openAIApiKey = Deno.env.get('LITELLM_API_KEY');
+  }
+  if (!openAIApiKey) {
+    throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY or LITELLM_API_KEY');
+  }
+
+  console.log('=== LiteLLM API Call Started ===');
+  console.log('OpenAI API Key exists:', !!openAIApiKey);
   console.log('System prompt length:', systemPrompt.length);
-  
+  console.log('Prompt length:', prompt.length);
+
   const requestBody = {
     model: 'azure/gpt-4.1',
     messages: [
@@ -172,35 +149,53 @@ async function callLiteLLM(prompt: string, systemPrompt: string) {
       { role: 'user', content: prompt }
     ],
     temperature: 0.7,
-    max_completion_tokens: 2000,
+    max_completion_tokens: 3000,
   };
 
-  const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAIApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(requestBody),
-  });
+  console.log('Making request to LiteLLM proxy...');
+  
+  try {
+    const startTime = Date.now();
+    const response = await fetch('https://proxyllm.ximplify.id/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+    
+    const endTime = Date.now();
+    console.log(`API call took ${endTime - startTime}ms`);
+    console.log('LiteLLM proxy response status:', response.status);
 
-  console.log('LiteLLM response status:', response.status);
-  
-  const data = await response.json();
-  console.log('LiteLLM response data keys:', Object.keys(data));
-  
-  if (!response.ok) {
-    console.error('LiteLLM API error status:', response.status);
-    console.error('LiteLLM API error data:', data);
-    throw new Error(`LiteLLM API error (${response.status}): ${data.error?.message || response.statusText}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('LiteLLM API error response:', errorText);
+      throw new Error(`LiteLLM API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Response content length:', data.choices?.[0]?.message?.content?.length || 0);
+    console.log('LiteLLM response received successfully');
+    
+    const content = data.choices[0].message.content;
+    
+    // Clean up any markdown code blocks before JSON parsing
+    const cleanContent = content.replace(/```json\s*|\s*```/g, '').trim();
+    
+    // Additional cleaning - remove any trailing content after the last }
+    const lastBraceIndex = cleanContent.lastIndexOf('}');
+    const finalContent = lastBraceIndex !== -1 ? cleanContent.substring(0, lastBraceIndex + 1) : cleanContent;
+    
+    console.log('Cleaned content preview (first 200 chars):', finalContent.substring(0, 200));
+    console.log('Analysis completed successfully');
+    return finalContent;
+    
+  } catch (error) {
+    console.error('Error in callLiteLLM:', error);
+    throw error;
   }
-  
-  if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-    console.error('Invalid LiteLLM response structure:', data);
-    throw new Error('Invalid response structure from LiteLLM API');
-  }
-  
-  return data.choices[0].message.content;
 }
 
 async function performJDOptimization(jobDescriptions: any[], standardRoles: any[], departmentFilter?: string) {
@@ -255,37 +250,9 @@ Provide specific, actionable recommendations for improving job descriptions to a
     console.log('Successfully parsed JD optimization results');
     return parsedResult;
   } catch (parseError) {
-    console.error('Failed to parse AI response:', parseError);
+    console.error('Failed to parse AI response for JD optimization:', parseError);
     console.error('Raw AI response:', response);
-    
-    // Return fallback results if parsing fails
-    return {
-      summary: {
-        totalAnalyzed: jobDescriptions.length,
-        averageCompleteness: 75,
-        averageClarity: 70,
-        improvementOpportunities: Math.ceil(jobDescriptions.length * 0.3)
-      },
-      optimizationRecommendations: jobDescriptions.slice(0, 5).map((jd, index) => ({
-        role: jd.title || 'Unknown Role',
-        currentScore: 65 + (index * 5),
-        issues: ['Missing detailed responsibilities', 'Unclear requirements'],
-        recommendations: ['Add specific role expectations', 'Define clear skill requirements'],
-        priority: index < 2 ? 'high' : index < 4 ? 'medium' : 'low'
-      })),
-      bestPractices: [
-        {
-          category: 'Role Clarity',
-          recommendation: 'Include specific day-to-day responsibilities',
-          impact: 'Improves candidate understanding and application quality'
-        }
-      ],
-      industryAlignment: {
-        score: 70,
-        gaps: ['Salary transparency', 'Skills specification'],
-        recommendations: ['Add salary ranges', 'List required technical skills']
-      }
-    };
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
   }
 }
 
@@ -341,38 +308,8 @@ Consider current market trends, industry standards, and competitive positioning.
     return parsedResult;
   } catch (parseError) {
     console.error('Failed to parse AI response for market alignment:', parseError);
-    return {
-      marketAlignment: {
-        overallScore: 75,
-        industryStandards: 70,
-        competitivePositioning: 65,
-        salaryAlignment: 80
-      },
-      roleAnalysis: jobDescriptions.slice(0, 5).map((jd, index) => ({
-        role: jd.title || 'Unknown Role',
-        marketAlignment: 70 + (index * 5),
-        strengthAreas: ['Competitive compensation', 'Clear role definition'],
-        improvementAreas: ['Skills specification', 'Market positioning'],
-        marketTrends: ['Remote work flexibility', 'Skills-based hiring']
-      })),
-      industryTrends: [
-        {
-          trend: 'Increasing emphasis on clear, comprehensive job descriptions and market-aligned roles',
-          impact: 'Organizations lacking detailed or defined JDs risk losing top talent and may fall behind in competitive positioning',
-          recommendation: 'Develop and document job descriptions aligned with market expectations to attract and retain qualified candidates'
-        },
-        {
-          trend: 'Benchmarking roles against industry standards for skills, requirements, and compensation',
-          impact: 'Without standard roles or JDs, benchmarking is not possible, leading to potential misalignment in talent acquisition',
-          recommendation: 'Establish standard roles and utilize benchmarking tools to ensure alignment with market standards'
-        }
-      ],
-      competitiveAnalysis: {
-        advantages: ['Strong role structure', 'Clear career progression'],
-        gaps: ['Salary transparency', 'Skills specification'],
-        recommendations: ['Add competitive salary ranges', 'Include detailed skill requirements']
-      }
-    };
+    console.error('Raw AI response:', response);
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
   }
 }
 
@@ -433,46 +370,8 @@ Identify skill gaps, overqualification areas, and alignment opportunities.`;
     return parsedResult;
   } catch (parseError) {
     console.error('Failed to parse AI response for skills mapping:', parseError);
-    return {
-      skillsAlignment: {
-        overallMatch: 70,
-        criticalSkillsGap: 25,
-        emergingSkillsReadiness: 60,
-        skillsInflation: 15
-      },
-      skillsAnalysis: jobDescriptions.slice(0, 5).map((jd, index) => ({
-        role: jd.title || 'Unknown Role',
-        requiredSkills: ['Technical expertise', 'Communication', 'Problem solving'],
-        availableSkills: ['Basic technical skills', 'Team collaboration'],
-        skillsGap: ['Advanced technical skills', 'Leadership'],
-        overqualifiedAreas: ['General administration']
-      })),
-      emergingSkills: [
-        {
-          skill: 'AI/ML Technologies',
-          importance: 'high',
-          currentCoverage: 30,
-          recommendation: 'Invest in AI/ML training programs for technical roles'
-        },
-        {
-          skill: 'Cloud Computing',
-          importance: 'high',
-          currentCoverage: 45,
-          recommendation: 'Expand cloud certification programs'
-        },
-        {
-          skill: 'Data Analytics',
-          importance: 'medium',
-          currentCoverage: 55,
-          recommendation: 'Enhance data analysis capabilities across teams'
-        }
-      ],
-      skillsDevelopment: {
-        priorityAreas: ['Technical skills', 'Digital literacy', 'Leadership development'],
-        trainingRecommendations: ['Cloud computing certifications', 'AI/ML workshops', 'Leadership training programs'],
-        recruitmentGaps: ['Senior technical roles', 'AI specialists', 'Data scientists']
-      }
-    };
+    console.error('Raw AI response:', response);
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
   }
 }
 
@@ -528,41 +427,7 @@ Focus on legal compliance, inclusive language, accessibility, equal opportunity,
     return parsedResult;
   } catch (parseError) {
     console.error('Failed to parse AI response for compliance analysis:', parseError);
-    return {
-      complianceScore: {
-        overall: 85,
-        legalCompliance: 90,
-        inclusivity: 75,
-        accessibility: 80,
-        equalOpportunity: 85
-      },
-      complianceIssues: jobDescriptions.slice(0, 3).map((jd, index) => ({
-        role: jd.title || 'Unknown Role',
-        issueType: index === 0 ? 'Missing Content' : index === 1 ? 'Language Neutrality' : 'Accessibility',
-        severity: index === 0 ? 'high' : 'medium',
-        description: index === 0 
-          ? 'No job descriptions were provided for analysis. Without content, it is impossible to assess compliance, inclusivity, accessibility, or equal opportunity practices.'
-          : index === 1 
-            ? 'Some language may not be fully inclusive or neutral'
-            : 'Accessibility features could be enhanced',
-        recommendation: index === 0
-          ? 'Provide detailed job descriptions including responsibilities, qualifications, required disclosures (such as salary range and equal opportunity statements), and language that demonstrates inclusivity and accessibility.'
-          : index === 1
-            ? 'Review language for gender-neutral terms and inclusive phrasing'
-            : 'Add accessibility accommodations statement'
-      })),
-      inclusivityAnalysis: {
-        languageNeutrality: 75,
-        biasDetection: ['Gender-coded language', 'Age bias indicators'],
-        accessibilityFeatures: ['Accommodation statements', 'Flexible work options'],
-        improvementAreas: ['Inclusive language', 'Accessibility statements', 'Equal opportunity emphasis']
-      },
-      legalCompliance: {
-        requiredDisclosures: false,
-        discriminationRisk: 'low',
-        accommodationLanguage: false,
-        salaryTransparency: false
-      }
-    };
+    console.error('Raw AI response:', response);
+    throw new Error(`Failed to parse AI response: ${parseError.message}`);
   }
 }
