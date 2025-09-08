@@ -59,25 +59,27 @@ export const useWorkforceAnalytics = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch all relevant data in parallel for better performance
+      // Fetch core data first
       const [
         employeesResult,
         skillAssessmentsResult,
-        employeeSkillsResult,
-        trainingsResult,
         certificationsResult,
+        trainingEnrollmentsResult,
+        trainingProgramsResult,
         roleMappingsResult,
-        skillGapsResult,
         standardRolesResult,
         aiAnalysesResult
       ] = await Promise.all([
         supabase.from('xlsmart_employees').select('*'),
         supabase.from('xlsmart_skill_assessments').select('*'),
-        supabase.from('employee_skills').select('*'),
-        supabase.from('employee_trainings').select('*'),
-        supabase.from('employee_certifications').select('*'),
+        supabase.from('employee_certifications').select('*, xlsmart_employees(current_department)'),
+        supabase.from('employee_training_enrollments').select(`
+          *,
+          training_programs(name, category, duration_hours),
+          xlsmart_employees!employee_training_enrollments_employee_id_fkey(current_department)
+        `),
+        supabase.from('training_programs').select('*'),
         supabase.from('xlsmart_role_mappings').select('*'),
-        supabase.from('skill_gap_analysis').select('*'),
         supabase.from('xlsmart_standard_roles').select('*'),
         supabase.from('ai_analysis_results').select('*')
       ]);
@@ -85,21 +87,30 @@ export const useWorkforceAnalytics = () => {
       // Handle potential errors
       if (employeesResult.error) throw employeesResult.error;
       if (skillAssessmentsResult.error) throw skillAssessmentsResult.error;
-      if (employeeSkillsResult.error) throw employeeSkillsResult.error;
-      if (trainingsResult.error) throw trainingsResult.error;
       if (certificationsResult.error) throw certificationsResult.error;
+      if (trainingEnrollmentsResult.error) throw trainingEnrollmentsResult.error;
+      if (trainingProgramsResult.error) throw trainingProgramsResult.error;
       if (roleMappingsResult.error) throw roleMappingsResult.error;
-      if (skillGapsResult.error) throw skillGapsResult.error;
       if (standardRolesResult.error) throw standardRolesResult.error;
       if (aiAnalysesResult.error) throw aiAnalysesResult.error;
 
+      // Try to fetch training completions (optional)
+      let trainingCompletions: any[] = [];
+      try {
+        const trainingCompletionsResult = await supabase.from('training_completions').select('*');
+        if (!trainingCompletionsResult.error) {
+          trainingCompletions = trainingCompletionsResult.data || [];
+        }
+      } catch (completionsError) {
+        console.warn('Training completions table not available, using enrollment status instead');
+      }
+
       const employees = employeesResult.data || [];
       const skillAssessments = skillAssessmentsResult.data || [];
-      const employeeSkills = employeeSkillsResult.data || [];
-      const trainings = trainingsResult.data || [];
       const certifications = certificationsResult.data || [];
+      const trainingEnrollments = trainingEnrollmentsResult.data || [];
+      const trainingPrograms = trainingProgramsResult.data || [];
       const roleMappings = roleMappingsResult.data || [];
-      const skillGaps = skillGapsResult.data || [];
       const standardRoles = standardRolesResult.data || [];
       const aiAnalyses = aiAnalysesResult.data || [];
 
@@ -116,25 +127,14 @@ export const useWorkforceAnalytics = () => {
         departmentBreakdown[dept] = (departmentBreakdown[dept] || 0) + 1;
       });
 
-      // Skills distribution from employee skills and assessments
+      // Skills distribution from employee skills JSONB field
       const skillDistribution: { [key: string]: number } = {};
       employees.forEach(emp => {
-        if (emp.skills) {
-          // Handle skills stored as string array or JSON
-          let skillsArray: string[] = [];
-          if (Array.isArray(emp.skills)) {
-            skillsArray = emp.skills.map((skill: any) => 
-              typeof skill === 'string' ? skill : skill.name || 'Unknown'
-            );
-          } else if (typeof emp.skills === 'string') {
-            // Parse skills from string format like "[SQL, dbt, Python, ...]"
-            skillsArray = emp.skills.replace(/[\[\]]/g, '').split(',').map(s => s.trim()).filter(s => s);
-          }
-          
-          skillsArray.forEach(skill => {
-            // Extract actual skill names (remove extra text like "Aspirations:", "Location:")
-            if (!skill.includes(':') && skill.length > 1) {
-              skillDistribution[skill] = (skillDistribution[skill] || 0) + 1;
+        if (emp.skills && Array.isArray(emp.skills)) {
+          emp.skills.forEach((skill: any) => {
+            const skillName = typeof skill === 'string' ? skill : skill.name || skill.skill || 'Unknown';
+            if (skillName && skillName.length > 1 && !skillName.includes(':')) {
+              skillDistribution[skillName] = (skillDistribution[skillName] || 0) + 1;
             }
           });
         }
@@ -146,11 +146,33 @@ export const useWorkforceAnalytics = () => {
       const highPerformers = performanceRatings.filter(rating => rating >= 4).length;
       const lowPerformers = performanceRatings.filter(rating => rating <= 2).length;
 
-      // Training metrics
-      const totalTrainings = trainings.length;
-      const completedTrainings = trainings.filter(t => t.completion_date).length;
-      const completionRate = totalTrainings > 0 ? (completedTrainings / totalTrainings) * 100 : 0;
-      const averageHours = trainings.reduce((sum, t) => sum + (t.duration_hours || 0), 0) / totalTrainings || 0;
+      // Training metrics from actual training system data
+      const totalTrainings = trainingPrograms.length;
+      const activePrograms = trainingPrograms.filter(program => program.status === 'active').length;
+      const totalEnrollments = trainingEnrollments.length;
+      
+      // Calculate completions - try training_completions first, fallback to enrollment status
+      const completedTrainings = trainingCompletions.length > 0 
+        ? trainingCompletions.length 
+        : trainingEnrollments.filter(enrollment => enrollment.status === 'completed').length;
+        
+      const inProgressTrainings = trainingEnrollments.filter(enrollment => 
+        enrollment.status === 'in_progress'
+      ).length;
+      
+      // Calculate completion rate based on enrollments vs completions
+      const completionRate = totalEnrollments > 0 ? (completedTrainings / totalEnrollments) * 100 : 0;
+      
+      // Calculate average hours from actual training programs and time spent
+      const totalHoursFromPrograms = trainingPrograms.reduce((sum, program) => 
+        sum + (program.duration_hours || 0), 0);
+      const totalTimeSpent = trainingEnrollments.reduce((sum, enrollment) => 
+        sum + (enrollment.time_spent_hours || 0), 0);
+      
+      // Use time spent if available, otherwise estimate from program duration
+      const averageHours = totalEnrollments > 0 
+        ? (totalTimeSpent > 0 ? totalTimeSpent / totalEnrollments : totalHoursFromPrograms / Math.max(totalEnrollments, 1))
+        : 0;
 
       // Certification metrics
       const totalCertifications = certifications.length;
@@ -160,11 +182,28 @@ export const useWorkforceAnalytics = () => {
         cert.expiry_date && new Date(cert.expiry_date) <= threeMonthsFromNow
       ).length;
 
-      // Top certifications
+      // Top certifications with better integration to training programs
       const certificationCounts: { [key: string]: number } = {};
       certifications.forEach(cert => {
-        certificationCounts[cert.certification_name] = (certificationCounts[cert.certification_name] || 0) + 1;
+        const certName = cert.certification_name || 'Unknown';
+        certificationCounts[certName] = (certificationCounts[certName] || 0) + 1;
       });
+      
+      // Also include certifications from training programs
+      trainingPrograms.forEach(program => {
+        if (program.certification_provided && program.certification_name) {
+          const enrolledCount = trainingEnrollments.filter(enrollment => 
+            enrollment.training_program_id === program.id && 
+            ['completed', 'in_progress'].includes(enrollment.status)
+          ).length;
+          
+          if (enrolledCount > 0) {
+            certificationCounts[program.certification_name] = 
+              (certificationCounts[program.certification_name] || 0) + enrolledCount;
+          }
+        }
+      });
+      
       const topCertifications = Object.entries(certificationCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
@@ -186,8 +225,8 @@ export const useWorkforceAnalytics = () => {
       const totalAssessments = latestAssessments.length;
       const averageMatchPercentage = latestAssessments.reduce((sum, assessment) => 
         sum + (Number(assessment.overall_match_percentage) || 0), 0) / totalAssessments || 0;
-      const criticalGaps = skillGaps.filter(gap => 
-        gap.overall_match_percentage && Number(gap.overall_match_percentage) < 60
+      const criticalGaps = latestAssessments.filter(assessment => 
+        assessment.overall_match_percentage && Number(assessment.overall_match_percentage) < 60
       ).length;
 
       // Role distribution

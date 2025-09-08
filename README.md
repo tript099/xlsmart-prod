@@ -18,6 +18,24 @@
 4. **Set environment variables** (see below)
 5. **Deploy!** 🎉
 
+### **Deploy Edge Functions**
+
+After deploying the main application, deploy the Supabase Edge Functions:
+
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login to Supabase
+supabase login
+
+# Link to your project
+supabase link --project-ref your-project-ref
+
+# Deploy the Training & Development overview function
+supabase functions deploy td-overview
+```
+
 ### **Environment Variables**
 
 ```bash
@@ -39,6 +57,7 @@ VITE_APP_COMPANY_NAME=Your Company Name
 - **Skills Assessment** - Comprehensive skill gap analysis
 - **Employee Mobility** - Strategic workforce planning
 - **Training Intelligence** - Personalized learning recommendations
+- **Real-time Training Dashboard** - Live training metrics and analytics
 
 ### **📊 Advanced HR Management**
 - **Role Standardization** - Consistent job classification

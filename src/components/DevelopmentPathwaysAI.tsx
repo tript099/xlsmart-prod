@@ -9,6 +9,7 @@ import { BookOpen, ArrowRight, Target, Clock, Star, Users, RefreshCw, Brain, Tre
 import { useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDevelopmentAnalytics } from "@/hooks/useDevelopmentAnalytics";
 
 interface Employee {
   id: string;
@@ -55,6 +56,7 @@ export const DevelopmentPathwaysAI = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
   const { toast } = useToast();
+  const { refresh: refreshAnalytics } = useDevelopmentAnalytics();
 
   useEffect(() => {
     loadData();
@@ -157,6 +159,39 @@ export const DevelopmentPathwaysAI = () => {
           description: `Generated development plans for ${data.total_processed} employees`,
         });
         
+        // Automatically convert AI analysis results to structured development plans
+        console.log('Converting AI analysis results to structured development plans...');
+        try {
+          const { data: convertData, error: convertError } = await supabase.functions.invoke('convert-ai-to-development-plans', {
+            body: {}
+          });
+
+          if (convertError) {
+            console.error('Error converting to structured plans:', convertError);
+            toast({
+              title: "⚠️ Analysis Complete",
+              description: `Generated development pathways, but failed to create structured plans. ${convertError.message}`,
+              variant: "destructive"
+            });
+          } else {
+            console.log(`Successfully converted ${convertData.converted} AI analysis results to structured development plans`);
+            toast({
+              title: "🎉 Complete Success!",
+              description: `Generated development pathways and created ${convertData.converted} structured development plans. Analytics updated!`,
+            });
+            
+            // Refresh the main analytics dashboard
+            refreshAnalytics();
+          }
+        } catch (convertError) {
+          console.error('Error in conversion process:', convertError);
+          toast({
+            title: "⚠️ Analysis Complete",
+            description: "Generated development pathways, but failed to create structured plans.",
+            variant: "destructive"
+          });
+        }
+        
         // Reload data to show new development plans
         await loadData();
       }
@@ -225,6 +260,7 @@ export const DevelopmentPathwaysAI = () => {
     return (progress.processed / progress.total) * 100;
   };
 
+
   // Simple formatting for development plans
   const formatDevelopmentPlan = useCallback((text: string) => {
     if (!text) return '';
@@ -278,7 +314,7 @@ export const DevelopmentPathwaysAI = () => {
           ) : (
             <>
               <Brain className="mr-2 h-4 w-4" />
-              Run AI Development Analysis
+              Run AI Development Analysis & Create Plans
             </>
           )}
         </Button>

@@ -3,7 +3,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { useWorkforceAnalytics } from "@/hooks/useWorkforceAnalytics";
+import { useCertificationStats, useCertifications, useAvailableCertifications } from "@/hooks/useCertifications";
+import { useEmployees } from "@/hooks/useEmployees";
+import { supabase } from "@/integrations/supabase/client";
 import { InteractiveMetricCard } from "@/components/workforce/InteractiveMetricCard";
 import { SkillsAnalyticsDashboard } from "@/components/workforce/SkillsAnalyticsDashboard";
 import { CareerPathwaysDashboard } from "@/components/workforce/CareerPathwaysDashboard";
@@ -30,7 +38,80 @@ import { useState } from "react";
 
 const WorkforceAnalyticsDashboard = () => {
   const { metrics: workforceAnalytics, loading, error, refetch } = useWorkforceAnalytics();
+  const certificationStats = useCertificationStats();
+  const { certifications } = useCertifications();
+  const { availableCertifications } = useAvailableCertifications();
+  const { employees } = useEmployees();
   const [activeView, setActiveView] = useState("overview");
+  
+  // Certification assignment states
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState("");
+  const [selectedCertification, setSelectedCertification] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [isAssigning, setIsAssigning] = useState(false);
+
+  // Function to assign certification to employee
+  const assignCertification = async () => {
+    if (!selectedEmployee || !selectedCertification || !expiryDate) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    setIsAssigning(true);
+    try {
+      const selectedCert = availableCertifications.find(cert => cert.id === selectedCertification);
+      if (!selectedCert) {
+        toast.error("Selected certification not found");
+        return;
+      }
+
+      console.log('Attempting to assign certification:', {
+        employee_id: selectedEmployee,
+        certification_name: selectedCert.certification_name,
+        certification_type: 'professional',
+        provider: selectedCert.issuing_authority,
+        issue_date: new Date().toISOString().split('T')[0],
+        expiry_date: expiryDate,
+      });
+
+      // Use Edge Function with service role privileges to bypass RLS
+      const { data, error } = await supabase.functions.invoke('assign-certification', {
+        body: {
+          employee_id: selectedEmployee,
+          certification_name: selectedCert.certification_name.trim(),
+          certification_type: 'professional',
+          provider: selectedCert.issuing_authority?.trim() || 'Unknown',
+          issue_date: new Date().toISOString().split('T')[0],
+          expiry_date: expiryDate,
+        }
+      });
+
+      if (error) {
+        console.error('Function error:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error from function');
+      }
+
+      console.log('Successfully assigned certification:', data);
+      toast.success("Certification assigned successfully!");
+      setIsAssignDialogOpen(false);
+      setSelectedEmployee("");
+      setSelectedCertification("");
+      setExpiryDate("");
+      
+      // Refresh the certifications data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error assigning certification:', error);
+      toast.error(`Failed to assign certification: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -216,7 +297,7 @@ const WorkforceAnalyticsDashboard = () => {
 
       {/* Enhanced Tabs */}
       <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
-        <TabsList className="grid w-full grid-cols-8 lg:w-fit bg-muted/50 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-9 lg:w-fit bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-background">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -240,6 +321,10 @@ const WorkforceAnalyticsDashboard = () => {
           <TabsTrigger value="training" className="flex items-center gap-2 data-[state=active]:bg-background">
             <BookOpen className="h-4 w-4" />
             <span className="hidden sm:inline">Training</span>
+          </TabsTrigger>
+          <TabsTrigger value="certifications" className="flex items-center gap-2 data-[state=active]:bg-background">
+            <Award className="h-4 w-4" />
+            <span className="hidden sm:inline">Certifications</span>
           </TabsTrigger>
           <TabsTrigger value="analytics" className="flex items-center gap-2 data-[state=active]:bg-background">
             <Activity className="h-4 w-4" />
@@ -472,12 +557,30 @@ const WorkforceAnalyticsDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {workforceAnalytics?.certificationMetrics.topCertifications.map((cert, index) => (
-                    <div key={index} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-                      <span className="font-medium">{cert.name}</span>
-                      <Badge variant="outline">{cert.count}</Badge>
-                    </div>
-                  ))}
+                  {(() => {
+                    // Calculate top certifications from actual certification data
+                    const certificationCounts: { [key: string]: number } = {};
+                    certifications.forEach(cert => {
+                      const certName = cert.certification_name || 'Unknown';
+                      certificationCounts[certName] = (certificationCounts[certName] || 0) + 1;
+                    });
+                    
+                    const topCerts = Object.entries(certificationCounts)
+                      .map(([name, count]) => ({ name, count }))
+                      .sort((a, b) => b.count - a.count)
+                      .slice(0, 5);
+                    
+                    return topCerts.length > 0 ? topCerts.map((cert, index) => (
+                      <div key={index} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                        <span className="font-medium">{cert.name}</span>
+                        <Badge variant="outline">{cert.count}</Badge>
+                      </div>
+                    )) : (
+                      <div className="text-center py-4 text-muted-foreground">
+                        No certifications found
+                      </div>
+                    );
+                  })()}
                 </div>
               </CardContent>
             </Card>
@@ -490,13 +593,13 @@ const WorkforceAnalyticsDashboard = () => {
                 <div className="space-y-6">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-green-600 mb-2">
-                      {workforceAnalytics?.certificationMetrics.totalCertifications}
+                      {certificationStats.activeCertifications}
                     </div>
                     <p className="text-sm text-muted-foreground">Active Certifications</p>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-red-600 mb-2">
-                      {workforceAnalytics?.certificationMetrics.expiringCertifications}
+                      {certificationStats.expiringSoon}
                     </div>
                     <p className="text-sm text-muted-foreground">Expiring in 90 days</p>
                   </div>
@@ -580,6 +683,228 @@ const WorkforceAnalyticsDashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="certifications" className="space-y-6 mt-8">
+          {/* Certification Management Header */}
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold">Certification Management</h2>
+              <p className="text-muted-foreground">Assign active certifications to employees and manage expiry dates</p>
+            </div>
+            <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="flex items-center gap-2">
+                  <Award className="h-4 w-4" />
+                  Assign Certification
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Assign Certification to Employee</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="employee">Select Employee</Label>
+                    <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose an employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((employee) => (
+                          <SelectItem key={employee.id} value={employee.id}>
+                            {employee.first_name} {employee.last_name} - {employee.current_department}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="certification">Select Certification</Label>
+                    <Select value={selectedCertification} onValueChange={setSelectedCertification}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a certification" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCertifications.map((cert) => (
+                          <SelectItem key={cert.id} value={cert.id}>
+                            {cert.certification_name} - {cert.issuing_authority}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <Label htmlFor="expiry">Expiry Date</Label>
+                    <Input
+                      id="expiry"
+                      type="date"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsAssignDialogOpen(false)}
+                    disabled={isAssigning}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={assignCertification}
+                    disabled={isAssigning || !selectedEmployee || !selectedCertification || !expiryDate}
+                  >
+                    {isAssigning ? "Assigning..." : "Assign Certification"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Certification Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <Award className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{certificationStats.activeCertifications}</p>
+                    <p className="text-sm text-muted-foreground">Active Certifications</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{certificationStats.expiringSoon}</p>
+                    <p className="text-sm text-muted-foreground">Expiring Soon</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{certificationStats.complianceRate}%</p>
+                    <p className="text-sm text-muted-foreground">Compliance Rate</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="text-2xl font-bold">{availableCertifications.length}</p>
+                    <p className="text-sm text-muted-foreground">Available Certifications</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Available Certifications */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5 text-primary" />
+                  <span>Available Certifications</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {availableCertifications.length > 0 ? (
+                    availableCertifications.map((cert) => (
+                      <div key={cert.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-sm">{cert.certification_name}</h4>
+                          <Badge variant="outline">{cert.issuing_authority}</Badge>
+                        </div>
+                        {cert.description && (
+                          <p className="text-xs text-muted-foreground mb-2">{cert.description}</p>
+                        )}
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-muted-foreground">
+                            Duration: {cert.duration || 'Not specified'}
+                          </span>
+                          {cert.cost && (
+                            <span className="font-medium">${cert.cost}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No available certifications found
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Current Employee Certifications */}
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5 text-secondary" />
+                  <span>Employee Certifications</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {certifications.length > 0 ? (
+                    certifications.slice(0, 10).map((cert) => (
+                      <div key={cert.id} className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-semibold text-sm">{cert.certification_name}</h4>
+                          <Badge 
+                            variant={
+                              cert.expiry_date && new Date(cert.expiry_date) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+                                ? "destructive" 
+                                : "default"
+                            }
+                          >
+                            {cert.expiry_date 
+                              ? new Date(cert.expiry_date).toLocaleDateString()
+                              : "No expiry"
+                            }
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="text-muted-foreground">
+                            {cert.xlsmart_employees?.first_name} {cert.xlsmart_employees?.last_name}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {cert.xlsmart_employees?.current_department}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No employee certifications found
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

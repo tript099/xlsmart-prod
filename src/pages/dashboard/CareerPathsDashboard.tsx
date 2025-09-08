@@ -16,6 +16,7 @@ const CareerPathsDashboard = () => {
     totalCertifications: 0,
     totalTrainings: 0,
     avgPerformanceRating: 0,
+    recentCareerPathRuns: [],
     recentCertifications: [],
     recentTrainings: []
   });
@@ -62,32 +63,34 @@ const CareerPathsDashboard = () => {
         }) || [];
         
         recentResults.forEach((result, index) => {
-          console.log(`Sample result ${index + 1}:`, {
-            function_name: result.function_name,
-            analysis_type: result.analysis_type,
-            created_at: result.created_at,
-            analysis_result_keys: result.analysis_result ? Object.keys(result.analysis_result) : 'No analysis_result',
-            sample_data: result.analysis_result
-          });
-          
-          if (result.analysis_result) {
-            // Try different possible employee ID fields
-            const employeeId = result.analysis_result.employeeId || 
-                              result.analysis_result.employee_id ||
-                              result.analysis_result.id ||
-                              result.created_by;
-            
-            if (employeeId) {
-              uniqueEmployeesWithPaths.add(employeeId);
-            } else {
-              // If no employee ID, just count the record (each record = one employee)
-              uniqueEmployeesWithPaths.add(`record_${result.id}`);
-            }
+          // Only log first few samples to avoid console spam
+          if (index < 3) {
+            console.log(`Sample result ${index + 1}:`, {
+              function_name: result.function_name,
+              analysis_type: result.analysis_type,
+              created_at: result.created_at,
+              input_parameters: result.input_parameters,
+              analysis_result_keys: result.analysis_result ? Object.keys(result.analysis_result) : 'No analysis_result'
+            });
           }
           
-          // Only log first few to avoid spam
+          // Employee ID is stored in input_parameters, not analysis_result
+          const employeeId = result.input_parameters?.employee_id || 
+                            result.input_parameters?.employeeId ||
+                            result.analysis_result?.employee_id ||
+                            result.analysis_result?.employeeId ||
+                            result.created_by;
+          
+          if (employeeId) {
+            uniqueEmployeesWithPaths.add(employeeId);
+          } else {
+            // If no employee ID found, count each record as representing one employee
+            uniqueEmployeesWithPaths.add(`record_${result.id}`);
+          }
+          
+          // Debug employee ID extraction for first few records
           if (index < 3) {
-            console.log('Employee ID found:', result.analysis_result?.employeeId || result.analysis_result?.employee_id || 'NONE');
+            console.log(`Employee ID for result ${index + 1}:`, employeeId || 'NONE FOUND');
           }
         });
         
@@ -97,49 +100,72 @@ const CareerPathsDashboard = () => {
         console.log('Recent results (last 90 days):', recentResults.length);
         console.log('Unique employees with career paths:', activeCareerPathsFromAI);
 
-        // Count certifications and trainings (these might be 0 and that's OK)
-        let totalCertifications = 0;
-        let totalTrainings = 0;
-        
-        learningResults?.forEach(result => {
-          const analysisData = result.analysis_result;
-          if (analysisData?.employees) {
-            analysisData.employees.forEach(emp => {
-              if (emp.certificationRecommendations?.length) {
-                totalCertifications += emp.certificationRecommendations.length;
-              }
-              if (emp.trainingPrograms?.length) {
-                totalTrainings += emp.trainingPrograms.length;
-              }
-            });
-          }
-        });
+        // Fetch real certifications from employee_certifications table
+        const { data: certifications, count: totalCertifications } = await supabase
+          .from('employee_certifications')
+          .select('*', { count: 'exact' });
+
+        // Fetch real training enrollments
+        const { data: allTrainingEnrollments, count: totalTrainings } = await supabase
+          .from('employee_training_enrollments')
+          .select('*', { count: 'exact' });
+
+        console.log('Real certifications found:', totalCertifications);
+        console.log('Real training enrollments found:', totalTrainings);
 
         // Get active training enrollments from the training system
         console.log('Fetching active training enrollments...');
-        const { data: trainingEnrollments } = await supabase
+        const { data: activeTrainingData } = await supabase
           .from('employee_training_enrollments')
           .select('*')
           .in('status', ['enrolled', 'in_progress']);
         
-        console.log('Active training enrollments found:', trainingEnrollments?.length || 0);
-        const activeTrainingEnrollments = trainingEnrollments?.length || 0;
+        console.log('Active training enrollments found:', activeTrainingData?.length || 0);
+        const activeTrainingEnrollments = activeTrainingData?.length || 0;
         
-        // Use the higher value: AI-recommended trainings or actual enrollments
-        totalTrainings = Math.max(totalTrainings, activeTrainingEnrollments);
+        // Use the higher value: total enrollments or active enrollments
+        const finalTrainingCount = Math.max(totalTrainings || 0, activeTrainingEnrollments);
 
         // Calculate average performance rating
         const avgRating = employees?.length > 0 
           ? employees.reduce((sum, emp) => sum + (emp.performance_rating || 0), 0) / employees.length 
           : 0;
 
+        // Get recent career path runs (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const recentCareerPathRuns = careerPathResults?.filter(result => {
+          const resultDate = new Date(result.created_at);
+          return resultDate > thirtyDaysAgo && 
+                 (result.function_name === 'employee-career-paths-bulk' || 
+                  result.analysis_type === 'career_path');
+        }).slice(0, 10) || []; // Show only the most recent 10
+
+        // Debug the career path runs data structure
+        if (recentCareerPathRuns.length > 0) {
+          console.log('Recent career path runs sample:', recentCareerPathRuns.slice(0, 2).map(run => ({
+            function_name: run.function_name,
+            analysis_type: run.analysis_type,
+            input_parameters: run.input_parameters,
+            created_at: run.created_at
+          })));
+        }
+
+        // Get recent certifications (sample data for the certifications dialog)
+        const recentCertifications = [
+          // This would typically come from a certifications table
+          // For now, using sample data since the focus is on career path activities
+        ];
+
         const analyticsData = {
           totalEmployees: totalEmployees || 0,
           activeCareerPlans: Math.max(activePlans || 0, activeCareerPathsFromAI),
           totalCertifications: totalCertifications || 0,
-          totalTrainings: totalTrainings || 0,
+          totalTrainings: finalTrainingCount || 0,
           avgPerformanceRating: Math.round(avgRating * 10) / 10,
-          recentCertifications: [],
+          recentCareerPathRuns: recentCareerPathRuns,
+          recentCertifications: recentCertifications,
           recentTrainings: []
         };
 
@@ -149,7 +175,7 @@ const CareerPathsDashboard = () => {
         console.log('Active Career Paths from AI:', activeCareerPathsFromAI);
         console.log('Development Plans found:', developmentPlans?.length);
         console.log('Calculated certifications:', totalCertifications);
-        console.log('Calculated trainings:', totalTrainings);
+        console.log('Calculated trainings:', finalTrainingCount);
         setCareerAnalytics(analyticsData);
       } catch (error) {
         console.error('Error fetching career analytics:', error);
@@ -172,7 +198,7 @@ const CareerPathsDashboard = () => {
       value: careerAnalytics.totalCertifications || 0, 
       label: "Total Certifications", 
       icon: Award, 
-      color: "text-secondary",
+      color: "text-blue-600 dark:text-blue-400",
       description: "Professional certifications",
       dialogKey: "certifications-details"
     },
@@ -286,22 +312,45 @@ const CareerPathsDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {careerAnalytics.recentCertifications.length > 0 ? (
-                  careerAnalytics.recentCertifications.map((cert: any, index) => (
+                {careerAnalytics.recentCareerPathRuns.length > 0 ? (
+                  careerAnalytics.recentCareerPathRuns.map((run: any, index) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
-                        <p className="font-medium">{cert.certification_name}</p>
+                        <p className="font-medium">Career Path Analysis Run</p>
                         <p className="text-sm text-muted-foreground">
-                          {cert.issuing_authority}
+                          {(() => {
+                            // Try different ways to get employee name
+                            const employeeName = run.input_parameters?.employee_name || 
+                                                `${run.input_parameters?.first_name || ''} ${run.input_parameters?.last_name || ''}`.trim() ||
+                                                run.input_parameters?.name;
+                            
+                            if (employeeName && employeeName !== 'undefined undefined' && employeeName.trim()) {
+                              return `For: ${employeeName}`;
+                            } else if (run.function_name === 'employee-career-paths-bulk') {
+                              return 'Bulk Career Path Analysis';
+                            } else {
+                              return 'Individual Career Path Analysis';
+                            }
+                          })()}
                         </p>
+                        {run.input_parameters?.current_position && (
+                          <p className="text-xs text-muted-foreground">
+                            Position: {run.input_parameters.current_position}
+                          </p>
+                        )}
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(cert.created_at).toLocaleDateString()}
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(run.created_at).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(run.created_at).toLocaleTimeString()}
+                        </div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-muted-foreground text-center py-8">No recent certifications. Encourage your team to pursue professional development.</p>
+                  <p className="text-muted-foreground text-center py-8">No recent career path activities. Run the career path engine to generate career development plans for your team.</p>
                 )}
               </div>
             </CardContent>
@@ -410,8 +459,8 @@ const CareerPathsDashboard = () => {
           <DialogTitle>Professional Certifications Overview</DialogTitle>
           <div className="space-y-4">
             <div className="text-center p-6 border rounded-lg bg-secondary/5">
-              <div className="text-4xl font-bold text-secondary mb-2">{careerAnalytics.totalCertifications}</div>
-              <p className="text-lg font-medium">Total Professional Certifications</p>
+              <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">{careerAnalytics.totalCertifications}</div>
+              <p className="text-lg font-medium text-foreground">Total Professional Certifications</p>
               <p className="text-sm text-muted-foreground">Across all employees</p>
             </div>
             <div className="space-y-3">

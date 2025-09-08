@@ -21,6 +21,7 @@ import WorkforceAnalyticsDashboard from "./pages/dashboard/WorkforceAnalyticsDas
 import SkillInventoryDashboard from "./pages/dashboard/SkillInventoryDashboard";
 import TrainingDashboard from "./pages/dashboard/TrainingDashboard";
 import BulkRoleAssignmentDashboard from "./pages/dashboard/BulkRoleAssignmentDashboard";
+import TdDiagnostics from "./pages/admin/TdDiagnostics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -51,6 +52,10 @@ const App = () => (
             <Route path="certifications" element={<CertificationsDashboard />} />
             <Route path="workforce-analytics" element={<WorkforceAnalyticsDashboard />} />
             <Route path="skill-inventory" element={<SkillInventoryDashboard />} />
+          </Route>
+          {/* Admin Routes */}
+          <Route path="/admin">
+            <Route path="td-diagnostics" element={<TdDiagnostics />} />
           </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

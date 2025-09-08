@@ -86,3 +86,6 @@ BEGIN
     
     RAISE NOTICE 'Inserted % certifications', cert_counter;
 END $$;
+
+
+

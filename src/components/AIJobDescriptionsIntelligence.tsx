@@ -5,6 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileText, TrendingUp, Target, Shield, Brain, AlertTriangle, CheckCircle, Star, Wrench, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -26,6 +29,11 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
   const [pastResults, setPastResults] = useState<any[]>([]);
   const [selectedResultId, setSelectedResultId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Dialog state for Fix recommendations
+  const [fixDialogOpen, setFixDialogOpen] = useState(false);
+  const [currentJobToFix, setCurrentJobToFix] = useState<any>(null);
+  const [selectedRecommendations, setSelectedRecommendations] = useState<string[]>([]);
 
   const analysisTypes = [
     { value: 'jd_optimization', label: 'JD Optimization', icon: Target },
@@ -144,8 +152,64 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
     try {
       // Check if this is a fake ID (job-0, job-1, etc.)
       if (jobId.startsWith('job-')) {
-        // For demo purposes, show that the fix would be applied
-        toast.success(`✅ Optimization applied to "${jobTitle}"! Recommendations have been processed and would be saved to your job description database.`);
+        // For demo purposes, show that the fix would be applied and update the results
+        toast.success(`✅ Optimization applied to "${jobTitle}"! ${recommendations.length} recommendations have been processed and applied.`);
+        
+        // Update the results to remove applied recommendations and issues
+        if (results && results.recommendations) {
+          const updatedResults = { ...results };
+          updatedResults.recommendations = updatedResults.recommendations.map((rec: any) => {
+            if ((rec.jobId && rec.jobId === jobId) || rec.title === jobTitle || rec.role === jobTitle) {
+              // Remove applied recommendations from the issues and recommendations lists
+              const remainingIssues = rec.issues?.filter((issue: string) => 
+                !recommendations.some(appliedRec => 
+                  issue.toLowerCase().includes(appliedRec.toLowerCase().substring(0, 20))
+                )
+              ) || [];
+              
+              const remainingRecommendations = rec.recommendations?.filter((recText: string) => 
+                !recommendations.includes(recText)
+              ) || [];
+              
+              // Improve the score based on applied recommendations
+              const improvementPerRecommendation = 15; // Each recommendation improves score by ~15 points
+              const scoreImprovement = Math.min(recommendations.length * improvementPerRecommendation, 40);
+              const newScore = Math.min((rec.currentScore || 60) + scoreImprovement, 95);
+              
+              // Update priority based on new score
+              let newPriority = rec.priority;
+              if (newScore >= 80) newPriority = 'low';
+              else if (newScore >= 65) newPriority = 'medium';
+              
+              return {
+                ...rec,
+                issues: remainingIssues,
+                recommendations: remainingRecommendations,
+                currentScore: newScore,
+                priority: newPriority,
+                lastUpdated: new Date().toISOString(),
+                appliedRecommendations: [...(rec.appliedRecommendations || []), ...recommendations]
+              };
+            }
+            return rec;
+          });
+          
+          // Update summary statistics
+          if (updatedResults.summary) {
+            const totalRecommendations = updatedResults.recommendations.reduce((sum: number, rec: any) => 
+              sum + (rec.recommendations?.length || 0), 0
+            );
+            const avgScore = updatedResults.recommendations.reduce((sum: number, rec: any) => 
+              sum + (rec.currentScore || 0), 0
+            ) / updatedResults.recommendations.length;
+            
+            updatedResults.summary.averageCompleteness = Math.round(avgScore);
+            updatedResults.summary.averageClarity = Math.round(avgScore + 5); // Assume clarity improves slightly more
+            updatedResults.summary.improvementAreas = totalRecommendations;
+          }
+          
+          setResults(updatedResults);
+        }
         
         // Simulate processing time
         await new Promise(resolve => setTimeout(resolve, 1500));
@@ -165,7 +229,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
       
       toast.success(`Job description improved! ${data.improvementsMade?.length || 0} improvements applied.`);
       
-      // Refresh the analysis results
+      // Refresh the analysis results to show updated data
       await handleAnalysis();
       
     } catch (error) {
@@ -178,6 +242,38 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
         return newSet;
       });
     }
+  };
+
+  const openFixDialog = (jobData: any, recommendations: string[], jobTitle?: string) => {
+    setCurrentJobToFix({
+      jobId: jobData.jobId || `job-${Math.random()}`,
+      title: jobTitle || jobData.role || jobData.title,
+      recommendations: recommendations || []
+    });
+    setSelectedRecommendations([]); // Reset selections
+    setFixDialogOpen(true);
+  };
+
+  const handleApplySelectedRecommendations = async () => {
+    if (!currentJobToFix || selectedRecommendations.length === 0) {
+      toast.error('Please select at least one recommendation to apply.');
+      return;
+    }
+
+    setFixDialogOpen(false);
+    await handleFixJobDescription(
+      currentJobToFix.jobId, 
+      selectedRecommendations, 
+      currentJobToFix.title
+    );
+  };
+
+  const toggleRecommendation = (recommendation: string) => {
+    setSelectedRecommendations(prev => 
+      prev.includes(recommendation) 
+        ? prev.filter(r => r !== recommendation)
+        : [...prev, recommendation]
+    );
   };
 
   const renderOptimizationResults = (data: any) => (
@@ -227,7 +323,7 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleFixJobDescription(rec.jobId || `job-${index}`, rec.recommendations, rec.title)}
+                      onClick={() => openFixDialog(rec, rec.recommendations, rec.title || rec.role)}
                       disabled={fixingJobs.has(rec.jobId || `job-${index}`) || isLoading}
                       className="ml-2"
                     >
@@ -237,22 +333,50 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <div>
-                    <span className="text-sm font-medium text-red-600">Issues:</span>
-                    <ul className="text-sm text-muted-foreground ml-4">
-                      {rec.issues?.map((issue: string, i: number) => (
-                        <li key={i}>• {issue}</li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-green-600">Recommendations:</span>
-                    <ul className="text-sm text-muted-foreground ml-4">
-                      {rec.recommendations?.map((recommendation: string, i: number) => (
-                        <li key={i}>• {recommendation}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  {rec.issues && rec.issues.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-red-600">Issues:</span>
+                      <ul className="text-sm text-muted-foreground ml-4">
+                        {rec.issues.map((issue: string, i: number) => (
+                          <li key={i}>• {issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {rec.recommendations && rec.recommendations.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-green-600">Recommendations:</span>
+                      <ul className="text-sm text-muted-foreground ml-4">
+                        {rec.recommendations.map((recommendation: string, i: number) => (
+                          <li key={i}>• {recommendation}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {rec.appliedRecommendations && rec.appliedRecommendations.length > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-blue-600 flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Applied Improvements:
+                      </span>
+                      <ul className="text-sm text-blue-600/80 ml-4">
+                        {rec.appliedRecommendations.map((applied: string, i: number) => (
+                          <li key={i} className="flex items-center gap-1">
+                            <CheckCircle className="h-2 w-2 mt-1" />
+                            {applied}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {rec.lastUpdated && (
+                    <div className="text-xs text-muted-foreground mt-2 pt-2 border-t">
+                      Last updated: {new Date(rec.lastUpdated).toLocaleString()}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -672,6 +796,81 @@ export const AIJobDescriptionsIntelligence: React.FC<JobDescriptionsIntelligence
           </Button>
         </div>
       )}
+      
+      {/* Fix Recommendations Dialog */}
+      <Dialog open={fixDialogOpen} onOpenChange={setFixDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-5 w-5" />
+              Apply Recommendations - {currentJobToFix?.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Select the recommendations you want to apply to this job description:
+            </p>
+            
+            <ScrollArea className="max-h-[400px] pr-4">
+              <div className="space-y-3">
+                {currentJobToFix?.recommendations?.map((recommendation: string, index: number) => (
+                  <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                    <Checkbox
+                      id={`rec-${index}`}
+                      checked={selectedRecommendations.includes(recommendation)}
+                      onCheckedChange={() => toggleRecommendation(recommendation)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor={`rec-${index}`} 
+                        className="text-sm font-medium cursor-pointer block"
+                      >
+                        {recommendation}
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                {selectedRecommendations.length} of {currentJobToFix?.recommendations?.length || 0} recommendations selected
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setFixDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (currentJobToFix?.recommendations) {
+                      setSelectedRecommendations([...currentJobToFix.recommendations]);
+                    }
+                  }}
+                  variant="secondary"
+                  disabled={selectedRecommendations.length === currentJobToFix?.recommendations?.length}
+                >
+                  Select All
+                </Button>
+                <Button
+                  onClick={handleApplySelectedRecommendations}
+                  disabled={selectedRecommendations.length === 0}
+                  className="min-w-[100px]"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Apply ({selectedRecommendations.length})
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
      </div>
    );
    } catch (error) {

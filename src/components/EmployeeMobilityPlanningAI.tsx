@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
-import { MapPin, ArrowRight, Building, Clock, Star, Users, RefreshCw, Brain, Target, TrendingUp } from "lucide-react";
+import { MapPin, ArrowRight, Building, Clock, Star, Users, RefreshCw, Brain, Target, TrendingUp, CheckCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Employee {
   id: string;
@@ -55,11 +56,30 @@ export const EmployeeMobilityPlanningAI = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [executedMoves, setExecutedMoves] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     loadData();
+    loadExecutedMoves();
   }, []);
+
+  const loadExecutedMoves = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employee_moves' as any)
+        .select('employee_id')
+        .eq('move_status', 'executed');
+
+      if (error) throw error;
+      
+      const executedEmployeeIds = new Set(data?.map((move: any) => move.employee_id) || []);
+      setExecutedMoves(executedEmployeeIds);
+    } catch (error) {
+      console.error('Error loading executed moves:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -81,6 +101,8 @@ export const EmployeeMobilityPlanningAI = () => {
       if (employeesResult.error) throw employeesResult.error;
       if (rolesResult.error) throw rolesResult.error;
 
+      console.log('Loaded employees:', employeesResult.data);
+      console.log('Total employees loaded:', employeesResult.data?.length);
       setEmployees(employeesResult.data || []);
       setStandardRoles(rolesResult.data || []);
       
@@ -112,6 +134,8 @@ export const EmployeeMobilityPlanningAI = () => {
               created_at: result.created_at
             })) || [];
 
+            console.log('Raw mobility plans data:', mobilityPlansData);
+            console.log('Transformed mobility plans:', transformedMobilityPlans);
             setMobilityPlans(transformedMobilityPlans);
           }
         } catch (error) {
@@ -288,6 +312,102 @@ export const EmployeeMobilityPlanningAI = () => {
     return (progress.processed / progress.total) * 100;
   };
 
+  const handleExecuteMove = async (plan: MobilityPlan, employee: Employee | undefined) => {
+    console.log('Executing move for plan:', plan);
+    console.log('Employee data:', employee);
+    
+    if (!employee) {
+      toast({
+        title: "Error",
+        description: "Employee information not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to execute moves",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Parse the AI analysis to extract move recommendations
+      const analysis = plan.ai_analysis || '';
+      
+      // Create a simple move based on the plan - directly execute it
+      const moveData = {
+        employee_id: employee.id,
+        move_type: 'lateral_move', // This could be determined from AI analysis
+        previous_position: employee.current_position,
+        previous_department: employee.current_department,
+        previous_level: employee.current_level,
+        new_position: `${employee.current_position} (Advanced)`, // Placeholder - should come from AI analysis
+        new_department: employee.current_department, // Could be different based on AI recommendation
+        new_level: employee.current_level,
+        reason: 'AI-recommended mobility plan',
+        notes: analysis.substring(0, 500), // First 500 chars of AI analysis
+        mobility_plan_id: plan.id,
+        requested_by: user.id,
+        approved_by: user.id, // Auto-approve since we're executing directly
+        approval_date: new Date().toISOString(),
+        move_status: 'executed', // Directly execute, no approval needed
+        effective_date: new Date().toISOString()
+      };
+
+      // Create the move record
+      const { data: moveRecord, error: moveError } = await supabase
+        .from('employee_moves' as any)
+        .insert(moveData)
+        .select()
+        .single();
+
+      if (moveError) throw moveError;
+
+      // Immediately update employee's current position, department, and level
+      const { error: employeeError } = await supabase
+        .from('xlsmart_employees')
+        .update({
+          current_position: moveData.new_position,
+          current_department: moveData.new_department,
+          current_level: moveData.new_level,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', employee.id);
+
+      if (employeeError) throw employeeError;
+
+      toast({
+        title: "Move Executed Successfully!",
+        description: `${employee.first_name} ${employee.last_name}'s position has been updated to ${moveData.new_position}.`,
+      });
+
+      console.log('Move executed and employee updated:', moveRecord);
+
+      // Add employee to executed moves set to hide them from the list
+      setExecutedMoves(prev => new Set([...prev, employee.id]));
+      
+      // Refresh the data to show updated information
+      await loadData();
+      
+      // Trigger a custom event to refresh the moves history
+      window.dispatchEvent(new CustomEvent('moveExecuted', { 
+        detail: { moveRecord, employee } 
+      }));
+
+    } catch (error: any) {
+      console.error('Error executing move:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to execute move",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Simplified and faster formatting function
   const formatMobilityPlan = useCallback((text: string) => {
     if (!text) return '';
@@ -375,8 +495,24 @@ export const EmployeeMobilityPlanningAI = () => {
                 </div>
               </div>
             )}
-            {formattedPlans.slice(0, 20).map((plan) => { // Limit to 20 plans for performance
+            
+            {formattedPlans.filter(plan => !executedMoves.has(plan.employee_id)).length === 0 && (
+              <div className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-green-800">All Moves Executed!</h3>
+                <p className="text-muted-foreground">
+                  All available mobility plans have been executed. Check the Employee Moves History to see completed moves.
+                </p>
+              </div>
+            )}
+            {formattedPlans
+              .filter(plan => !executedMoves.has(plan.employee_id)) // Filter out executed moves
+              .slice(0, 20).map((plan) => { // Limit to 20 plans for performance
               const employee = employees.find(emp => emp.id === plan.employee_id);
+              
+              // Skip if employee not found
+              if (!employee) return null;
+              
               return (
                 <div key={plan.id} className="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-4 shadow-sm">
                   <div className="flex items-center justify-between">
@@ -393,10 +529,20 @@ export const EmployeeMobilityPlanningAI = () => {
                     </Badge>
                   </div>
                   <div className="bg-white border border-gray-200 p-6 rounded-lg">
-                    <h5 className="font-semibold text-base mb-4 text-gray-800 border-b border-gray-200 pb-2">
-                      AI Mobility Recommendations
-                    </h5>
-                    <div className="max-w-none">
+                    <div className="flex items-center justify-between mb-4">
+                      <h5 className="font-semibold text-base text-gray-800">
+                        AI Mobility Recommendations
+                      </h5>
+                      <Button
+                        size="sm"
+                        onClick={() => handleExecuteMove(plan, employee)}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Execute Move Now
+                      </Button>
+                    </div>
+                    <div className="max-w-none border-t border-gray-200 pt-4">
                       <div className="text-sm leading-relaxed text-gray-700">
                         {plan.formattedAnalysis ? (
                           <div dangerouslySetInnerHTML={{ __html: plan.formattedAnalysis }} />

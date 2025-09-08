@@ -4,10 +4,12 @@ import { DevelopmentPathwaysAI } from "@/components/DevelopmentPathwaysAI";
 import { AILearningDevelopment } from "@/components/AILearningDevelopment";
 import { BookOpen, TrendingUp, Clock, Award, Brain, Loader2 } from "lucide-react";
 import { useDevelopmentAnalytics } from "@/hooks/useDevelopmentAnalytics";
+import { useDevelopmentAnalyticsDetails } from "@/hooks/useDevelopmentAnalyticsDetails";
 import { useState } from "react";
 
 const DevelopmentDashboard = () => {
   const developmentAnalytics = useDevelopmentAnalytics();
+  const analyticsDetails = useDevelopmentAnalyticsDetails();
   const [activeDialog, setActiveDialog] = useState<string | null>(null);
 
   const developmentStats = [
@@ -141,77 +143,80 @@ const DevelopmentDashboard = () => {
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Popular Learning Tracks</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  Popular Learning Tracks
+                  {analyticsDetails.loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Cloud Computing</p>
-                      <p className="text-sm text-muted-foreground">456 learners</p>
+                  {analyticsDetails.loading ? (
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Loading learning tracks...</span>
                     </div>
-                    <div className="text-blue-600 text-sm">92% completion</div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Data Science</p>
-                      <p className="text-sm text-muted-foreground">378 learners</p>
+                  ) : analyticsDetails.popularTracks.length > 0 ? (
+                    analyticsDetails.popularTracks.map((track, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{track.name}</p>
+                          <p className="text-sm text-muted-foreground">{track.learners} learners</p>
+                        </div>
+                        <div className={`text-sm ${
+                          track.completionRate >= 90 ? 'text-green-600' :
+                          track.completionRate >= 70 ? 'text-blue-600' :
+                          track.completionRate >= 50 ? 'text-orange-600' :
+                          'text-red-600'
+                        }`}>
+                          {track.completionRate}% completion
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center p-8 text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No learning tracks data available</p>
                     </div>
-                    <div className="text-green-600 text-sm">87% completion</div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                    <div>
-                      <p className="font-medium">Leadership Skills</p>
-                      <p className="text-sm text-muted-foreground">234 learners</p>
-                    </div>
-                    <div className="text-purple-600 text-sm">95% completion</div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Learning Progress</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  Learning Progress
+                  {analyticsDetails.loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Technical Skills</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-20 h-2 bg-muted rounded-full">
-                        <div className="w-4/5 h-2 bg-blue-500 rounded-full"></div>
-                      </div>
-                      <span className="text-sm font-medium">80%</span>
+                  {analyticsDetails.loading ? (
+                    <div className="flex items-center justify-center p-8">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Loading progress data...</span>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Soft Skills</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-20 h-2 bg-muted rounded-full">
-                        <div className="w-3/4 h-2 bg-green-500 rounded-full"></div>
+                  ) : analyticsDetails.learningProgress.length > 0 ? (
+                    analyticsDetails.learningProgress.map((progress, index) => (
+                      <div key={index} className="flex justify-between items-center">
+                        <span className="text-sm">{progress.category}</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-20 h-2 bg-muted rounded-full">
+                            <div 
+                              className={`h-2 rounded-full ${progress.color}`}
+                              style={{ width: `${Math.min(progress.progress, 100)}%` }}
+                            ></div>
+                          </div>
+                          <span className="text-sm font-medium">{progress.progress}%</span>
+                        </div>
                       </div>
-                      <span className="text-sm font-medium">75%</span>
+                    ))
+                  ) : (
+                    <div className="text-center p-8 text-muted-foreground">
+                      <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No progress data available</p>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Industry Knowledge</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-20 h-2 bg-muted rounded-full">
-                        <div className="w-3/5 h-2 bg-purple-500 rounded-full"></div>
-                      </div>
-                      <span className="text-sm font-medium">60%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Compliance Training</span>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-20 h-2 bg-muted rounded-full">
-                        <div className="w-full h-2 bg-orange-500 rounded-full"></div>
-                      </div>
-                      <span className="text-sm font-medium">100%</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

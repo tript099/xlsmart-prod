@@ -1,15 +1,167 @@
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, Users, Target, Clock, ArrowRight, Star } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { TrendingUp, Users, Target, Clock, ArrowRight, Star, BookOpen, Loader2 } from "lucide-react";
 
 interface CareerPathwaysProps {
   metrics: any;
 }
 
 export const CareerPathwaysDashboard = ({ metrics }: CareerPathwaysProps) => {
+  const [showCreatePlanDialog, setShowCreatePlanDialog] = useState(false);
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPathway, setSelectedPathway] = useState<any>(null);
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = useState({
+    employeeId: "",
+    employeeName: "",
+    currentPosition: "",
+    targetRole: "",
+    careerGoals: "",
+    currentSkills: "",
+    timeframe: "12"
+  });
+
+  // Fetch employees for the dropdown
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      const { data, error } = await supabase
+        .from('xlsmart_employees')
+        .select('id, first_name, last_name, current_position, current_department')
+        .eq('is_active', true)
+        .order('first_name');
+      
+      if (!error && data) {
+        setEmployees(data);
+      }
+    };
+    
+    fetchEmployees();
+  }, []);
+
   if (!metrics) return null;
+
+  // Function to create development plan
+  const createDevelopmentPlan = async () => {
+    if (!formData.employeeId || !formData.careerGoals || !formData.targetRole) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in employee, target role, and career goals.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Find selected employee details
+      const selectedEmployee = employees.find(emp => emp.id === formData.employeeId);
+      
+      // Generate development plan using the existing Supabase function
+      const { data, error } = await supabase.functions.invoke('development-pathways', {
+        body: {
+          employeeProfile: {
+            name: formData.employeeName,
+            currentPosition: formData.currentPosition,
+            experienceLevel: 'Intermediate',
+            department: selectedEmployee?.current_department || '',
+          },
+          careerGoals: formData.careerGoals,
+          currentSkills: formData.currentSkills.split(',').map(s => s.trim()).filter(s => s),
+          industryTrends: `Current trends in telecommunications and technology`
+        }
+      });
+
+      if (error) throw error;
+
+      // Save the structured development plan to xlsmart_development_plans table
+      const developmentPlanData = {
+        employee_id: formData.employeeId,
+        target_role: formData.targetRole,
+        current_skill_level: 0.0,
+        target_skill_level: 5.0,
+        development_areas: formData.currentSkills.split(',').map(s => s.trim()).filter(s => s),
+        recommended_courses: [],
+        recommended_certifications: [],
+        recommended_projects: [],
+        timeline_months: parseInt(formData.timeframe),
+        progress_percentage: 0.0,
+        plan_status: 'active',
+        created_by: (await supabase.auth.getUser()).data.user?.id || '',
+        assigned_to: formData.employeeId,
+        next_review_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      };
+
+      const { error: saveError } = await supabase
+        .from('xlsmart_development_plans')
+        .insert(developmentPlanData);
+
+      if (saveError) throw saveError;
+
+      toast({
+        title: "Development Plan Created",
+        description: `Successfully created development plan for ${formData.employeeName}`,
+      });
+
+      // Reset form and close dialog
+      setFormData({
+        employeeId: "",
+        employeeName: "",
+        currentPosition: "",
+        targetRole: "",
+        careerGoals: "",
+        currentSkills: "",
+        timeframe: "12"
+      });
+      setShowCreatePlanDialog(false);
+      
+    } catch (error) {
+      console.error('Error creating development plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create development plan. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle employee selection
+  const handleEmployeeSelect = (employeeId: string) => {
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (employee) {
+      setFormData({
+        ...formData,
+        employeeId,
+        employeeName: `${employee.first_name} ${employee.last_name}`,
+        currentPosition: employee.current_position || ''
+      });
+    }
+  };
+
+  // Handle opening the dialog with pathway context
+  const openCreatePlanDialog = (pathway: any) => {
+    setSelectedPathway(pathway);
+    setFormData({
+      ...formData,
+      targetRole: pathway.nextRoles[0] || '',
+      currentSkills: pathway.requiredSkills.join(', ')
+    });
+    setShowCreatePlanDialog(true);
+  };
 
   // Simulated career pathway data based on available metrics
   const careerPathways = [
@@ -177,7 +329,12 @@ export const CareerPathwaysDashboard = ({ metrics }: CareerPathwaysProps) => {
                         </Badge>
                       ))}
                     </div>
-                    <Button size="sm" className="w-full mt-2">
+                    <Button 
+                      size="sm" 
+                      className="w-full mt-2"
+                      onClick={() => openCreatePlanDialog(pathway)}
+                    >
+                      <BookOpen className="h-4 w-4 mr-2" />
                       Create Development Plan
                     </Button>
                   </div>
@@ -252,6 +409,113 @@ export const CareerPathwaysDashboard = ({ metrics }: CareerPathwaysProps) => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Create Development Plan Dialog */}
+      <Dialog open={showCreatePlanDialog} onOpenChange={setShowCreatePlanDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Create Development Plan
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Employee Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="employee">Select Employee</Label>
+              <Select value={formData.employeeId} onValueChange={handleEmployeeSelect}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose an employee..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.first_name} {employee.last_name} - {employee.current_position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Target Role */}
+            <div className="space-y-2">
+              <Label htmlFor="targetRole">Target Role</Label>
+              <Input
+                id="targetRole"
+                value={formData.targetRole}
+                onChange={(e) => setFormData({...formData, targetRole: e.target.value})}
+                placeholder="e.g., Senior Software Engineer"
+              />
+            </div>
+
+            {/* Career Goals */}
+            <div className="space-y-2">
+              <Label htmlFor="careerGoals">Career Goals</Label>
+              <Textarea
+                id="careerGoals"
+                value={formData.careerGoals}
+                onChange={(e) => setFormData({...formData, careerGoals: e.target.value})}
+                placeholder="Describe the employee's career aspirations and objectives..."
+                rows={3}
+              />
+            </div>
+
+            {/* Current Skills */}
+            <div className="space-y-2">
+              <Label htmlFor="currentSkills">Current Skills (comma-separated)</Label>
+              <Input
+                id="currentSkills"
+                value={formData.currentSkills}
+                onChange={(e) => setFormData({...formData, currentSkills: e.target.value})}
+                placeholder="e.g., JavaScript, React, Node.js"
+              />
+            </div>
+
+            {/* Timeline */}
+            <div className="space-y-2">
+              <Label htmlFor="timeframe">Development Timeline (months)</Label>
+              <Select value={formData.timeframe} onValueChange={(value) => setFormData({...formData, timeframe: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="6">6 months</SelectItem>
+                  <SelectItem value="12">12 months</SelectItem>
+                  <SelectItem value="18">18 months</SelectItem>
+                  <SelectItem value="24">24 months</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCreatePlanDialog(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={createDevelopmentPlan}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating Plan...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Create Plan
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

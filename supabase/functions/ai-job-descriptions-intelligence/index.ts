@@ -1,34 +1,4 @@
-// Force redeploy for API key refresh
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
-serve(async (req) => {
-  console.log('=== AI Job Descriptions Intelligence Function Started ===');
-  console.log('Request method:', req.method);
-  
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    console.log('Parsing request body...');
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { analysisType, departmentFilter, roleFilter } = await req.json();
-    
-    console.log('Request parameters:', { analysisType, departmentFilter, roleFilter });
-
-    console.log(`Starting job descriptions analysis: ${analysisType}`);
-    console.log(`Filters - Department: ${departmentFilter}, Role: ${roleFilter}`);
-
+ 
     // Fetch job descriptions data - get all active JDs for now
     console.log('About to query xlsmart_job_descriptions with service role');
     const { data: jobDescriptions, error: jdError } = await supabase

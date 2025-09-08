@@ -5,19 +5,11 @@ import { HRSidebar } from "@/components/HRSidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
-import { LiteLLMTest } from "@/components/LiteLLMTest";
-import { ComprehensiveApplicationTester } from "@/components/ComprehensiveApplicationTester";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Zap, TestTube } from "lucide-react";
-
 
 const HRDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLiteLLMDialogOpen, setIsLiteLLMDialogOpen] = useState(false);
-  const [isAppTesterDialogOpen, setIsAppTesterDialogOpen] = useState(false);
 
   // Redirect unauthenticated users to login
   useEffect(() => {
@@ -63,31 +55,6 @@ const HRDashboard = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            <Dialog open={isLiteLLMDialogOpen} onOpenChange={setIsLiteLLMDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  <span className="hidden sm:inline">Test LiteLLM</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogTitle className="sr-only">LiteLLM Connection Test</DialogTitle>
-                <LiteLLMTest />
-              </DialogContent>
-            </Dialog>
-            
-            <Dialog open={isAppTesterDialogOpen} onOpenChange={setIsAppTesterDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default" size="sm" className="flex items-center gap-2">
-                  <TestTube className="h-4 w-4" />
-                  <span className="hidden sm:inline">Test Application</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-                <DialogTitle className="sr-only">Comprehensive Application Testing</DialogTitle>
-                <ComprehensiveApplicationTester />
-              </DialogContent>
-            </Dialog>
           </div>
         </header>
 

@@ -10,6 +10,7 @@ interface DevelopmentAnalytics {
   totalTrainings: number;
   totalCertifications: number;
   loading: boolean;
+  refresh: () => void;
 }
 
 export const useDevelopmentAnalytics = (): DevelopmentAnalytics => {
@@ -21,50 +22,115 @@ export const useDevelopmentAnalytics = (): DevelopmentAnalytics => {
     totalEmployees: 0,
     totalTrainings: 0,
     totalCertifications: 0,
-    loading: true
+    loading: true,
+    refresh: () => {}
   });
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        // Fetch employee data
-        const { count: totalEmployees } = await supabase
-          .from('xlsmart_employees')
-          .select('*', { count: 'exact', head: true });
+        // Fetch all data in parallel for better performance
+        const [
+          employeesResult,
+          developmentPlansResult,
+          trainingEnrollmentsResult,
+          trainingCompletionsResult,
+          trainingAnalyticsResult,
+          certificationsResult,
+          skillsResult
+        ] = await Promise.all([
+          // Total employees
+          supabase
+            .from('xlsmart_employees')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true),
+          
+          // Active development plans (learning paths)
+          supabase
+            .from('xlsmart_development_plans')
+            .select('*', { count: 'exact', head: true })
+            .eq('plan_status', 'active'),
+          
+          // Training enrollments
+          supabase
+            .from('employee_training_enrollments')
+            .select('*', { count: 'exact' }),
+          
+          // Training completions
+          supabase
+            .from('training_completions')
+            .select('*', { count: 'exact' }),
+          
+          // Training analytics for learning hours
+          supabase
+            .from('training_analytics')
+            .select('*')
+            .eq('metric_type', 'learning_hours'),
+          
+          // Certifications
+          supabase
+            .from('employee_certifications')
+            .select('*', { count: 'exact', head: true }),
+          
+          // Skills from employees
+          supabase
+            .from('xlsmart_employees')
+            .select('skills')
+            .eq('is_active', true)
+        ]);
 
-        // Fetch training data
-        const { data: trainings, count: totalTrainings } = await supabase
-          .from('employee_trainings')
-          .select('*', { count: 'exact' });
+        // Calculate learning paths (active development plans)
+        const learningPaths = developmentPlansResult.count || 0;
 
-        // Fetch certification data
-        const { count: totalCertifications } = await supabase
-          .from('employee_certifications')
-          .select('*', { count: 'exact', head: true });
+        // Calculate completion rate based on development plan progress
+        const developmentPlansData = developmentPlansResult.data || [];
+        const totalProgress = developmentPlansData.reduce((sum, plan) => {
+          return sum + (plan.progress_percentage || 0);
+        }, 0);
+        const completionRate = developmentPlansData.length > 0 
+          ? Math.round(totalProgress / developmentPlansData.length) 
+          : 0;
 
-        // Fetch skills data
-        const { count: skillsDeveloped } = await supabase
-          .from('skills_master')
-          .select('*', { count: 'exact', head: true });
+        // Get total enrollments for training count
+        const totalEnrollments = trainingEnrollmentsResult.count || 0;
 
-        // Demo data for learning paths - realistic number of active development tracks
-        const learningPaths = 12;
+        // Calculate average learning hours from training analytics
+        const learningHoursData = trainingAnalyticsResult.data || [];
+        const totalLearningHours = learningHoursData.reduce((sum, record) => {
+          return sum + (record.metric_value || 0);
+        }, 0);
+        const avgLearningHours = learningHoursData.length > 0 
+          ? Math.round(totalLearningHours / learningHoursData.length) 
+          : 0;
 
-        // Demo data for completion rate - realistic completion percentage
-        const completionRate = 78;
-
-        // Demo data for average learning hours per employee per month
-        const avgLearningHours = 8;
+        // Calculate skills developed from development plans (recommended courses/certifications)
+        const allRecommendedSkills = new Set<string>();
+        developmentPlansData.forEach(plan => {
+          // Extract skills from recommended courses
+          if (plan.recommended_courses && Array.isArray(plan.recommended_courses)) {
+            plan.recommended_courses.forEach((course: any) => {
+              if (course.skills && Array.isArray(course.skills)) {
+                course.skills.forEach((skill: string) => allRecommendedSkills.add(skill));
+              }
+            });
+          }
+          // Extract skills from development areas
+          if (plan.development_areas && Array.isArray(plan.development_areas)) {
+            plan.development_areas.forEach((area: string) => allRecommendedSkills.add(area));
+          }
+        });
+        const skillsDeveloped = allRecommendedSkills.size;
 
         setAnalytics({
           learningPaths,
           completionRate,
           avgLearningHours,
-          skillsDeveloped: skillsDeveloped || 0,
-          totalEmployees: totalEmployees || 0,
-          totalTrainings: totalTrainings || 0,
-          totalCertifications: totalCertifications || 0,
-          loading: false
+          skillsDeveloped,
+          totalEmployees: employeesResult.count || 0,
+          totalTrainings: totalEnrollments,
+          totalCertifications: certificationsResult.count || 0,
+          loading: false,
+          refresh: fetchAnalytics
         });
       } catch (error) {
         console.error('Error fetching development analytics:', error);

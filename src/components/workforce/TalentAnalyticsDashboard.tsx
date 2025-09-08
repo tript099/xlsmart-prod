@@ -3,17 +3,26 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, TrendingUp, AlertCircle, Shield, Award, Target } from "lucide-react";
+import { useCertificationStats } from "@/hooks/useCertifications";
 
 interface TalentAnalyticsProps {
   metrics: any;
 }
 
 export const TalentAnalyticsDashboard = ({ metrics }: TalentAnalyticsProps) => {
+  const certificationStats = useCertificationStats();
+  
   if (!metrics) return null;
 
   // Calculate retention metrics
-  const totalRisk = metrics.retentionRisk?.highRisk + metrics.retentionRisk?.mediumRisk + metrics.retentionRisk?.lowRisk;
-  const retentionRate = totalRisk > 0 ? Math.round((metrics.retentionRisk?.lowRisk / totalRisk) * 100) : 0;
+  const totalEmployees = metrics.totalEmployees || 0;
+  const highRisk = metrics.retentionRisk?.highRisk || 0;
+  const mediumRisk = metrics.retentionRisk?.mediumRisk || 0;
+  const lowRisk = metrics.retentionRisk?.lowRisk || 0;
+  
+  // Retention rate should be calculated as (100 - percentage of high risk employees)
+  // This represents the likelihood of employees staying with the company
+  const retentionRate = totalEmployees > 0 ? Math.round(100 - ((highRisk / totalEmployees) * 100)) : 0;
 
   // Performance distribution
   const performanceDistribution = [
@@ -141,7 +150,8 @@ export const TalentAnalyticsDashboard = ({ metrics }: TalentAnalyticsProps) => {
                   description: "Stable employees" 
                 }
               ].map((risk, index) => {
-                const percentage = totalRisk > 0 ? Math.round((risk.count / totalRisk) * 100) : 0;
+                const totalRiskEmployees = highRisk + mediumRisk + lowRisk;
+                const percentage = totalRiskEmployees > 0 ? Math.round((risk.count / totalRiskEmployees) * 100) : 0;
                 return (
                   <div key={index} className="border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
@@ -248,11 +258,11 @@ export const TalentAnalyticsDashboard = ({ metrics }: TalentAnalyticsProps) => {
             
             <div className="text-center">
               <div className="text-3xl font-bold text-accent mb-2">
-                {metrics.certificationMetrics?.totalCertifications || 0}
+                {certificationStats.activeCertifications}
               </div>
               <p className="text-sm text-muted-foreground">Active Certifications</p>
               <p className="text-xs text-destructive mt-1">
-                {metrics.certificationMetrics?.expiringCertifications || 0} expiring soon
+                {certificationStats.expiringSoon} expiring soon
               </p>
             </div>
           </div>

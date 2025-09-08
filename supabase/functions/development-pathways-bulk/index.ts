@@ -51,21 +51,39 @@ serve(async (req) => {
       throw new Error(`No employees found for ${pathwayType}: ${identifier}`);
     }
 
-    // Create development session
-    const { data: session, error: sessionError } = await supabase
+    // Create or get existing development session
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const sessionName = `Bulk Development Pathways - ${pathwayType.toUpperCase()}: ${identifier} - ${timestamp}`;
+    const systemUserId = '00000000-0000-0000-0000-000000000000';
+    
+    // First, try to find existing session
+    let { data: session, error: sessionError } = await supabase
       .from('xlsmart_upload_sessions')
-      .insert({
-        session_name: `Bulk Development Pathways - ${pathwayType.toUpperCase()}: ${identifier}`,
-        file_names: [`development_pathways_${pathwayType}`],
-        temp_table_names: [],
-        total_rows: employees.length,
-        status: 'processing',
-        created_by: '00000000-0000-0000-0000-000000000000' // System user
-      })
-      .select()
+      .select('*')
+      .eq('session_name', sessionName)
+      .eq('created_by', systemUserId)
       .single();
 
-    if (sessionError) throw sessionError;
+    // If no existing session, create a new one
+    if (sessionError && sessionError.code === 'PGRST116') {
+      const { data: newSession, error: createError } = await supabase
+        .from('xlsmart_upload_sessions')
+        .insert({
+          session_name: sessionName,
+          file_names: [`development_pathways_${pathwayType}`],
+          temp_table_names: [],
+          total_rows: employees.length,
+          status: 'processing',
+          created_by: systemUserId
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+      session = newSession;
+    } else if (sessionError) {
+      throw sessionError;
+    }
 
     // Background processing with EdgeRuntime.waitUntil
     const processDevelopmentPathways = async () => {

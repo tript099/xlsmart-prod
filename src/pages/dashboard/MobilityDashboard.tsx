@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmployeeMobilityPlanningAI } from "@/components/EmployeeMobilityPlanningAI";
+import { EmployeeMovesHistory } from "@/components/EmployeeMovesHistory";
 import { Target, TrendingUp, Users, AlertTriangle, Loader2 } from "lucide-react";
 import { useMobilityAnalytics } from "@/hooks/useMobilityAnalytics";
 import { useState, useEffect } from "react";
@@ -215,6 +216,11 @@ const MobilityDashboard = () => {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      {/* Recent Moves History */}
+      <section>
+        <EmployeeMovesHistory />
       </section>
     </div>
   );

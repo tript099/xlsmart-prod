@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BookOpen, Target, Lightbulb, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDevelopmentPlanCreation } from "@/hooks/useDevelopmentPlanCreation";
 import { useToast } from "@/hooks/use-toast";
 
 export const DevelopmentPathways = () => {
   const { toast } = useToast();
+  const { createStructuredDevelopmentPlan, isCreating } = useDevelopmentPlanCreation();
   const [formData, setFormData] = useState({
     employeeName: "",
     currentPosition: "",
@@ -23,6 +25,7 @@ export const DevelopmentPathways = () => {
   });
   const [developmentPlan, setDevelopmentPlan] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [savedAnalysisId, setSavedAnalysisId] = useState<string | null>(null);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -59,6 +62,8 @@ export const DevelopmentPathways = () => {
       if (error) throw error;
 
       setDevelopmentPlan(data.developmentPlan);
+      setSavedAnalysisId(data.analysisId);
+      
       toast({
         title: "Development Plan Generated",
         description: "Personalized development pathway has been successfully created.",
@@ -72,6 +77,54 @@ export const DevelopmentPathways = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const createStructuredPlan = async () => {
+    if (!savedAnalysisId) {
+      toast({
+        title: "No Analysis Found",
+        description: "Please generate a development plan first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Get the saved analysis
+      const { data: analysis, error: fetchError } = await supabase
+        .from('ai_analysis_results')
+        .select('*')
+        .eq('id', savedAnalysisId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Find or create employee record
+      const { data: employee, error: employeeError } = await supabase
+        .from('xlsmart_employees')
+        .select('id')
+        .eq('first_name', formData.employeeName.split(' ')[0])
+        .eq('last_name', formData.employeeName.split(' ')[1] || '')
+        .single();
+
+      if (employeeError && employeeError.code !== 'PGRST116') {
+        throw employeeError;
+      }
+
+      // If employee doesn't exist, create a placeholder or use a default
+      const employeeId = employee?.id || '00000000-0000-0000-0000-000000000000';
+
+      // Create structured development plan
+      await createStructuredDevelopmentPlan(analysis, employeeId, formData.careerGoals);
+
+    } catch (error) {
+      console.error('Error creating structured plan:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create structured development plan.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -221,6 +274,30 @@ export const DevelopmentPathways = () => {
               <pre className="whitespace-pre-wrap font-sans text-sm text-card-foreground bg-muted/30 p-4 rounded-lg border border-border">
                 {developmentPlan}
               </pre>
+            </div>
+            
+            <div className="mt-4 flex gap-2">
+              <Button 
+                onClick={createStructuredPlan}
+                disabled={isCreating}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isCreating ? (
+                  <>
+                    <Clock className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Structured Plan...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    Save as Structured Development Plan
+                  </>
+                )}
+              </Button>
+              
+              <div className="text-xs text-muted-foreground flex items-center">
+                💡 This will create a structured plan that appears in your analytics dashboard
+              </div>
             </div>
           </CardContent>
         </Card>
