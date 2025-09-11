@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useWorkforceAnalytics } from "@/hooks/useWorkforceAnalytics";
 import { useCertificationStats, useCertifications, useAvailableCertifications } from "@/hooks/useCertifications";
@@ -32,7 +33,10 @@ import {
   AlertTriangle,
   Calendar,
   Activity,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  UserX,
+  Settings
 } from "lucide-react";
 import { useState } from "react";
 
@@ -50,6 +54,82 @@ const WorkforceAnalyticsDashboard = () => {
   const [selectedCertification, setSelectedCertification] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
+
+  // Performance management states
+  const [selectedEmployeeForAction, setSelectedEmployeeForAction] = useState<any>(null);
+  const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
+  const [isImprovementPlanDialogOpen, setIsImprovementPlanDialogOpen] = useState(false);
+  const [isExitStrategyDialogOpen, setIsExitStrategyDialogOpen] = useState(false);
+  const [improvementPlan, setImprovementPlan] = useState("");
+  const [exitStrategy, setExitStrategy] = useState("");
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
+
+  // Function to handle employee action selection
+  const handleEmployeeActionClick = (employee: any) => {
+    setSelectedEmployeeForAction(employee);
+    setIsActionDialogOpen(true);
+  };
+
+  // Function to generate improvement plan
+  const generateImprovementPlan = async () => {
+    if (!selectedEmployeeForAction) return;
+
+    setIsGeneratingPlan(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-employee-improvement-plan', {
+        body: {
+          employee: selectedEmployeeForAction
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setImprovementPlan(data.improvementPlan);
+        setIsActionDialogOpen(false);
+        setIsImprovementPlanDialogOpen(true);
+        toast.success(`Improvement plan generated! Using ${data.availableTrainings} training programs and ${data.availableDepartments} departments.`);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Error generating improvement plan:', error);
+      toast.error(`Failed to generate improvement plan: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingPlan(false);
+    }
+  };
+
+  // Function to generate exit strategy
+  const generateExitStrategy = async () => {
+    if (!selectedEmployeeForAction) return;
+
+    setIsGeneratingStrategy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-employee-exit-strategy', {
+        body: {
+          employee: selectedEmployeeForAction
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        setExitStrategy(data.exitStrategy);
+        setIsActionDialogOpen(false);
+        setIsExitStrategyDialogOpen(true);
+        toast.success(`Exit strategy generated! Analyzed ${data.teamMembersCount} team members for workload redistribution.`);
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (error) {
+      console.error('Error generating exit strategy:', error);
+      toast.error(`Failed to generate exit strategy: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingStrategy(false);
+    }
+  };
 
   // Function to assign certification to employee
   const assignCertification = async () => {
@@ -297,10 +377,14 @@ const WorkforceAnalyticsDashboard = () => {
 
       {/* Enhanced Tabs */}
       <Tabs value={activeView} onValueChange={setActiveView} className="w-full">
-        <TabsList className="grid w-full grid-cols-9 lg:w-fit bg-muted/50 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-10 lg:w-fit bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="overview" className="flex items-center gap-2 data-[state=active]:bg-background">
             <BarChart3 className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
+          </TabsTrigger>
+          <TabsTrigger value="performance" className="flex items-center gap-2 data-[state=active]:bg-background">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="hidden sm:inline">Performance</span>
           </TabsTrigger>
           <TabsTrigger value="skills" className="flex items-center gap-2 data-[state=active]:bg-background">
             <Brain className="h-4 w-4" />
@@ -440,6 +524,224 @@ const WorkforceAnalyticsDashboard = () => {
                   <p className="text-xs text-muted-foreground mt-1">Average rating</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-6 mt-8">
+          {/* Performance Tracking - Low Performers */}
+          <Card className="shadow-lg border-0">
+            <CardHeader className="bg-gradient-to-r from-red-50 to-orange-50 border-b border-red-100">
+              <CardTitle className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <span>Performance Management Dashboard</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              {(() => {
+                const lowPerformers = employees?.filter(emp => emp.performance_rating && emp.performance_rating < 3) || [];
+                const criticalPerformers = employees?.filter(emp => emp.performance_rating && emp.performance_rating < 2) || [];
+                
+                if (lowPerformers.length === 0) {
+                  return (
+                    <div className="text-center py-12">
+                      <div className="text-green-600 text-2xl mb-4">🎉 Excellent Performance Across Board!</div>
+                      <p className="text-muted-foreground text-lg">All employees are performing at satisfactory levels</p>
+                      <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                        <p className="text-green-700 font-medium">Team Performance Summary:</p>
+                        <p className="text-green-600 text-sm mt-1">
+                          All {employees?.length || 0} employees have performance ratings of 3.0 or higher
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-8">
+                    {/* Performance Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="bg-red-50 p-6 rounded-lg border border-red-200 shadow-sm">
+                        <div className="text-3xl font-bold text-red-600 mb-2">{criticalPerformers.length}</div>
+                        <div className="text-sm font-medium text-red-700">Critical Performance</div>
+                        <div className="text-xs text-muted-foreground mt-1">Rating &lt; 2.0 - Immediate action required</div>
+                      </div>
+                      <div className="bg-orange-50 p-6 rounded-lg border border-orange-200 shadow-sm">
+                        <div className="text-3xl font-bold text-orange-600">{lowPerformers.length - criticalPerformers.length}</div>
+                        <div className="text-sm font-medium text-orange-700">Needs Improvement</div>
+                        <div className="text-xs text-muted-foreground mt-1">Rating &lt; 3.0 - Development plan needed</div>
+                      </div>
+                      <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 shadow-sm">
+                        <div className="text-3xl font-bold text-blue-600">{lowPerformers.length}</div>
+                        <div className="text-sm font-medium text-blue-700">Total Under Review</div>
+                        <div className="text-xs text-muted-foreground mt-1">All employees requiring attention</div>
+                      </div>
+                      <div className="bg-green-50 p-6 rounded-lg border border-green-200 shadow-sm">
+                        <div className="text-3xl font-bold text-green-600">{((employees?.length || 0) - lowPerformers.length)}</div>
+                        <div className="text-sm font-medium text-green-700">Performing Well</div>
+                        <div className="text-xs text-muted-foreground mt-1">Rating ≥ 3.0 - Good standing</div>
+                      </div>
+                    </div>
+
+                    {/* Low Performers Detailed List */}
+                    <Card className="shadow-sm">
+                      <CardHeader>
+                        <CardTitle className="flex items-center space-x-2">
+                          <Users className="h-5 w-5 text-orange-600" />
+                          <span>Employees Requiring Attention</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {lowPerformers.map((employee, index) => (
+                            <div key={employee.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
+                              <div className="flex items-center space-x-4">
+                                <div className={`w-4 h-4 rounded-full ${employee.performance_rating < 2 ? 'bg-red-500' : 'bg-orange-500'}`}></div>
+                                <div className="flex-1">
+                                  <div className="font-medium text-lg">{employee.first_name} {employee.last_name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {employee.current_position} • {employee.current_department || 'No Department'}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    Employee ID: {employee.id}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-4">
+                                <div className="text-right">
+                                  <div className="font-bold text-xl text-red-600">
+                                    ⭐ {employee.performance_rating}/5
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">Performance Rating</div>
+                                </div>
+                                <div className="flex flex-col space-y-2">
+                                  {employee.performance_rating < 2 ? (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Critical Priority
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Needs Support
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex flex-col space-y-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs"
+                                    onClick={() => handleEmployeeActionClick(employee)}
+                                  >
+                                    <Settings className="h-3 w-3 mr-1" />
+                                    Take Action
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Action Plans and Recommendations */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {/* Improvement Action Plans */}
+                      <Card className="shadow-sm">
+                        <CardHeader className="bg-blue-50">
+                          <CardTitle className="flex items-center space-x-2">
+                            <Target className="h-5 w-5 text-blue-600" />
+                            <span>Improvement Action Plans</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-6">
+                          <div className="space-y-4">
+                            <div>
+                              <h6 className="font-semibold text-blue-800 mb-2">Immediate Actions (Critical):</h6>
+                              <ul className="text-blue-700 space-y-2 text-sm">
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Schedule urgent 1-on-1 performance review meetings</span>
+                                </li>
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Create detailed 30-60-90 day improvement plans</span>
+                                </li>
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Consider temporary role adjustments or support</span>
+                                </li>
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Document performance issues formally</span>
+                                </li>
+                              </ul>
+                            </div>
+                            <div className="pt-4 border-t">
+                              <h6 className="font-semibold text-blue-800 mb-2">Development Support:</h6>
+                              <ul className="text-blue-700 space-y-2 text-sm">
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Assign experienced mentors or coaching sessions</span>
+                                </li>
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Enroll in relevant skill-building training programs</span>
+                                </li>
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Establish regular check-ins and feedback cycles</span>
+                                </li>
+                                <li className="flex items-start space-x-2">
+                                  <span className="text-blue-500 mt-1">•</span>
+                                  <span>Provide additional resources and tools</span>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Offboarding Strategy */}
+                      {criticalPerformers.length > 0 && (
+                        <Card className="shadow-sm">
+                          <CardHeader className="bg-red-50">
+                            <CardTitle className="flex items-center space-x-2">
+                              <AlertTriangle className="h-5 w-5 text-red-600" />
+                              <span>Offboarding Consideration Strategy</span>
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="p-6">
+                            <div className="text-sm text-red-700 space-y-4">
+                              <p className="font-medium">For critical performance cases (rating &lt; 2.0), follow this structured timeline:</p>
+                              
+                              <div className="space-y-3">
+                                <div className="bg-white p-4 rounded border border-red-200">
+                                  <div className="font-semibold text-red-800">Week 1-2: Intensive Support Phase</div>
+                                  <div className="text-xs mt-1">Clear performance expectations, daily check-ins, immediate support</div>
+                                </div>
+                                <div className="bg-white p-4 rounded border border-red-200">
+                                  <div className="font-semibold text-red-800">Week 3-6: Monitoring & Feedback</div>
+                                  <div className="text-xs mt-1">Track progress closely, provide continuous feedback, adjust support as needed</div>
+                                </div>
+                                <div className="bg-white p-4 rounded border border-red-200">
+                                  <div className="font-semibold text-red-800">Week 7-8: Final Evaluation</div>
+                                  <div className="text-xs mt-1">Comprehensive performance review, make final employment decision</div>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-4 p-3 bg-red-100 rounded border border-red-300">
+                                <p className="text-xs font-medium text-red-800">
+                                  ⚠️ Ensure all documentation is complete and HR procedures are followed throughout this process.
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -907,6 +1209,393 @@ const WorkforceAnalyticsDashboard = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Employee Action Selection Dialog */}
+      <Dialog open={isActionDialogOpen} onOpenChange={setIsActionDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center space-x-3 text-xl">
+              <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <span>Performance Action Required</span>
+                <p className="text-sm text-muted-foreground font-normal mt-1">
+                  {selectedEmployeeForAction?.first_name} {selectedEmployeeForAction?.last_name} • {selectedEmployeeForAction?.current_position}
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 p-6">
+            {/* Employee Performance Overview */}
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-lg border border-red-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-red-800">Current Performance Status</h4>
+                  <p className="text-sm text-red-600 mt-1">Immediate action required to address performance concerns</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-red-600">⭐ {selectedEmployeeForAction?.performance_rating}/5</div>
+                  <div className="text-xs text-muted-foreground">Performance Rating</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Options */}
+            <div className="space-y-4">
+              <h5 className="font-semibold text-gray-800 mb-3">Choose Your Action Strategy</h5>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Improvement Plan Option */}
+                <div className="group cursor-pointer" onClick={generateImprovementPlan}>
+                  <div className="relative p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all duration-200">
+                    {isGeneratingPlan && (
+                      <div className="absolute inset-0 bg-blue-100/50 rounded-xl flex items-center justify-center">
+                        <RefreshCw className="h-6 w-6 animate-spin text-blue-600" />
+                      </div>
+                    )}
+                    <div className="text-center space-y-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto">
+                        <FileText className="h-6 w-6 text-white" />
+                      </div>
+                      <h6 className="font-semibold text-blue-800">Generate Improvement Plan</h6>
+                      <p className="text-sm text-blue-600">Create a comprehensive 90-day development strategy with training assignments and mentorship</p>
+                      <div className="flex items-center justify-center space-x-2 text-xs text-blue-500">
+                        <span>• Performance coaching</span>
+                        <span>• Skill development</span>
+                        <span>• Clear milestones</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Exit Strategy Option */}
+                <div className="group cursor-pointer" onClick={generateExitStrategy}>
+                  <div className="relative p-6 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-xl hover:border-red-400 hover:shadow-lg transition-all duration-200">
+                    {isGeneratingStrategy && (
+                      <div className="absolute inset-0 bg-red-100/50 rounded-xl flex items-center justify-center">
+                        <RefreshCw className="h-6 w-6 animate-spin text-red-600" />
+                      </div>
+                    )}
+                    <div className="text-center space-y-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto">
+                        <UserX className="h-6 w-6 text-white" />
+                      </div>
+                      <h6 className="font-semibold text-red-800">Generate Exit Strategy</h6>
+                      <p className="text-sm text-red-600">Create a professional offboarding plan with legal compliance and transition management</p>
+                      <div className="flex items-center justify-center space-x-2 text-xs text-red-500">
+                        <span>• Legal compliance</span>
+                        <span>• Knowledge transfer</span>
+                        <span>• Professional exit</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Recommendation Based on Rating */}
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <h6 className="font-semibold text-gray-800 mb-2">🤖 AI Recommendation</h6>
+              <p className="text-sm text-gray-600">
+                {selectedEmployeeForAction?.performance_rating < 2 
+                  ? "Given the critical performance rating (<2), we recommend starting with an improvement plan but also preparing an exit strategy as a contingency measure."
+                  : "With a performance rating below 3, we recommend focusing on an improvement plan with structured development goals and regular check-ins."
+                }
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 p-6 border-t bg-gray-50/50">
+            <Button variant="outline" onClick={() => setIsActionDialogOpen(false)} className="px-6">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Improvement Plan Dialog */}
+      <Dialog open={isImprovementPlanDialogOpen} onOpenChange={setIsImprovementPlanDialogOpen}>
+        <DialogContent className="max-w-[98vw] w-[98vw] h-[98vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-2 flex-shrink-0">
+            <DialogTitle className="flex items-center space-x-3 text-lg">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
+                <FileText className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <span>AI-Generated Improvement Plan</span>
+                <p className="text-xs text-muted-foreground font-normal mt-1">
+                  {selectedEmployeeForAction?.first_name} {selectedEmployeeForAction?.last_name}
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 min-h-0 flex space-x-4 p-3">
+            {/* Employee Info Card - Compact Side Panel */}
+            <div className="w-80 flex-shrink-0">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200 h-full">
+                <div className="mb-3">
+                  <h4 className="font-semibold text-blue-800 text-sm">
+                    {selectedEmployeeForAction?.first_name} {selectedEmployeeForAction?.last_name}
+                  </h4>
+                  <p className="text-xs text-blue-600">
+                    {selectedEmployeeForAction?.current_position}
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    {selectedEmployeeForAction?.current_department}
+                  </p>
+                </div>
+                <div className="text-center border-t border-blue-200 pt-3">
+                  <div className="text-lg font-bold text-blue-600">⭐ {selectedEmployeeForAction?.performance_rating}/5</div>
+                  <div className="text-xs text-muted-foreground">Current Rating</div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <h5 className="font-semibold text-blue-800 text-xs mb-2">📋 Plan Details</h5>
+                  <div className="space-y-1 text-xs text-blue-700">
+                    <div>• 90-Day Development</div>
+                    <div>• AI-Generated Strategy</div>
+                    <div>• Performance Focused</div>
+                    <div>• Career Growth Path</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Plan Content - Full Width */}
+            <div className="flex-1 min-h-0">
+              <div className="h-full bg-white border rounded-lg flex flex-col">
+                <div className="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-b flex items-center justify-between flex-shrink-0">
+                  <h5 className="font-semibold text-blue-800 text-sm">📋 90-Day Development Plan</h5>
+                  <Badge variant="outline" className="bg-blue-100 text-blue-700 text-xs">AI Generated</Badge>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                  {improvementPlan ? (
+                    <div className="prose prose-blue max-w-none">
+                      <div 
+                        className="formatted-plan space-y-4"
+                        dangerouslySetInnerHTML={{ 
+                          __html: improvementPlan
+                            .replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold text-blue-800 mt-4 mb-3 pb-2 border-b border-blue-200">$1</h3>')
+                            .replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold text-blue-900 mt-6 mb-4 pb-2 border-b-2 border-blue-300">$1</h2>')
+                            .replace(/^#### (.*$)/gm, '<h4 class="text-md font-semibold text-blue-700 mt-3 mb-2">$1</h4>')
+                            .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold text-blue-900 mt-6 mb-4 pb-3 border-b-2 border-blue-400">$1</h1>')
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-blue-800 bg-blue-50 px-1 rounded">$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em class="italic text-blue-700">$1</em>')
+                            .replace(/^- (.*$)/gm, '<div class="flex items-start ml-4 mb-2"><span class="text-blue-600 mr-2">•</span><span class="text-gray-700 text-sm leading-relaxed">$1</span></div>')
+                            .replace(/^\d+\. (.*$)/gm, '<div class="flex items-start ml-4 mb-2"><span class="text-blue-600 mr-2 font-medium">$&</span></div>')
+                            .replace(/\n\n/g, '<br><br>')
+                            .replace(/^(?!<[h|d])(.+)$/gm, '<p class="mb-3 text-gray-700 leading-relaxed text-sm">$1</p>')
+                            .replace(/📋|📊|🎯|⭐|🔍|💡|📈|✅|⚠️|🚀|💼|🎓|👥|⏰|📝|🏆|💪|🌟|🔥|⚡|🎨|🔧|📚|🎪|🎭/g, '<span class="inline-block text-base mr-2 bg-blue-100 px-1 rounded">$&</span>')
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center p-8">
+                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FileText className="h-8 w-8 text-blue-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">Generate Your Improvement Plan</h3>
+                        <p className="text-gray-600">Click "Generate Improvement Plan" to create a comprehensive development strategy.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center space-x-3 p-3 border-t bg-gray-50/50 flex-shrink-0">
+            <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              <span>Generated with AI • Review and customize as needed</span>
+            </div>
+            <div className="flex space-x-2">
+              <Button variant="outline" size="sm" onClick={() => setIsImprovementPlanDialogOpen(false)}>
+                Close
+              </Button>
+              <Button size="sm" onClick={() => {
+                navigator.clipboard.writeText(improvementPlan);
+                toast.success("Improvement plan copied to clipboard!");
+              }} className="bg-blue-600 hover:bg-blue-700">
+                <Award className="h-3 w-3 mr-1" />
+                Copy Plan
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exit Strategy Dialog */}
+      <Dialog open={isExitStrategyDialogOpen} onOpenChange={setIsExitStrategyDialogOpen}>
+        <DialogContent className="max-w-[98vw] w-[98vw] h-[98vh] overflow-hidden flex flex-col">
+          <DialogHeader className="border-b pb-2 flex-shrink-0">
+            <DialogTitle className="flex items-center space-x-3 text-lg">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center">
+                <UserX className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <span>AI-Generated Exit Strategy</span>
+                <p className="text-xs text-muted-foreground font-normal mt-1">
+                  {selectedEmployeeForAction?.first_name} {selectedEmployeeForAction?.last_name}
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="flex-1 min-h-0 flex space-x-4 p-3">
+            {/* Employee Info Card with Warning - Compact Side Panel */}
+            <div className="w-80 flex-shrink-0">
+              <div className="bg-gradient-to-r from-red-50 to-pink-50 p-3 rounded-lg border border-red-200 h-full">
+                <div className="mb-3">
+                  <h4 className="font-semibold text-red-800 text-sm">
+                    {selectedEmployeeForAction?.first_name} {selectedEmployeeForAction?.last_name}
+                  </h4>
+                  <p className="text-xs text-red-600">
+                    {selectedEmployeeForAction?.current_position}
+                  </p>
+                  <p className="text-xs text-red-600">
+                    {selectedEmployeeForAction?.current_department}
+                  </p>
+                </div>
+                <div className="text-center border-t border-red-200 pt-3 mb-3">
+                  <div className="text-lg font-bold text-red-600">⭐ {selectedEmployeeForAction?.performance_rating}/5</div>
+                  <div className="text-xs text-muted-foreground">Current Rating</div>
+                </div>
+                <div className="bg-red-100 p-2 rounded border border-red-300">
+                  <p className="text-xs font-medium text-red-800 flex items-center">
+                    <Shield className="h-3 w-3 mr-1" />
+                    🔒 CONFIDENTIAL HR DOCUMENT
+                  </p>
+                  <p className="text-xs text-red-700 mt-1">Handle with strict confidentiality</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Strategy Content - Full Width */}
+            <div className="flex-1 min-h-0">
+              <div className="h-full bg-white border rounded-lg flex flex-col">
+                <div className="p-2 bg-gradient-to-r from-red-50 to-pink-50 border-b flex items-center justify-between flex-shrink-0">
+                  <h5 className="font-semibold text-red-800 text-sm">⚠️ Professional Exit Strategy</h5>
+                  <Badge variant="destructive" className="bg-red-100 text-red-700 text-xs">Confidential</Badge>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4">
+                  {exitStrategy ? (
+                    <div className="prose prose-red max-w-none">
+                      <div 
+                        className="formatted-strategy space-y-4"
+                        dangerouslySetInnerHTML={{ 
+                          __html: exitStrategy
+                            .replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold text-red-800 mt-4 mb-3 pb-2 border-b border-red-200">$1</h3>')
+                            .replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold text-red-900 mt-6 mb-4 pb-2 border-b-2 border-red-300">$1</h2>')
+                            .replace(/^#### (.*$)/gm, '<h4 class="text-md font-semibold text-red-700 mt-3 mb-2">$1</h4>')
+                            .replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold text-red-900 mt-6 mb-4 pb-3 border-b-2 border-red-400">$1</h1>')
+                            .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-red-800 bg-red-50 px-1 rounded">$1</strong>')
+                            .replace(/\*(.*?)\*/g, '<em class="italic text-red-700">$1</em>')
+                            .replace(/^- (.*$)/gm, '<div class="flex items-start ml-4 mb-2"><span class="text-red-600 mr-2">•</span><span class="text-gray-700 text-sm leading-relaxed">$1</span></div>')
+                            .replace(/^\d+\. (.*$)/gm, '<div class="flex items-start ml-4 mb-2"><span class="text-red-600 mr-2 font-medium">$&</span></div>')
+                            .replace(/\n\n/g, '<br><br>')
+                            .replace(/^(?!<[h|d])(.+)$/gm, '<p class="mb-3 text-gray-700 leading-relaxed text-sm">$1</p>')
+                            .replace(/🚪|📋|⚖️|⚠️|🔒|📝|💼|👤|📊|⏰|🏢|📞|✅|❌|🆔|🔐|📄|⚡|🎯|🛡️/g, '<span class="inline-block text-base mr-2 bg-red-100 px-1 rounded">$&</span>')
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="text-center p-8">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <UserX className="h-8 w-8 text-red-600" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">Generate Exit Strategy</h3>
+                        <p className="text-gray-600">Click "Generate Exit Strategy" to create a comprehensive offboarding plan.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center space-x-3 p-6 border-t bg-red-50/50 flex-shrink-0">
+            <div className="flex items-center space-x-2 text-sm text-red-600">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Legal Review Required • Consult HR Before Implementation</span>
+            </div>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={() => setIsExitStrategyDialogOpen(false)}>
+                Close
+              </Button>
+              <Button variant="destructive" onClick={() => {
+                navigator.clipboard.writeText(exitStrategy);
+                toast.success("Exit strategy copied to clipboard!");
+              }}>
+                <Shield className="h-4 w-4 mr-2" />
+                Copy Strategy
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Existing Certification Assignment Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Certification to Employee</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="employee-select">Select Employee</Label>
+              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose an employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees?.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.first_name} {employee.last_name} - {employee.current_position}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="certification-select">Select Certification</Label>
+              <Select value={selectedCertification} onValueChange={setSelectedCertification}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a certification" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableCertifications?.map((cert) => (
+                    <SelectItem key={cert.id} value={cert.id}>
+                      {cert.certification_name} - {cert.issuing_authority}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="expiry-date">Expiry Date</Label>
+              <Input
+                id="expiry-date"
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={assignCertification} disabled={isAssigning}>
+                {isAssigning ? "Assigning..." : "Assign Certification"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

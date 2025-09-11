@@ -101,6 +101,7 @@ export interface CreateTrainingProgramData {
   certification_provided?: boolean;
   certification_name?: string;
   certification_validity_months?: number;
+  content_url?: string;
   instructor_name?: string;
   instructor_email?: string;
   schedule_type?: 'self_paced' | 'scheduled' | 'recurring';

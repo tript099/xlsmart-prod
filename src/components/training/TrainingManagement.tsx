@@ -71,6 +71,7 @@ export default function TrainingManagement() {
     max_participants: 50,
     cost_per_participant: 0,
     certification_provided: false,
+    content_url: '',
     schedule_type: 'self_paced',
     created_by: user?.id || '00000000-0000-0000-0000-000000000000' // Use actual user ID
   });
@@ -143,6 +144,7 @@ export default function TrainingManagement() {
         max_participants: 50,
         cost_per_participant: 0,
         certification_provided: false,
+        content_url: '',
         schedule_type: 'self_paced',
         created_by: user?.id || '00000000-0000-0000-0000-000000000000'
       });
@@ -514,6 +516,18 @@ function TrainingProgramForm({ program, setProgram, onSubmit, loading }: Trainin
           placeholder="Enter program description"
           rows={3}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="content_url">Program URL</Label>
+        <Input
+          id="content_url"
+          type="url"
+          value={program.content_url || ''}
+          onChange={(e) => setProgram({ ...program, content_url: e.target.value })}
+          placeholder="e.g., https://learning.company.com/courses/leadership-training"
+        />
+        <p className="text-xs text-gray-500">Optional: Link to training materials, course platform, or registration page</p>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

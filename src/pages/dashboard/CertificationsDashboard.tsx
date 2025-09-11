@@ -49,7 +49,8 @@ const CertificationsDashboard = () => {
   const [formData, setFormData] = useState({
     certification_name: '',
     issuing_authority: '',
-    description: ''
+    description: '',
+    external_url: ''
   });
 
   const handleAddCertification = () => {
@@ -76,6 +77,7 @@ const CertificationsDashboard = () => {
           certification_name: formData.certification_name,
           issuing_authority: formData.issuing_authority || null,
           description: formData.description || null,
+          external_url: formData.external_url || null,
           is_active: true
         }]);
 
@@ -85,7 +87,8 @@ const CertificationsDashboard = () => {
       setFormData({
         certification_name: '',
         issuing_authority: '',
-        description: ''
+        description: '',
+        external_url: ''
       });
       setShowAddCertDialog(false);
       
@@ -528,6 +531,19 @@ const CertificationsDashboard = () => {
                   placeholder="Brief description of the certification..."
                   rows={3}
                 />
+              </div>
+
+              {/* URL */}
+              <div className="space-y-2">
+                <Label htmlFor="external_url">Certification URL</Label>
+                <Input
+                  id="external_url"
+                  type="url"
+                  value={formData.external_url}
+                  onChange={(e) => setFormData(prev => ({ ...prev, external_url: e.target.value }))}
+                  placeholder="e.g., https://aws.amazon.com/certification/certified-solutions-architect-associate/"
+                />
+                <p className="text-xs text-gray-500">Optional: Link to certification information or registration page</p>
               </div>
             </div>
 

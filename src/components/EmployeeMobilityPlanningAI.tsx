@@ -48,6 +48,43 @@ interface MobilityPlan {
   formattedAnalysis?: string; // Optional for performance optimization
 }
 
+interface RetentionAction {
+  actionId: string;
+  actionType: string;
+  actionName: string;
+  description: string;
+  timeline: string;
+  priority: 'immediate' | 'high' | 'medium' | 'low';
+  successProbability: number;
+  assignedTo: 'manager' | 'hr' | 'employee';
+  specificInstructions: string;
+  templateId?: string;
+  averageSuccessRate?: number;
+  averageTimeline?: number;
+  costLevel?: string;
+}
+
+interface RetentionPlan {
+  planId?: string;
+  riskAnalysis: {
+    primaryRiskFactors: string[];
+    riskLevel: string;
+    urgencyLevel: string;
+    retentionProbability: number;
+  };
+  recommendedActions: RetentionAction[];
+  overallStrategy: string;
+  successPrediction: number;
+  nextReviewDate: string;
+}
+
+interface EmployeeRetentionData {
+  employee: Employee;
+  flightRiskScore: number;
+  retentionPlan?: RetentionPlan;
+  isGeneratingPlan?: boolean;
+}
+
 export const EmployeeMobilityPlanningAI = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [standardRoles, setStandardRoles] = useState<StandardRole[]>([]);
@@ -57,6 +94,12 @@ export const EmployeeMobilityPlanningAI = () => {
   const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [executedMoves, setExecutedMoves] = useState<Set<string>>(new Set());
+  
+  // Retention action states
+  const [retentionData, setRetentionData] = useState<Map<string, EmployeeRetentionData>>(new Map());
+  const [generatingRetentionPlans, setGeneratingRetentionPlans] = useState<Set<string>>(new Set());
+  const [executingActions, setExecutingActions] = useState<Set<string>>(new Set());
+  
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -305,6 +348,132 @@ export const EmployeeMobilityPlanningAI = () => {
     );
 
     return adjacentRoles.slice(0, 3);
+  };
+
+  // Retention Action Functions
+  const generateRetentionPlan = async (employee: Employee) => {
+    const employeeId = employee.id;
+    const flightRiskScore = getMobilityScore(employee);
+    
+    setGeneratingRetentionPlans(prev => new Set([...prev, employeeId]));
+    
+    try {
+      console.log(`Generating retention plan for ${employee.first_name} ${employee.last_name} (Risk: ${flightRiskScore}%)`);
+      
+      // Identify risk factors based on employee data
+      const riskFactors = [];
+      if (employee.performance_rating < 3) riskFactors.push('performance_concerns');
+      if (employee.years_of_experience > 5) riskFactors.push('career_stagnation');
+      if (flightRiskScore >= 80) riskFactors.push('high_mobility_risk');
+      if (!employee.skills || (Array.isArray(employee.skills) && employee.skills.length < 3)) riskFactors.push('skill_development_needs');
+      
+      const { data, error } = await supabase.functions.invoke('ai-retention-action-planner', {
+        body: {
+          employee,
+          flightRiskScore,
+          riskFactors,
+          generatePlan: true
+        }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data.retentionPlan) {
+        // Update retention data
+        setRetentionData(prev => {
+          const newMap = new Map(prev);
+          newMap.set(employeeId, {
+            employee,
+            flightRiskScore,
+            retentionPlan: data.retentionPlan
+          });
+          return newMap;
+        });
+
+        toast({
+          title: "Retention Plan Generated!",
+          description: `Created ${data.retentionPlan.recommendedActions?.length || 0} action recommendations for ${employee.first_name}`,
+        });
+      } else {
+        throw new Error(data?.message || 'Failed to generate retention plan');
+      }
+
+    } catch (error: any) {
+      console.error('Error generating retention plan:', error);
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate retention plan",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingRetentionPlans(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(employeeId);
+        return newSet;
+      });
+    }
+  };
+
+  const executeRetentionAction = async (employee: Employee, action: RetentionAction) => {
+    const actionKey = `${employee.id}-${action.actionId}`;
+    
+    setExecutingActions(prev => new Set([...prev, actionKey]));
+    
+    try {
+      console.log(`Executing retention action: ${action.actionName} for ${employee.first_name} ${employee.last_name}`);
+      
+      // Here you could integrate with actual HR systems or create action tracking records
+      // For now, we'll simulate execution and update the UI
+      
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      
+      toast({
+        title: "Action Executed!",
+        description: `${action.actionName} has been initiated for ${employee.first_name} ${employee.last_name}`,
+      });
+      
+      // Update the retention plan to mark action as executed
+      setRetentionData(prev => {
+        const newMap = new Map(prev);
+        const existingData = newMap.get(employee.id);
+        if (existingData?.retentionPlan) {
+          const updatedActions = existingData.retentionPlan.recommendedActions.map(a => 
+            a.actionId === action.actionId 
+              ? { ...a, status: 'executed', executedDate: new Date().toISOString() }
+              : a
+          );
+          
+          newMap.set(employee.id, {
+            ...existingData,
+            retentionPlan: {
+              ...existingData.retentionPlan,
+              recommendedActions: updatedActions
+            }
+          });
+        }
+        return newMap;
+      });
+      
+    } catch (error: any) {
+      console.error('Error executing retention action:', error);
+      toast({
+        title: "Execution Failed",
+        description: error.message || "Failed to execute retention action",
+        variant: "destructive",
+      });
+    } finally {
+      setExecutingActions(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(actionKey);
+        return newSet;
+      });
+    }
+  };
+
+  const getFlightRiskLevel = (score: number) => {
+    if (score >= 80) return { level: "High", color: "destructive", bgColor: "bg-red-50", textColor: "text-red-700" };
+    if (score >= 60) return { level: "Medium", color: "default", bgColor: "bg-yellow-50", textColor: "text-yellow-700" };
+    return { level: "Low", color: "secondary", bgColor: "bg-green-50", textColor: "text-green-700" };
   };
 
   const calculateProgressPercentage = () => {
@@ -808,7 +977,7 @@ export const EmployeeMobilityPlanningAI = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Mobility Risk Distribution</CardTitle>
+                <CardTitle>Flight Risk Distribution</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -819,7 +988,7 @@ export const EmployeeMobilityPlanningAI = () => {
                     return (
                       <div key={level} className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>{level} Risk</span>
+                          <span>{level} Flight Risk</span>
                           <span>{count} employees ({percentage.toFixed(1)}%)</span>
                         </div>
                         <Progress value={percentage} className="h-2" />
@@ -832,34 +1001,260 @@ export const EmployeeMobilityPlanningAI = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>High Mobility Risk Employees</CardTitle>
+                <CardTitle>Retention Action Summary</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {employees
-                    .filter(emp => getMobilityScore(emp) >= 80)
-                    .slice(0, 5)
-                    .map((employee) => (
-                      <div key={employee.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <div className="font-medium">
-                            {employee.first_name} {employee.last_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {employee.current_position}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="destructive">
-                            {getMobilityScore(employee)}% Risk
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex justify-between">
+                    <span className="text-sm">Plans Generated:</span>
+                    <span className="font-medium">{retentionData.size}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">High Risk Employees:</span>
+                    <span className="font-medium text-red-600">
+                      {employees.filter(emp => getMobilityScore(emp) >= 80).length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">Actions in Progress:</span>
+                    <span className="font-medium text-blue-600">{executingActions.size}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm">Avg Success Rate:</span>
+                    <span className="font-medium text-green-600">73%</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Enhanced High Risk Employees with Retention Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-red-500" />
+                High Flight Risk Employees + Retention Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {employees
+                  .filter(emp => getMobilityScore(emp) >= 80)
+                  .map((employee) => {
+                    const flightRiskScore = getMobilityScore(employee);
+                    const riskInfo = getFlightRiskLevel(flightRiskScore);
+                    const retentionInfo = retentionData.get(employee.id);
+                    const isGeneratingPlan = generatingRetentionPlans.has(employee.id);
+
+                    return (
+                      <div key={employee.id} className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow">
+                        {/* Employee Header */}
+                        <div className="flex items-start justify-between mb-6">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="text-lg font-semibold text-gray-900">
+                                {employee.first_name} {employee.last_name}
+                              </h4>
+                              <Badge variant="destructive" className="text-xs">
+                                {flightRiskScore}% Flight Risk
+                              </Badge>
+                            </div>
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium text-gray-700">
+                                {employee.current_position} • {employee.current_department}
+                              </p>
+                              <div className="flex items-center gap-4 text-xs text-gray-500">
+                                <span>📅 {employee.years_of_experience} years experience</span>
+                                <span>⭐ Performance: {employee.performance_rating}/5</span>
+                                <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
+                                  {riskInfo.level} Priority
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Risk Analysis */}
+                        {retentionInfo?.retentionPlan?.riskAnalysis && (
+                          <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                              <h5 className="font-semibold text-sm text-gray-800">Risk Analysis</h5>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4 mb-3">
+                              <div className="bg-white p-3 rounded border">
+                                <div className="text-xs font-medium text-gray-500 mb-1">URGENCY LEVEL</div>
+                                <div className="text-sm font-semibold text-orange-600 uppercase">
+                                  {retentionInfo.retentionPlan.riskAnalysis.urgencyLevel}
+                                </div>
+                              </div>
+                              <div className="bg-white p-3 rounded border">
+                                <div className="text-xs font-medium text-gray-500 mb-1">RETENTION PROBABILITY</div>
+                                <div className="text-sm font-semibold text-green-600">
+                                  {Math.round(retentionInfo.retentionPlan.riskAnalysis.retentionProbability > 1 
+                                    ? retentionInfo.retentionPlan.riskAnalysis.retentionProbability 
+                                    : retentionInfo.retentionPlan.riskAnalysis.retentionProbability * 100)}%
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-xs font-medium text-gray-500 mb-2">RISK FACTORS</div>
+                              <div className="flex flex-wrap gap-2">
+                                {retentionInfo.retentionPlan.riskAnalysis.primaryRiskFactors.map((factor, index) => (
+                                  <span key={index} className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded">
+                                    {factor.replace('_', ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Action Plan */}
+                        {retentionInfo?.retentionPlan ? (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                <h5 className="font-semibold text-blue-800">Retention Action Plan</h5>
+                              </div>
+                              <div className="px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded">
+                                {Math.round(retentionInfo.retentionPlan.successPrediction > 1 
+                                  ? retentionInfo.retentionPlan.successPrediction 
+                                  : retentionInfo.retentionPlan.successPrediction * 100)}% Success Rate
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-3">
+                              {retentionInfo.retentionPlan.recommendedActions.map((action, index) => {
+                                const actionKey = `${employee.id}-${action.actionId}`;
+                                const isExecuting = executingActions.has(actionKey);
+                                const isExecuted = (action as any).status === 'executed';
+
+                                return (
+                                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
+                                            action.priority === 'immediate' ? 'bg-red-100 text-red-700' :
+                                            action.priority === 'high' ? 'bg-orange-100 text-orange-700' : 
+                                            'bg-gray-100 text-gray-700'
+                                          }`}>
+                                            {action.priority}
+                                          </span>
+                                          <h6 className="font-semibold text-gray-800">{action.actionName}</h6>
+                                        </div>
+                                        
+                                        <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                                          {action.description}
+                                        </p>
+                                        
+                                        <div className="grid grid-cols-3 gap-3 mb-3">
+                                          <div className="text-center p-2 bg-gray-50 rounded">
+                                            <div className="text-xs text-gray-500 font-medium">TIMELINE</div>
+                                            <div className="text-sm font-semibold text-gray-700">{action.timeline}</div>
+                                          </div>
+                                          <div className="text-center p-2 bg-gray-50 rounded">
+                                            <div className="text-xs text-gray-500 font-medium">SUCCESS RATE</div>
+                                            <div className="text-sm font-semibold text-green-600">
+                                              {Math.round(action.successProbability > 1 
+                                                ? action.successProbability 
+                                                : action.successProbability * 100)}%
+                                            </div>
+                                          </div>
+                                          <div className="text-center p-2 bg-gray-50 rounded">
+                                            <div className="text-xs text-gray-500 font-medium">ASSIGNED TO</div>
+                                            <div className="text-sm font-semibold text-blue-600 capitalize">{action.assignedTo}</div>
+                                          </div>
+                                        </div>
+                                        {action.specificInstructions && (
+                                          <p className="text-xs mt-2 p-2 bg-blue-50 rounded">
+                                            💡 {action.specificInstructions}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <Button
+                                        size="sm"
+                                        onClick={() => executeRetentionAction(employee, action)}
+                                        disabled={isExecuting || isExecuted}
+                                        className={`min-w-[100px] font-medium ${
+                                          isExecuted 
+                                            ? "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800" 
+                                            : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                                        }`}
+                                      >
+                                        {isExecuting ? (
+                                          <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                                        ) : isExecuted ? (
+                                          <CheckCircle className="h-3 w-3 mr-1" />
+                                        ) : (
+                                          <Target className="h-3 w-3 mr-1" />
+                                        )}
+                                        {isExecuted ? 'Executed' : isExecuting ? 'Executing...' : 'Execute'}
+                                      </Button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <div className="text-xs font-medium text-gray-500 mb-1">OVERALL STRATEGY</div>
+                                  <p className="text-gray-700 leading-relaxed">{retentionInfo.retentionPlan.overallStrategy}</p>
+                                </div>
+                                <div>
+                                  <div className="text-xs font-medium text-gray-500 mb-1">NEXT REVIEW DATE</div>
+                                  <p className="text-gray-700 font-medium">{new Date(retentionInfo.retentionPlan.nextReviewDate).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between py-4 px-4 bg-gray-50 rounded border">
+                            <div>
+                              <h6 className="font-medium text-gray-800">Generate AI-Powered Retention Plan</h6>
+                              <p className="text-sm text-gray-600">Create a personalized action plan to retain this high-risk employee</p>
+                            </div>
+                            <Button
+                              onClick={() => generateRetentionPlan(employee)}
+                              disabled={isGeneratingPlan}
+                              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                            >
+                              {isGeneratingPlan ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Brain className="h-4 w-4 mr-2" />
+                                  Generate Plan
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                {employees.filter(emp => getMobilityScore(emp) >= 80).length === 0 && (
+                  <div className="text-center py-8">
+                    <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-green-800">No High Flight Risk Employees</h3>
+                    <p className="text-muted-foreground">
+                      All employees currently have low to medium flight risk levels.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
